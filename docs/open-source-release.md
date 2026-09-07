@@ -65,4 +65,4 @@ Topics：`creative-writing`、`novel-writing`、`llm`、`python`、`fastapi`、`
 
 首次公开 CI 的源码卫生作业通过，并发现两个此前未在本机暴露的基线问题：初始化上下文缺少一个既有影子执行标志的显式类型声明；PySide 后备端在 Ubuntu 缺少 Qt Multimedia 所需的 PulseAudio 运行库，Windows 又无法解释 POSIX 反斜杠续行。修正只补齐类型契约和 CI 环境，不改变创作、授权或媒体逻辑。
 
-第二轮公开 CI 进一步确认三项基线差异：lint 环境没有安装完整的可选类型依赖，Windows 无 `fcntl`，首次会话恢复可能覆盖启动后已发生的 PySide 导航。此前被忽略的 `uv.lock` 现纳入公开版本控制，lint 从该锁文件安装全部 extras，避免 SDK 或 PySide 版本随 runner 漂移；拟人化词库以 POSIX `flock` / Windows 字节区间锁维持同一排他锁合同；会话恢复尊重较新的用户导航。公开源码卫生继续独立运行，不因兼容修正降低检查。完整三平台 CI 通过后，以对应公开提交作为首个可维护基线。
+第二轮公开 CI 进一步确认三项基线差异：lint 环境没有安装完整的可选类型依赖，Windows 无 `fcntl`，首次会话恢复可能覆盖启动后已发生的 PySide 导航。此前被忽略的 `uv.lock` 现纳入公开版本控制，lint 从该锁文件安装全部 extras，避免 SDK 或 PySide 版本随 runner 漂移。由于 PySide 的平台 wheel 暴露不同类型表面，历史 mypy 债务清单固定在其生成平台 macOS；Linux/Windows 继续运行实际单元与后备端兼容测试。拟人化词库以 POSIX `flock` / Windows 字节区间锁维持同一排他锁合同；会话恢复尊重较新的用户导航。公开源码卫生继续独立运行，不因兼容修正降低检查。完整三平台 CI 通过后，以对应公开提交作为首个可维护基线。

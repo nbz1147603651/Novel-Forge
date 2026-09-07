@@ -468,4 +468,4 @@ D 决策状态和作者权限不变。初始化上下文显式声明既有语义
 
 D10 的产品方向不变：React/Tauri NIMO 仍是默认桌面，PySide 仅承担安全、兼容和应急后备。拟人化词库的排他写锁在 Windows 改用系统字节区间锁，在 POSIX 保留 `flock`；锁路径、超时、事件和读写边界不变。PySide 首次工作区快照不再用旧会话活动页覆盖用户启动后已完成的导航，因此声腔上下文会持续显示在共享标题栏。
 
-这两项不触碰作者权限、Canon、正文、候选、任务调度或 provider。lint 使用已提交的 `uv.lock` 和全 extras 环境，避免可选 SDK/PySide 类型随 runner 漂移。118 项词库测试、29 项窗口/会话测试、ruff 与 1803 项 mypy 既有诊断基线通过；三平台完整结果以公开 CI 为最终验收。
+这两项不触碰作者权限、Canon、正文、候选、任务调度或 provider。lint 使用已提交的 `uv.lock` 和全 extras 环境，避免可选 SDK/PySide 版本随 runner 漂移；PySide wheel 的平台类型表面不同，因此 1803 项历史 mypy 债务清单固定在其生成平台 macOS，Linux/Windows 继续执行运行时兼容回归。118 项词库测试、29 项窗口/会话测试、ruff 与本机 mypy 基线通过；三平台完整结果以公开 CI 为最终验收。
