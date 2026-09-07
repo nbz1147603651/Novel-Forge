@@ -205,6 +205,32 @@ class TestSessionSaveLoad:
             win._pre_close_cleanup()
             win.deleteLater()
 
+    def test_session_load_keeps_newer_navigation(
+        self, qtbot: QtBot, desktop_app: object, tmp_path: Path
+    ) -> None:
+        """A startup refresh must not replace navigation already chosen by the user."""
+        from novel_forge.desktop.window import NovelForgeDesktopWindow
+
+        session_file = tmp_path / "ui_session.json"
+        session_file.write_text(
+            json.dumps({"active_page": "dashboard"}),
+            encoding="utf-8",
+        )
+        win = NovelForgeDesktopWindow()
+        qtbot.addWidget(win)
+        try:
+            win.switch_page("settings")
+            with patch.object(
+                NovelForgeDesktopWindow,
+                "_ui_session_path",
+                staticmethod(lambda: session_file),
+            ):
+                win._load_ui_session(restore_active_page=False)
+            assert win._current_page_id() == "settings"
+        finally:
+            win._pre_close_cleanup()
+            win.deleteLater()
+
     def test_session_restores_chapter_studio_selector_choices(
         self, qtbot: QtBot, desktop_app: object, tmp_path: Path
     ) -> None:

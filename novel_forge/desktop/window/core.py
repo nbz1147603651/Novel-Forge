@@ -1095,7 +1095,9 @@ class CoreMixin:
 
         if not self._ui_session_restored:
             self._ui_session_restored = True
-            self._load_ui_session()
+            self._load_ui_session(
+                restore_active_page=self._page_activate_generation == 0,
+            )
             self._schedule_idle_page_prewarm()
 
         elapsed_ms = (time.monotonic() - t0) * 1000

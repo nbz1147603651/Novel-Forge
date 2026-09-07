@@ -23,7 +23,7 @@ jobs:
         with:
           python-version: "3.12"
           cache: 'pip'
-      - run: pip install -e ".[dev]"
+      - run: pip install -e ".[dev,desktop]"
       - run: ruff check novel_forge tests
       - run: python scripts/check_mypy_baseline.py
       - run: python scripts/lint_prompt_layers.py

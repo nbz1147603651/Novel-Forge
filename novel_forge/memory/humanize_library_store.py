@@ -1,17 +1,18 @@
 """Humanize pattern library — SQLite + FTS5 + optional Zvec vector store.
 
-Provides persistent CRUD, fcntl cross-process locking, schema migration,
+Provides persistent CRUD, cross-platform process locking, schema migration,
 embedding-signature tracking, and resumable vector rebuilds for the humanize
 pattern library.
 """
 
 from __future__ import annotations
 
-import fcntl
 import hashlib
 import json
 import logging
+import os
 import sqlite3
+import sys
 import tarfile
 import tempfile
 import time
@@ -36,6 +37,11 @@ from novel_forge.core.schemas.humanize_library import (
 )
 from novel_forge.memory.retrieval import bm25_scores
 from novel_forge.obs.project_logger import get_project_logger
+
+if sys.platform == "win32":
+    import msvcrt
+else:
+    import fcntl
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +91,7 @@ class LibraryDuplicateError(LibraryError):
 
 
 class LibraryLockTimeoutError(LibraryError):
-    """Raised when the fcntl lock cannot be acquired within the timeout."""
+    """Raised when the library file lock cannot be acquired in time."""
 
 
 class LibrarySchemaVersionMismatchError(LibraryError):
@@ -328,17 +334,24 @@ _MIGRATIONS: dict[str, Callable[[sqlite3.Connection], None]] = {}
 
 
 # ---------------------------------------------------------------------------
-# fcntl lock helpers
+# Cross-platform file-lock helpers
 # ---------------------------------------------------------------------------
 
 
 def _lock_file_fd(fd: int, exclusive: bool = True, timeout: float = 30.0) -> None:
-    """Acquire an fcntl lock with timeout."""
-    lock_type = fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH
+    """Acquire an advisory file lock with a bounded wait."""
     deadline = time.monotonic() + timeout
     while True:
         try:
-            fcntl.flock(fd, lock_type | fcntl.LOCK_NB)
+            if sys.platform == "win32":
+                if os.fstat(fd).st_size == 0:
+                    os.write(fd, b"\0")
+                os.lseek(fd, 0, os.SEEK_SET)
+                mode = msvcrt.LK_NBLCK if exclusive else msvcrt.LK_NBRLCK
+                msvcrt.locking(fd, mode, 1)
+            else:
+                lock_type = fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH
+                fcntl.flock(fd, lock_type | fcntl.LOCK_NB)
             return
         except (OSError, BlockingIOError):
             if time.monotonic() >= deadline:
@@ -349,8 +362,12 @@ def _lock_file_fd(fd: int, exclusive: bool = True, timeout: float = 30.0) -> Non
 
 
 def _unlock_file_fd(fd: int) -> None:
-    """Release an fcntl lock."""
-    fcntl.flock(fd, fcntl.LOCK_UN)
+    """Release a lock acquired by :func:`_lock_file_fd`."""
+    if sys.platform == "win32":
+        os.lseek(fd, 0, os.SEEK_SET)
+        msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+    else:
+        fcntl.flock(fd, fcntl.LOCK_UN)
 
 
 # ---------------------------------------------------------------------------
@@ -581,7 +598,7 @@ class HumanizeLibrary:
 
     @contextmanager
     def library_lock(self, operation: str = "write") -> Iterator[None]:
-        """Acquire the fcntl file lock for write operations."""
+        """Acquire the cross-platform file lock for write operations."""
         if self._in_memory or self._lock_path is None:
             yield
             return
@@ -591,7 +608,7 @@ class HumanizeLibrary:
         handle: Any = None
         try:
             t0 = time.monotonic()
-            handle = open(lock_path, "a+")  # noqa: SIM115
+            handle = open(lock_path, "a+b")  # noqa: SIM115
             _lock_file_fd(handle.fileno(), exclusive=True, timeout=self._lock_timeout)
             duration_ms = (time.monotonic() - t0) * 1000
             _safe_log_event(

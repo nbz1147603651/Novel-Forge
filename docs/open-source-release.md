@@ -64,3 +64,5 @@ Topics：`creative-writing`、`novel-writing`、`llm`、`python`、`fastapi`、`
 维护结构固定如下：`Novel-Forge` 是唯一公开开发主线；原仓库更名为 `Novel-Forge-private-archive` 并保持私有，只保留旧历史。公开仓库不得合并私有归档分支或强制推送旧提交，以免重新引入私有对象。旧历史中出现过的凭据仍应撤销或轮换，归档私有不能代替凭据失效。
 
 首次公开 CI 的源码卫生作业通过，并发现两个此前未在本机暴露的基线问题：初始化上下文缺少一个既有影子执行标志的显式类型声明；PySide 后备端在 Ubuntu 缺少 Qt Multimedia 所需的 PulseAudio 运行库，Windows 又无法解释 POSIX 反斜杠续行。修正只补齐类型契约和 CI 环境，不改变创作、授权或媒体逻辑。
+
+第二轮公开 CI 进一步确认三项基线差异：lint 环境没有安装 PySide 类型依赖，Windows 无 `fcntl`，首次会话恢复可能覆盖启动后已发生的 PySide 导航。lint 现与本地基线统一安装桌面依赖；拟人化词库以 POSIX `flock` / Windows 字节区间锁维持同一排他锁合同；会话恢复尊重较新的用户导航。公开源码卫生继续独立运行，不因兼容修正降低检查。完整三平台 CI 通过后，以对应公开提交作为首个可维护基线。

@@ -17,6 +17,8 @@ from novel_forge.core.schemas.humanize_library import (
 from novel_forge.memory.humanize_library_store import (
     HumanizeLibrary,
     LibraryLockTimeoutError,
+    _lock_file_fd,
+    _unlock_file_fd,
     seed_builtin_patterns,
 )
 from novel_forge.memory.humanize_retrieval import HumanizeLibraryRetriever
@@ -183,15 +185,14 @@ class TestLockEvents:
         lib._lock_timeout = 0.1
         # Lock the file externally to force timeout
         lock_path = tmp_path / "humanize_library.lock"
-        fd = open(lock_path, "w")
-        import fcntl
-        fcntl.flock(fd.fileno(), fcntl.LOCK_EX)
+        fd = open(lock_path, "w+b")
+        _lock_file_fd(fd.fileno())
         try:
             with pytest.raises(LibraryLockTimeoutError):
                 with lib.library_lock("timeout_op"):
                     pass
         finally:
-            fcntl.flock(fd.fileno(), fcntl.LOCK_UN)
+            _unlock_file_fd(fd.fileno())
             fd.close()
         events = _read_events(event_logger)
         timeout_events = _events_named(events, "humanize_library.lock_timeout")

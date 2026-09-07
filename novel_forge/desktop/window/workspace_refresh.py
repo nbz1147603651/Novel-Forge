@@ -565,8 +565,8 @@ class WorkspaceRefreshMixin:
             except Exception as exc:
                 _logger.debug("保存 UI 会话状态失败: %s", exc)
 
-    def _load_ui_session(self) -> None:
-        """Restore page and chapter-studio context from last session."""
+    def _load_ui_session(self, *, restore_active_page: bool = True) -> None:
+        """Restore saved UI state without overriding newer navigation."""
         try:
             path = self._ui_session_path()
             if not path.exists():
@@ -589,7 +589,7 @@ class WorkspaceRefreshMixin:
                     animate=False,
                 )
             page = state.get("active_page", "")
-            if page and page in self._pages:
+            if restore_active_page and page and page in self._pages:
                 # Restore chapter-studio context before switching so the page
                 # binds correctly if it becomes the active widget.
                 project_id = str(state.get("chapter_studio_project_id") or "")

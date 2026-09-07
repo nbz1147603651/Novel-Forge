@@ -102,7 +102,7 @@ Global cross-project SQLite + FTS5 + Zvec pattern library for AI-writing-style d
 
 | File | Role |
 |------|------|
-| `humanize_library_store.py` | SQLite + FTS5 + fcntl lock + migration + export/import + vector rebuild |
+| `humanize_library_store.py` | SQLite + FTS5 + cross-platform file lock + migration + export/import + vector rebuild |
 | `humanize_retrieval.py` | Sentence splitting, BM25 scoring, vector search, union fuse, LRU embedding cache |
 | `../core/humanize_rule_catalog.py` | Shared executable builtin catalog used by novel, dubbing, and persisted library metadata |
 | `../core/schemas/humanize_library.py` | `HumanizeLibraryEntry` Pydantic schema, `LIBRARY_BUILTIN_ENTRIES` (30 entries), `LIBRARY_SCHEMA_VERSION = "2.0"` |
@@ -129,7 +129,7 @@ Global cross-project SQLite + FTS5 + Zvec pattern library for AI-writing-style d
 | `LibraryDegradedError` | Subsystem (e.g. Zvec) failed but library is usable |
 | `LibraryReadOnlyError` | Attempting to mutate a builtin entry |
 | `LibraryDuplicateError` | Adding entry with existing pattern_id |
-| `LibraryLockTimeoutError` | fcntl lock not acquired within timeout (default 30s) |
+| `LibraryLockTimeoutError` | library file lock not acquired within timeout (default 30s) |
 | `LibrarySchemaVersionMismatchError` | On-disk schema version newer than code supports |
 
 ### Embedding Signature
@@ -164,7 +164,7 @@ All failures are caught and degraded gracefully — the library never blocks cha
 
 **IDEMPOTENT SEEDING**: `seed_builtin_patterns()` checks each pattern_id before inserting. Safe to call multiple times.
 
-**fcntl LOCK SCOPE**: Write operations (`add`, `update`, `remove`, `enable`, `disable`, `bump_hit`, `export`, `import_archive`, `rebuild_vectors`) acquire an exclusive fcntl lock on `library.lock`. Read operations (`list_all`, `get`, `stats`, `fts_search`, `vec_search`) do not lock.
+**FILE LOCK SCOPE**: Write operations (`add`, `update`, `remove`, `enable`, `disable`, `bump_hit`, `export`, `import_archive`, `rebuild_vectors`) acquire an exclusive advisory lock on `library.lock` (`flock` on POSIX, byte-range locking on Windows). Read operations (`list_all`, `get`, `stats`, `fts_search`, `vec_search`) do not lock.
 
 **VECTOR REBUILD CHECKPOINT**: `rebuild_vectors()` writes progress to `rebuild_progress.json` between batches. On restart, already-embedded entries are skipped. Checkpoint is deleted on full success.
 
