@@ -12,16 +12,21 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from enum import StrEnum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any, Literal, Protocol, cast
 
 from novel_forge.persistence.filesystem import FileSystemStorage, atomic_write_text
 from novel_forge.persistence.models import ProjectLayout
 
-if TYPE_CHECKING:
-    from novel_forge.story_kernel.schemas import StoryKernel
-
 _log = logging.getLogger(__name__)
 _CHAPTER_PATTERN = re.compile(r"chapter_(\d+)")
+
+
+class _StoryKernelSnapshot(Protocol):
+    """Lower-layer view required to mirror a restored kernel snapshot."""
+
+    current_chapter: int
+
+    def model_dump(self, *, mode: Literal["json"]) -> dict[str, Any]: ...
 
 
 class InvalidationScope(StrEnum):
@@ -1960,7 +1965,7 @@ async def _rollback_story_kernel_for_regeneration(
     project_id: str,
     completed_chapter: int,
     from_chapter: int,
-) -> StoryKernel | None:
+) -> _StoryKernelSnapshot | None:
     """Rollback the SQLite StoryKernel on the caller's event loop."""
 
     from novel_forge.story_kernel.store import StoryKernelStore
@@ -1990,9 +1995,7 @@ async def _rollback_story_kernel_for_regeneration(
         else:
             legacy_snapshot = layout.canon_dir / f"canon_v{completed_chapter}.json"
             if legacy_snapshot.exists():
-                from novel_forge.story_kernel.schemas import StoryKernel
-
-                restored = StoryKernel.model_validate_json(
+                restored = type(kernel).model_validate_json(
                     legacy_snapshot.read_text(encoding="utf-8")
                 )
                 if restored.current_chapter != completed_chapter:
@@ -2011,7 +2014,7 @@ async def _rollback_story_kernel_for_regeneration(
         for snapshot_number in store.list_snapshots():
             if snapshot_number >= from_chapter:
                 store.snapshot_path(snapshot_number).unlink(missing_ok=True)
-        return restored
+        return cast(_StoryKernelSnapshot, restored)
     finally:
         await store.close()
 
