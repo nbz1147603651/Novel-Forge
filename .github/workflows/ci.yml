@@ -57,10 +57,10 @@ jobs:
         with:
           python-version: "3.12"
           cache: 'pip'
+      # pytest-qt is part of the shared test configuration and imports its Qt
+      # binding during collection, so every test runner needs the fallback UI
+      # extra even when the selected unit test does not instantiate a widget.
       - run: pip install -e ".[dev,desktop]"
-        if: matrix.os == 'ubuntu-latest'
-      - run: pip install -e ".[dev]"
-        if: matrix.os != 'ubuntu-latest'
       - run: sudo apt-get install -y libegl1 libgles2 libgl1
         if: matrix.os == 'ubuntu-latest'
       - run: pytest tests/unit/ -n auto -q --timeout=60
@@ -121,9 +121,6 @@ jobs:
           python-version: "3.12"
           cache: 'pip'
       - run: pip install -e ".[dev,desktop]"
-        if: matrix.os == 'ubuntu-latest'
-      - run: pip install -e ".[dev]"
-        if: matrix.os != 'ubuntu-latest'
       - run: sudo apt-get install -y libegl1 libgles2 libgl1
         if: matrix.os == 'ubuntu-latest'
       - run: pytest tests/integration/ -n 2 -q --timeout=300
@@ -174,10 +171,12 @@ jobs:
         with:
           python-version: "3.12"
           cache: 'pip'
-      - run: pip install -e ".[dev]"
-      - run: pip install pip-audit cyclonedx-bom
-      - run: pip-audit --strict --desc --skip-editable
-      - run: cyclonedx-py environment --output-format json --output-file sbom.json
+      - run: pip install uv pip-audit
+      - name: Export the locked third-party dependency set
+        run: uv export --quiet --frozen --all-extras --no-emit-project --no-hashes --output-file audit-requirements.txt
+      - run: pip-audit --strict --desc --requirement audit-requirements.txt
+      - name: Generate the locked dependency SBOM
+        run: uv export --quiet --frozen --all-extras --no-emit-project --format cyclonedx1.5 --output-file sbom.json
       - uses: actions/upload-artifact@v4
         with:
           name: sbom-json
