@@ -235,7 +235,7 @@ def test_strings_module_has_no_imports_from_pages() -> None:
     from pathlib import Path
 
     strings_path = Path(__file__).parent.parent.parent / "novel_forge" / "desktop" / "strings.py"
-    tree = ast.parse(strings_path.read_text())
+    tree = ast.parse(strings_path.read_text(encoding="utf-8"))
 
     for node in ast.walk(tree):
         if isinstance(node, (ast.Import, ast.ImportFrom)):

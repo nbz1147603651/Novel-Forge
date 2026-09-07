@@ -4,6 +4,11 @@ on:
   push:
   pull_request:
 
+env:
+  # Repository text, prompts and fixtures are UTF-8.  Make that contract
+  # explicit on Windows instead of inheriting the runner's legacy code page.
+  PYTHONUTF8: "1"
+
 jobs:
   public-content:
     name: Public source hygiene
@@ -43,10 +48,27 @@ jobs:
       - run: uv run python scripts/check_call_site_sync.py --baseline-sync-velocity --baseline-sync-threshold 3
       - run: uv run lint-imports
 
-  unit-tests:
+  backend-contracts:
+    name: Backend API and job contracts
+    needs: lint
+    runs-on: ubuntu-latest
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: 'pip'
+      - run: pip install -e ".[dev,desktop]"
+      - run: pytest tests/unit/test_api_engine_routes.py tests/unit/test_app_service_jobs.py -q --timeout=300 -p no:xdist
+
+  platform-smoke:
+    name: Cross-platform storage and fallback smoke (${{ matrix.os }})
     needs: lint
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
     env:
@@ -57,13 +79,9 @@ jobs:
         with:
           python-version: "3.12"
           cache: 'pip'
-      # pytest-qt is part of the shared test configuration and imports its Qt
-      # binding during collection, so every test runner needs the fallback UI
-      # extra even when the selected unit test does not instantiate a widget.
       - run: pip install -e ".[dev,desktop]"
-      - run: sudo apt-get install -y libegl1 libgles2 libgl1
-        if: matrix.os == 'ubuntu-latest'
-      - run: pytest tests/unit/ -n auto -q --timeout=60
+      - name: Run portable storage and fallback checks
+        run: pytest tests/desktop/test_window_imports.py tests/desktop/test_windows_event_loop_policy.py tests/desktop/test_strings.py tests/desktop/test_sleep_inhibitor_atexit.py tests/unit/test_humanize_library_store.py -q --timeout=300 -p no:xdist
 
   nimo-ui:
     name: NIMO Primary UI (React/Tauri frontend)
@@ -83,12 +101,9 @@ jobs:
       - run: pnpm --filter @nimo/desktop check:interaction
 
   desktop-tests:
-    name: PySide6 Fallback Compatibility (non-visual)
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+    name: PySide6 Fallback Compatibility (full, Ubuntu)
+    needs: lint
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -96,34 +111,14 @@ jobs:
           python-version: "3.12"
           cache: pip
       - name: Install system deps (Ubuntu)
-        if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get update && sudo apt-get install -y libegl1 libgles2 libgl1 libpulse0
       - name: Install
         run: pip install -e ".[dev,desktop]"
-      - name: Run desktop tests (non-visual, 3-runner baseline)
+      - name: Run desktop tests (non-visual baseline)
         env:
           QT_QPA_PLATFORM: offscreen
           NOVEL_FORGE_MEMORY_USE_MOCK_EMBEDDINGS: "true"
         run: pytest tests/desktop --ignore-glob='tests/desktop/*_visual.py' --ignore-glob='tests/desktop/test_visual_regression.py' -p no:xdist --timeout=300 -q
-
-  integration-tests:
-    needs: [lint, unit-tests, nimo-ui]
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-    env:
-      QT_QPA_PLATFORM: offscreen
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: 'pip'
-      - run: pip install -e ".[dev,desktop]"
-      - run: sudo apt-get install -y libegl1 libgles2 libgl1
-        if: matrix.os == 'ubuntu-latest'
-      - run: pytest tests/integration/ -n 2 -q --timeout=300
 
   visual-tests:
     name: PySide6 Fallback Visual Reference

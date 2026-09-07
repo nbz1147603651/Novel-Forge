@@ -29,7 +29,7 @@ pnpm ui:check
 pnpm ui:test
 ```
 
-上面的测试路径是占位说明，需换成实际文件。完整矩阵及必需检查以 [CI](.github/workflows/ci.yml) 为准；前端未改动时无需每次执行全部 UI 测试。串行 Qt 场景按对应测试说明运行。
+上面的测试路径是占位说明，需换成实际文件。PR 必需检查以 [CI](.github/workflows/ci.yml) 为准；历史全量单元与集成矩阵保留在手动 [Full regression](.github/workflows/full-regression.yml) 工作流中。前端未改动时无需每次执行全部 UI 测试；串行 Qt 场景按对应测试说明运行。
 
 ## 提交 PR
 

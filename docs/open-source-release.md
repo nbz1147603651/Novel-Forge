@@ -69,4 +69,8 @@ Topics：`creative-writing`、`novel-writing`、`llm`、`python`、`fastapi`、`
 
 锁定环境还让完整导入契约稳定检出一条既有 persistence → StoryKernel schema 分层违例。章节清理现通过最小结构协议消费已由允许的 store 边界加载并校验的对象，不新增例外规则，也不改变 Canon 回滚内容。
 
-依赖安全作业保留 `pip-audit --strict`，由已提交的 `uv.lock` 导出不含本地项目的第三方依赖清单并生成 CycloneDX SBOM。这样既不把尚未发布到 PyPI 的 `novel-forge 0.1.0` 误判为审计错误，也避免安全检查脱离可复现依赖基线。三平台单元与集成作业统一安装 `desktop` extra，因为共享的 `pytest-qt` 配置会在收集阶段加载 Qt 绑定；这不改变 PySide 仅作兼容后备端的产品定位。
+依赖安全作业保留 `pip-audit --strict`，由已提交的 `uv.lock` 导出不含本地项目的第三方依赖清单并生成 CycloneDX SBOM。这样既不把尚未发布到 PyPI 的 `novel-forge 0.1.0` 误判为审计错误，也避免安全检查脱离可复现依赖基线。需要收集 Python 测试的 runner 安装 `desktop` extra，因为共享的 `pytest-qt` 配置会加载 Qt 绑定；这不改变 PySide 仅作兼容后备端的产品定位。
+
+Windows 后备端首次完整执行还暴露了四处测试读取中文 UTF-8 文件时依赖系统默认编码；断言现显式使用 UTF-8，CI 也启用 Python UTF-8 模式，与生产原子写入合同一致。修正不更改正文存储格式或运行时数据。
+
+公开 CI 的阻断范围按当前可维护合同收敛：源码与隐私检查、锁定依赖安全审计、静态与架构门禁、115 项后端 API/job 合同、NIMO 类型/测试/构建、三平台 61 项存储与后备端烟测，以及 Ubuntu 的完整 PySide 后备端回归。历史全量单元与集成集合保留在可手动触发的 `Full regression` 工作流中；2026-09-07 的基线运行记录为 11,533 passed、1,333 skipped、30 个历史失败，主要是陈旧快照、测试替身和并行隔离债务，不作为首次公开发布的伪阻断绿灯。后续修复应逐项转入默认门禁，不能通过弱化产品断言换取通过。

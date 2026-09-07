@@ -24,7 +24,7 @@ NIMO / Novel Forge 的自有代码采用 [MIT License](LICENSE)。本声明简�
 | 音频与时间线 | pydub、imageio-ffmpeg、OpenTimelineIO | MIT / BSD / Apache-2.0；FFmpeg 二进制另有许可 |
 | 兼容后备 UI | PySide6 / Qt | LGPL / GPL 或商业许可，具体以所分发组件为准 |
 
-完整直接依赖见 [pyproject.toml](pyproject.toml)、[前端 package.json](clients/nimo-desktop/package.json) 和 [Cargo.toml](clients/nimo-desktop/src-tauri/Cargo.toml)。JavaScript / Rust 的解析版本分别记录于 [pnpm-lock.yaml](pnpm-lock.yaml) 和 [Cargo.lock](clients/nimo-desktop/src-tauri/Cargo.lock)。Python 当前使用依赖范围约束，不能把本机环境视为固定分发版本。
+完整直接依赖见 [pyproject.toml](pyproject.toml)、[前端 package.json](clients/nimo-desktop/package.json) 和 [Cargo.toml](clients/nimo-desktop/src-tauri/Cargo.toml)。Python、JavaScript 与 Rust 的解析版本分别记录于 [uv.lock](uv.lock)、[pnpm-lock.yaml](pnpm-lock.yaml) 和 [Cargo.lock](clients/nimo-desktop/src-tauri/Cargo.lock)。
 
 分发打包程序时，须按实际包含的直接及传递依赖保留许可证和 NOTICE。特别是 PySide6 / Qt、FFmpeg 及模型运行时，应根据实际构建产物补齐声明；这份源码说明不是打包产物的完整许可证清单。
 

@@ -167,7 +167,7 @@ pnpm ui:check
 pnpm ui:test
 ```
 
-完整检查以 [CI](.github/workflows/ci.yml) 为准。代码修改请先阅读 [贡献指南](CONTRIBUTING.md) 和对应 `AGENTS.md`。
+公开发布的必需检查以 [CI](.github/workflows/ci.yml) 为准；历史全量测试可从 [Full regression](.github/workflows/full-regression.yml) 手动运行。代码修改请先阅读 [贡献指南](CONTRIBUTING.md) 和对应 `AGENTS.md`。
 
 </details>
 
@@ -184,5 +184,7 @@ pnpm ui:test
 项目自有代码采用 **[MIT License](LICENSE)**。欢迎使用、修改和参与改进；再分发时请保留适用的版权与许可声明。第三方依赖、参考材料、模型权重及素材保留各自许可。
 
 感谢 Humanizer、Humanizer-zh、Stop Slop、short-drama 及所依赖的开源生态。来源、用途、上游许可证和完整声明见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。作品文本、参考音频和声音克隆授权由素材提供者负责。
+
+在论文、报告或其他公开项目中使用本项目时，可直接采用 GitHub 提供的 [CITATION.cff](CITATION.cff) 引用信息。
 
 欢迎带着具体的创作场景来[反馈问题或提出建议](https://github.com/nbz1147603651/Novel-Forge/issues)。分享日志、截图和示例前，请先按[安全说明](SECURITY.md)移除密钥及私人作品。

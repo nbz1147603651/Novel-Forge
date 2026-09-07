@@ -65,7 +65,7 @@ def test_exact_approval_native_window_does_not_start_on_open(qtbot, controls):
     loaded(qtbot, dialog)
     assert (
         storage.existing_project_dir("book") / "chapters/chapter_001.md"
-    ).read_text() == "作者批准的新正文"
+    ).read_text(encoding="utf-8") == "作者批准的新正文"
     assert not service.list()  # Applying a text revision is not a model task.
     assert dialog.proposals[0]["status"] == "applied"
     dialog.close()
@@ -87,7 +87,7 @@ def test_native_pause_disable_reenable_requires_new_start(qtbot, controls):
     assert not service.list()
     assert (
         storage.existing_project_dir("book") / "chapters/chapter_001.md"
-    ).read_text() == "作者的旧正文"
+    ).read_text(encoding="utf-8") == "作者的旧正文"
     dialog.close()
 
 
@@ -102,7 +102,7 @@ def test_stale_native_acceptance_cannot_overwrite_manual_edit(qtbot, controls):
     dialog.ack.setChecked(True)
     dialog.accept_button.click()
     loaded(qtbot, dialog)
-    assert text.read_text() == "作者随后另改的正文"
+    assert text.read_text(encoding="utf-8") == "作者随后另改的正文"
     assert not service.list()
     dialog.close()
 

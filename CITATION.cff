@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If you use NIMO / Novel Forge in research or another public project, please cite this software."
+title: "NIMO / Novel Forge"
+type: software
+version: 0.1.0
+license: MIT
+repository-code: "https://github.com/nbz1147603651/Novel-Forge"
+url: "https://github.com/nbz1147603651/Novel-Forge"
+authors:
+  - name: "NIMO / Novel Forge contributors"
