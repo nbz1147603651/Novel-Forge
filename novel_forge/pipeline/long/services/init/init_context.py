@@ -76,6 +76,7 @@ class InitLongServiceContext:
     coerce_character_bible: Any = None
     is_outline_option_enabled: Any = None
     memory_context: Any = None
+    _semantic_repair_cases_disabled: bool = False
 
 
 def build_init_context(

@@ -93,19 +93,14 @@ jobs:
           cache: pip
       - name: Install system deps (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
-        run: sudo apt-get update && sudo apt-get install -y libegl1 libgles2 libgl1
+        run: sudo apt-get update && sudo apt-get install -y libegl1 libgles2 libgl1 libpulse0
       - name: Install
         run: pip install -e ".[dev,desktop]"
       - name: Run desktop tests (non-visual, 3-runner baseline)
         env:
           QT_QPA_PLATFORM: offscreen
           NOVEL_FORGE_MEMORY_USE_MOCK_EMBEDDINGS: "true"
-        run: |
-          pytest tests/desktop \
-            --ignore-glob='tests/desktop/*_visual.py' \
-            --ignore-glob='tests/desktop/test_visual_regression.py' \
-            -p no:xdist \
-            --timeout=300 -q
+        run: pytest tests/desktop --ignore-glob='tests/desktop/*_visual.py' --ignore-glob='tests/desktop/test_visual_regression.py' -p no:xdist --timeout=300 -q
 
   integration-tests:
     needs: [lint, unit-tests, nimo-ui]
