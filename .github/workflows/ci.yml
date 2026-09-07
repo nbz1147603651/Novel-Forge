@@ -23,21 +23,22 @@ jobs:
         with:
           python-version: "3.12"
           cache: 'pip'
-      - run: pip install -e ".[dev,desktop]"
-      - run: ruff check novel_forge tests
-      - run: python scripts/check_mypy_baseline.py
-      - run: python scripts/lint_prompt_layers.py
-      - run: python scripts/audit_prompt_format_layers.py --all
-      - run: python scripts/audit_prompt_packs.py
-      - run: python scripts/generate_prompt_index.py --check
-      - run: python scripts/verify_templates.py
-      - run: python scripts/verify_format_contracts.py
-      - run: python scripts/verify_control_plane_constraints.py --check
-      - run: python scripts/verify_design_tokens.py --check
-      - run: python scripts/check_agents_md_drift.py
-      - run: python scripts/check_architecture_ratchets.py --check
-      - run: python scripts/check_call_site_sync.py --baseline-sync-velocity --baseline-sync-threshold 3
-      - run: lint-imports
+      - run: pip install uv
+      - run: uv sync --frozen --all-extras
+      - run: uv run ruff check novel_forge tests
+      - run: uv run python scripts/check_mypy_baseline.py
+      - run: uv run python scripts/lint_prompt_layers.py
+      - run: uv run python scripts/audit_prompt_format_layers.py --all
+      - run: uv run python scripts/audit_prompt_packs.py
+      - run: uv run python scripts/generate_prompt_index.py --check
+      - run: uv run python scripts/verify_templates.py
+      - run: uv run python scripts/verify_format_contracts.py
+      - run: uv run python scripts/verify_control_plane_constraints.py --check
+      - run: uv run python scripts/verify_design_tokens.py --check
+      - run: uv run python scripts/check_agents_md_drift.py
+      - run: uv run python scripts/check_architecture_ratchets.py --check
+      - run: uv run python scripts/check_call_site_sync.py --baseline-sync-velocity --baseline-sync-threshold 3
+      - run: uv run lint-imports
 
   unit-tests:
     needs: lint
