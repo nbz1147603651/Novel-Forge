@@ -37,7 +37,6 @@ clients/nimo-desktop/test-results/
 .worktrees/
 
 # uv-managed projects (if uv is used as a side-channel install tool)
-uv.lock
 
 # AI agent 工作目录
 .qoder/
