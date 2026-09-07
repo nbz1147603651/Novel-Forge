@@ -1,0 +1,59 @@
+{
+  "project": {
+    "id": "test-long",
+    "title": "测试长篇",
+    "mode": "long",
+    "totalChapters": 24,
+    "wordsPerChapter": 5000,
+    "spec": {
+      "title": "测试长篇",
+      "theme": "记忆的所有权与亲缘真相",
+      "genre": "近未来悬疑",
+      "tone": "克制、冷峻",
+      "language": "zh",
+      "length_target": 120000,
+      "total_chapters": 24,
+      "words_per_chapter": 5000,
+      "pov": "有限第三人称",
+      "pov_hint": "有限第三人称；关键真相只经由角色行动、场景证据或可验证的记忆残片呈现。",
+      "premise": "持证记忆回收师林逐在一段无主记忆中发现失踪姐姐留下的证据。",
+      "characters_hint": "林逐是主视角；调查官周砚既是合作方，也是最不信任她的人。",
+      "world_hint": "记忆可被合法存档、出售与回收，但每次读取都会留下可追溯的空洞。",
+      "conflict_hint": "林逐必须在职业授权链、姐姐留下的证据与周砚的调查压力之间作出选择。",
+      "opening_style": "从一次例行的无主记忆回收开始，以流程细节承载异常感。"
+    },
+    "reader": {
+      "caption": "目标、体量与叙述边界",
+      "paragraphs": [
+        "这是一部围绕记忆回收师展开的近未来悬疑长篇。主人公在回收一段被官方标记为无主的记忆时，发现它与自己失踪多年的姐姐有关。",
+        "叙事保持有限第三人称，所有关键真相都必须经由角色行动、场景证据或可验证的记忆残片呈现。"
+      ],
+      "facts": [
+        {
+          "label": "目标体量",
+          "value": "24 章 · 约 120,000 字"
+        },
+        {
+          "label": "核心类型",
+          "value": "近未来 · 悬疑"
+        },
+        {
+          "label": "叙述视角",
+          "value": "有限第三人称"
+        }
+      ]
+    }
+  },
+  "workflow": {
+    "jobId": "fixture-init-long-qingwa",
+    "title": "长篇立项 · 青瓦梦起",
+    "projectLabel": "青瓦梦起",
+    "elapsedLabel": "已运行 31:48",
+    "progressPercent": 48,
+    "currentStep": "plan_outline",
+    "currentStageLabel": "叙事蓝图 · 7/13",
+    "activityLabel": "正在执行：一致性画像",
+    "cumulativeTokens": 703400,
+    "cumulativeCostUsd": 1.106
+  }
+}

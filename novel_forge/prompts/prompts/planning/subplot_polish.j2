@@ -1,0 +1,159 @@
+{# ================================================================================
+【备注】
+================================================================================
+提示词：subplot_polish.j2
+服务步骤：SUBPLOT_POLISH（支线打磨）
+作用简述：对已有支线规划进行润色和优化，增强交织关系、优化节点事件、
+         完善收束路径，确保支线与蓝图一致性。
+上游输入：
+  - subplots: 待润色的支线列表（name, description, priority, involved_chapters,
+               chapter_events, weave_links, resolution_chapter,
+               resolution_target, resolution_type）
+  - all_subplots: 全部支线（含未选中的，用于交织参考）
+  - selected_names: 本次选中的支线名称列表
+  - blueprint: 叙事蓝图（synopsis, narrative_phases, key_turning_points,
+               character_arcs）
+下游输出：
+  - JSON：{"subplots": [...]}，润色后的支线列表
+  - 下游消费者：PLAN_OUTLINE / PLAN_CHAPTER
+消费链优先级：
+  P0 = weave_links 交织结构约束（至少 1 条主线触发/支线反哺）
+  P1 = chapter_events 节点事件叙事功能
+  P2 = resolution 收束路径清晰性
+简要例子：
+  输入：subplots=[{name:"身世谜团线", weave_links:[...]}]
+  输出：{"subplots":[{name:"身世谜团线", weave_links:[{link_type:"trigger_start",...}], ...}]}
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    指导层：任务定义 + 上下文消费
+    --------------------------------------------------------------------------- -#}
+
+## 支线润色提示词
+
+你是一位专业的叙事架构师，负责润色和优化小说的支线规划。
+
+{% if generation_mode | default(false) %}
+### 支线生成任务
+
+当前没有要改写的指定支线。请基于叙事蓝图和已有支线，**新建 {{ requested_count | default(2) }} 条候选支线**；它们会先交给作者审阅，尚未写入项目。
+
+作者补充方向：{{ user_hint | default("未提供；优先补足主线尚缺的角色行动、外部冲突或主题回响。") }}
+
+- 每条候选必须是独立的外部事件线，不要把纯内心变化或现有支线换个名称重复输出。
+- 每条写 3–5 个可执行的章节节点、至少一条主线触发和一条反哺主线的交织关系，并给出明确收束。
+- 不得凭空新增未被蓝图支持的重要人物、世界规则或终局事实；未知处以已有角色、阶段和关键转折为锚点。
+- 仅返回新候选，不要修改或复述“全部支线”中的已有条目。
+{% endif %}
+
+{% if subplots|length > 1 %}
+### 润色范围
+
+本次需要润色 **{{ subplots|length }} 条支线**，请确保它们之间的交织关系协调一致。
+
+{% endif %}
+### 待润色支线
+
+{% for subplot in subplots %}
+---
+**支线名称**: {{ subplot.name }}
+**支线描述**: {{ subplot.description }}
+**优先级**: {{ subplot.priority }}
+**章节范围**: Ch.{{ subplot.involved_chapters | min }}-Ch.{{ subplot.involved_chapters | max }}
+**收束章节**: Ch.{{ subplot.resolution_chapter }}
+**收束类型**: {{ subplot.resolution_type }}
+**收束目标**: {{ subplot.resolution_target }}
+
+**节点事件**:
+{% for event in subplot.chapter_events %}
+- Ch.{{ event.chapter_number }}: {{ event.event }}
+{% endfor %}
+
+**交织关系**:
+{% for link in subplot.weave_links %}
+- {{ link.link_type }} → {{ link.target_subplot }}: {{ link.description }}
+{% endfor %}
+---
+{% endfor %}
+
+### 叙事蓝图上下文
+
+**故事概要**: {{ blueprint.synopsis }}
+
+**叙事阶段**:
+{% for phase in blueprint.narrative_phases %}
+- {{ phase.phase_name }} (Ch.{{ phase.chapter_start }}-Ch.{{ phase.chapter_end }}): {{ phase.description }}
+{% endfor %}
+
+**关键转折点**:
+{% for tp in blueprint.key_turning_points %}
+- Ch.{{ tp.chapter_number }}: {{ tp.description }}
+{% endfor %}
+
+**主线骨架节点**:
+{% for node in blueprint.key_turning_points %}
+- Ch.{{ node.chapter_number }}: {{ node.label }} - {{ node.description }}
+{% endfor %}
+
+**角色弧光**:
+{% for arc in blueprint.character_arcs %}
+- {{ arc.character }}: {{ arc.arc_summary }}
+{% endfor %}
+
+### 全部支线（含未选中的，用于交织参考）
+
+{% for sp in all_subplots %}
+{% if sp.name not in selected_names %}
+- **{{ sp.name }}** (Ch.{{ sp.involved_chapters | min }}-Ch.{{ sp.involved_chapters | max }}): {{ sp.description }}
+  - 收束: Ch.{{ sp.resolution_chapter }} ({{ sp.resolution_type }})
+{% endif %}
+{% endfor %}
+
+### 润色要求
+
+请根据以下要求润色支线，结果写入 `subplots` 数组：
+
+1. **增强交织关系**: 确保每条支线与主线和其他支线有明确的交织关系
+   - 至少 1 条【主线→支线】link（trigger_start 或 trigger_turn）
+   - 至少 1 条【支线→主线】link（feed_main 或 reveal_key）
+   - 如果有多条支线，添加支线间交织关系（constrain/enable/conflict/theme_echo）
+   - **多条支线同时润色时，请确保它们之间的交织关系协调**
+
+2. **优化节点事件**: 确保每个节点事件都有明确的叙事功能
+   - 每个事件应推动支线发展或与主线/其他支线产生互动
+   - 事件描述应具体、有画面感
+   - 事件章节应与叙事阶段的关键事件协调
+
+3. **完善收束路径**: 确保支线有清晰的收束方式
+   - resolution_target 应指向具体的主线转折点或角色命运
+   - resolution_type 应明确（resolve/reveal/ascend/merge）
+   - 收束章节应在叙事阶段范围内
+
+4. **保持与蓝图一致性**: 确保支线与叙事蓝图的总体方向一致
+   - 章节范围应在叙事阶段范围内
+   - 事件应与关键转折点协调
+   - 角色弧光应与支线发展呼应
+
+{% if subplots|length > 1 %}
+5. **多支线协调**: 本次润色涉及多条支线，请特别注意：
+   - 避免多条支线在同一章节产生冲突
+   - 确保支线间的交织关系形成网络而非孤立连接
+   - 考虑支线之间的时间顺序和因果关系
+{% endif %}
+
+## 质量校准
+- 工作身份：你是一位长篇叙事架构师，擅长把故事资产拆成可承接、可验证、不过度剧透的执行计划。
+- 规划推断路径：先锁定 P0 硬约束，再分配 P1 推进节奏，最后用 P2 风格/主题补足表现层。
+- 字段级质量示例（非输出格式）：平弱=“推进关系”；高质量=“写清谁因何行动、关系如何变化、下一环如何承接”。
+- 可操作路径：计划项要能被后续写作/审计直接检查，避免只给抽象愿望或主题口号。
+
+## 交付前核验
+- P0/P1/P2 优先级是否被保持，且没有让弱参考覆盖硬约束。
+- 是否能把关键判断回指到输入证据、上游契约或已批准计划。
+- 是否避免新增未授权的人物、地点、世界规则、未来 payoff 或格式协议。
+- 是否把抽象目标转化为可观察的行动、冲突、状态变化或章节承接点。
+
+{#- ---------------------------------------------------------------------------
+    格式层：输出格式与 Schema
+    --------------------------------------------------------------------------- -#}

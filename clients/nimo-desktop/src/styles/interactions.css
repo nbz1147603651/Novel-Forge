@@ -1,0 +1,244 @@
+.dialog-option {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 25%, transparent);
+  border-radius: 9px;
+  color: var(--nf-text-secondary);
+  background: var(--nf-bg-input);
+  text-align: left;
+}
+
+.dialog-option:hover,
+.dialog-option.is-selected {
+  border-color: color-mix(in srgb, var(--nf-accent-primary) 55%, transparent);
+  background: color-mix(in srgb, var(--nf-accent-primary) 9%, var(--nf-bg-surface));
+}
+
+.dialog-option strong { color: var(--nf-text-heading); font-size: var(--nf-font-label); }
+.dialog-option span { color: var(--nf-text-muted-soft); font-size: var(--nf-font-body); line-height: 1.45; }
+.dialog-notes { display: grid; gap: 7px; color: var(--nf-text-secondary); font-size: var(--nf-font-label); }
+
+.dialog-notes textarea,
+.app-dialog-content textarea {
+  width: 100%;
+  min-height: 88px;
+  box-sizing: border-box;
+  padding: 10px 11px;
+  resize: vertical;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 27%, transparent);
+  border-radius: 9px;
+  outline: none;
+  color: var(--nf-text-body);
+  background: var(--nf-bg-input-soft);
+  font: inherit;
+  line-height: 1.5;
+}
+
+.dialog-notes textarea:focus,
+.app-dialog-content textarea:focus {
+  border-color: var(--nf-accent-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--nf-accent-primary) 12%, transparent);
+}
+
+.voice-empty-result {
+  margin: 8px 0;
+  color: var(--nf-text-muted-soft);
+  font-size: var(--nf-font-label);
+  text-align: center;
+}
+
+/* ============================================================
+ * Enhanced micro-interactions — source-aligned feedback
+ * ============================================================ */
+
+/* Sidebar nav active indicator — smooth vertical slide */
+@media (prefers-reduced-motion: no-preference) {
+  .rail-nav-item::before {
+    transition: height 200ms cubic-bezier(.22, .61, .36, 1),
+                opacity 200ms ease,
+                background-color 200ms ease;
+  }
+
+  .rail-nav-item.is-active::before {
+    animation: nav-indicator-enter 200ms cubic-bezier(.22, .61, .36, 1) both;
+  }
+}
+
+@keyframes nav-indicator-enter {
+  from { height: 0; opacity: 0; }
+  to { height: 48px; opacity: 1; }
+}
+
+/* Job progress bar — animated gradient shimmer while running */
+@media (prefers-reduced-motion: no-preference) {
+  .job-progress span {
+    background-size: 200% 100%;
+    animation: progress-shimmer 2s ease-in-out infinite;
+  }
+}
+
+@keyframes progress-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+/* Project card press feedback */
+@media (prefers-reduced-motion: no-preference) {
+  .project-card:active {
+    transform: translateY(0) scale(0.99);
+    transition-duration: 80ms;
+  }
+}
+
+/* Filter chip selection micro-animation */
+@media (prefers-reduced-motion: no-preference) {
+  .filter-chip {
+    transition: background 150ms ease, color 150ms ease,
+                border-color 150ms ease, transform 120ms ease;
+  }
+
+  .filter-chip:active {
+    transform: scale(0.96);
+  }
+}
+
+/* Settings section heading — subtle entrance */
+@media (prefers-reduced-motion: no-preference) {
+  .settings-section-heading {
+    animation: section-heading-enter 250ms cubic-bezier(.22, .61, .36, 1) both;
+  }
+}
+
+@keyframes section-heading-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Smooth scrollbar appearance on hover for page canvas */
+.page-canvas {
+  scrollbar-gutter: stable;
+}
+
+/* ============================================================
+ * DropdownSelect — custom dropdown that always opens below
+ * ============================================================ */
+.dropdown-select {
+  position: relative;
+  display: inline-flex;
+}
+
+.dropdown-select-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 29px;
+  min-width: 88px;
+  padding: 0 8px 0 10px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 30%, transparent);
+  border-radius: var(--nf-radius-control);
+  color: var(--nf-text-body);
+  background: var(--nf-bg-input);
+  font-size: var(--nf-font-ui);
+  cursor: pointer;
+  transition: border-color 120ms ease;
+}
+
+.dropdown-select-trigger:hover {
+  border-color: color-mix(in srgb, var(--nf-accent-primary) 40%, transparent);
+}
+
+.dropdown-select.is-open .dropdown-select-trigger {
+  border-color: var(--nf-accent-primary);
+}
+
+.dropdown-select.is-disabled .dropdown-select-trigger {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dropdown-select-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dropdown-select-chevron {
+  flex: 0 0 auto;
+  opacity: 0.6;
+  transition: transform 150ms ease;
+}
+
+.dropdown-select.is-open .dropdown-select-chevron {
+  transform: rotate(180deg);
+}
+
+.dropdown-select-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  min-width: 100%;
+  max-height: 260px;
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 25%, transparent);
+  border-radius: var(--nf-radius-control);
+  background: var(--nf-bg-surface);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--nf-shadow) 12%, transparent);
+  overflow-y: auto;
+  animation: dropdown-menu-enter 120ms ease both;
+}
+
+@keyframes dropdown-menu-enter {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.dropdown-select-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  color: var(--nf-text-body);
+  font-size: var(--nf-font-ui);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 80ms ease;
+}
+
+.dropdown-select-option:hover,
+.dropdown-select-option.is-focused {
+  background: color-mix(in srgb, var(--nf-accent-primary) 8%, var(--nf-bg-surface));
+}
+
+.dropdown-select-option.is-selected {
+  color: var(--nf-accent-primary);
+  font-weight: 600;
+  background: color-mix(in srgb, var(--nf-accent-primary) 6%, var(--nf-bg-surface));
+}
+
+.dropdown-select-option.is-disabled {
+  color: var(--nf-text-muted-soft);
+  cursor: not-allowed;
+  opacity: .72;
+}
+
+.dropdown-select-check {
+  flex: 0 0 auto;
+  width: 14px;
+  font-size: 12px;
+  line-height: 1;
+}
+
+/* Topbar variant — slightly larger trigger */
+.dropdown-select.topbar-dropdown .dropdown-select-trigger {
+  height: 32px;
+  min-width: 100px;
+  padding-inline: 12px;
+  font-size: var(--nf-font-body);
+}

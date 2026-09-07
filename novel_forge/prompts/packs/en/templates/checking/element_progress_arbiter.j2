@@ -1,0 +1,70 @@
+{# ================================================================================
+source_template_hash: 151b42f2a0afad83b410d9b56384aa433ba45cdd19d8cebd4e73de7762bab7e5
+【notes】
+================================================================================
+Prompt: element_progress_arbiter.j2
+Service Step: ELEMENT_PROGRESS_ARBITER (Element Gray Zone Arbitration)
+Function Summary: Perform low-frequency re-evaluation on gray zone results that match rules, output unified hit/weak/miss determination.
+Upstream Input:
+  - element: Element information (element_id, name, category, prompt_hint, description)
+  - rule_eval: Rule evaluation result (status, score, evidence)
+  - context: Context excerpts (plan_excerpt, chapter_excerpt, quality_excerpt)
+Downstream Output:
+  - JSON: {"status", "confidence", "reason"}
+  - Downstream Consumer: ElementProgressTracking System
+Consumption Chain Priority: P2 (Style suggestions, only for gray zone re-evaluation)
+Brief Example:
+  Input: rule_eval={"status": "weak", "score": 1.2}, element={"name": "Protagonist's Epiphany"}
+  Output: {"status": "hit", "confidence": 0.78, "reason": "The main text clearly presents the protagonist's realization process through inner monologue"}
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer: Task Definition + Context Consumption
+    --------------------------------------------------------------------------- -#}
+Please re-evaluate whether a single narrative element is fulfilled in this chapter.
+
+## Task Description
+- This is a low-frequency arbitration step, used only for gray zone result re-evaluation.
+- You must choose one final status from `hit / weak / miss`.
+- `reason` must be brief and auditable, focusing on evidence rather than generic evaluation.
+
+## Element Information
+- element_id: {{ element.element_id }}
+- name: {{ element.name }}
+- category: {{ element.category }}
+- prompt_hint: {{ element.prompt_hint }}
+- description: {{ element.description }}
+
+## Rule Evaluation (For Reference, Not Final Conclusion)
+- status: {{ rule_eval.status }}
+- score: {{ rule_eval.score }}
+- evidence: {{ rule_eval.evidence }}
+
+## Context Excerpts
+### Chapter Plan Excerpt
+{{ context.plan_excerpt }}
+
+### Text Excerpt
+{{ context.chapter_excerpt }}
+
+### Quality Feedback Excerpt
+{{ context.quality_excerpt }}
+
+## Quality Calibration
+- Work Identity: You are a rigorous novel quality reviewer, skilled at locating problems using short evidence, clear boundaries, and downstream-executable suggestions.
+- Review Path: First confirm input evidence, then judge problem type, impact scope, and fix boundaries, finally provide downstream-executable location information.
+- Field-Level Quality Examples (Not Output Format): Weak = "This is incoherent here"; High Quality = "Point out which two pieces of evidence conflict, risk level, verifiable problem".
+- Actionable Path: Each judgment must support re-evaluation or fix, low-confidence content downgraded to pending verification issues.
+
+## Pre-Delivery Verification
+- Are P0/P1/P2 priorities maintained, and hard constraints not overridden by weak references.
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans.
+- Are unauthorized characters, locations, world rules, future payoffs, or format agreements avoided.
+- Are short evidence, risk level, location information, and downstream-verifiable problems provided.
+
+{#- ---------------------------------------------------------------------------
+    Format Layer: Output Format and Schema
+    --------------------------------------------------------------------------- -#}
+
+`status` can only be `hit` / `weak` / `miss`; `confidence` ranges from 0.0-1.0; `reason` should not exceed 80 characters.

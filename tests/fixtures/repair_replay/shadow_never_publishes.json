@@ -1,0 +1,8 @@
+{
+  "fixture_id": "shadow-evaluation-only",
+  "kind": "shadow_result",
+  "shadow_only": true,
+  "published": false,
+  "case_state_changed": false,
+  "attempts": 1
+}

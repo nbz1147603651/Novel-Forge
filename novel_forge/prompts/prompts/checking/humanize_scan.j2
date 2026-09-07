@@ -1,0 +1,137 @@
+{#
+===============================================================================
+【备注】
+===============================================================================
+提示词：humanize_scan.j2
+任务类型：HUMANIZE_SCAN
+服务步骤：拟人化候选裁判（Humanization Candidate Adjudication）
+作用简述：对本地预扫描/拟人化库候选进行 AI 痕迹裁判，确认真实命中、
+          严重性和安全局部修复边界，为下游拟人化修复提供有界输入。
+上游输入：
+  - chapter_number/chapter_text：章节编号与候选相关正文片段
+  - humanize_strength（可选）：扫描敏锐度 light / medium / aggressive
+  - style_profile（可选）：项目风格规范，用于判断豁免
+  - humanize_context（可选）：极小上下文胶囊，用于判断 post-polish 后的误伤边界
+  - filter_dialogue（可选）：布尔值，默认 true；是否过滤对话内容
+  - prescreen_hits（可选）：本地规则预扫描候选，供 LLM 裁判确认/降级
+  - library_hits（可选）：拟人化库已收录 AI 模式命中列表，供 LLM 裁判确认/忽略
+下游输出：
+  - JSON：{"total_hits", "hits_by_category", "critical_hits",
+           "pattern_hits", "summary"}
+  - source_text_hash/chapter_number 由 HumanizeScanStep 本地注入
+  - 下游消费者：HumanizeScanStep / run_humanize_layer / chapter_flow 报告归档
+消费链优先级：候选真实性 > 局部 patch 安全性 > 报告统计；不承担全章审美审计。
+简要例子：
+  输入：chapter_text="夜深了，林远站在窗前，这标志着故事的关键时刻。
+        值得注意的是，他的内心充满了复杂的情绪。"
+  输出：{"total_hits": 2, "pattern_hits": [
+          {"pattern_id":"significance_inflation","pattern_name":"显著性通胀",
+           "category":"叙事轻重","severity":"high","evidence_quote":"标志着故事的关键时刻",
+           "paragraph_index":0,"suggestion":"故事走到了关键处","confidence":0.9,
+           "actionable":true,"source":"llm","span_start":null,"span_end":null},
+          {"pattern_id":"filler_phrases","pattern_name":"填充短语",
+           "category":"元语言","severity":"high","evidence_quote":"值得注意的是",
+           "paragraph_index":0,"suggestion":"","confidence":0.94,
+           "actionable":false,"source":"llm","span_start":null,"span_end":null}],
+}
+===============================================================================
+#}
+{%- from "_base/_cognitive_constraints.j2" import render_cognitive_constraints -%}
+
+{#- ---------------------------------------------------------------------------
+    指导层：任务定义 + 上下文消费
+    --------------------------------------------------------------------------- -#}
+
+{% set _prescreen_hits = prescreen_hits | default([]) %}
+{% set _library_hits = library_hits | default([]) %}
+{% set _humanize_context = humanize_context | default(none) %}
+{% set _max_report_hits = max_report_hits | default(12) %}
+{% set _pattern_guidance = pattern_guidance | default([]) %}
+{% set _candidate_batch = candidate_batch | default(none) %}
+{% set _prescreen_family_counts = prescreen_family_counts | default({}) %}
+
+请对第 {{ chapter_number }} 章正文进行**AI 生成痕迹候选裁判**。本轮只确认候选是否真实、是否能安全局部修复；不做全章穷举，不写审美点评，不重写正文。
+
+## 裁判边界
+
+- 遵守下方格式契约；禁止契约外分析过程、Markdown、注释或解释文字。
+- 只从“本地预扫描候选”和“拟人化库候选”中保留真实命中；误伤不输出；不要新增候选。
+- 候选为空时返回零命中报告。
+- `pattern_hits` 最多输出 {{ _max_report_hits }} 条；优先保留 high/critical、证据唯一、可安全 patch、互不重叠的条目。
+- **命中真实性与可修复性是两个独立判断**：真实命中即使 `actionable:false`、`suggestion:""` 也必须输出，绝不能因为无法做单句 patch 就当作误伤删除。
+- `evidence_quote` 必须是正文中唯一可定位的完整句/分句；候选中提供的 `paragraph_index`、`span_start`、`span_end` 已经按全文 0 起始精确定位，原样复制，禁止减一、重算或按“正文片段”重新编号。
+- 同一结构家族在全章达到 3 次及以上时，重复密度本身就是模板化证据；除非风格规范明确要求该修辞，否则应保留为真实命中并按实际可修复性设置 `actionable`。
+- 裁判时必须同时阅读证据左右相邻文字。若建议与证据外的相邻动作、主语短语或谓语同义重复，必须设 `actionable:false`；例如“迅速收回手，仿佛被烫到”不能把后半句改成“猛地缩回手”。
+- 单个自然比喻或角色感知不等于 `weak_verb_stacking`；只有弱动词/缓冲词形成堆叠并确实虚化动作时才保留该命中。
+- `actionable:true` 仅用于不改变事实、因果、角色认知、POV、时间线的局部句法/标点/用词微改。
+- 若 `actionable:true`，`suggestion` 必须是可直接替换 `evidence_quote` 的真实文本，不能为空、不能等于证据、不能写“建议改为/删除该句”等指令。
+- 若无法只替换 `evidence_quote` 而保持自然，设 `actionable:false` 且 `suggestion:""`。
+- 建议不得重复证据左侧或右侧已经存在的主语、动作、感官结果；不得以同义词再说一遍同一动作。
+- `summary` 用一句话概括被保留/被压缩的候选，不要逐条解释。
+
+{% if _candidate_batch %}
+## 候选批次
+
+当前为第 {{ _candidate_batch.index }} / {{ _candidate_batch.count }} 批；只裁判本批 {{ _candidate_batch.candidate_count }} 条候选。
+{% endif %}
+
+{% if style_profile %}
+## 压缩风格参考
+
+只用于判断候选是否误伤，禁止据此新增问题：
+{{ style_profile | tojson(indent=2) }}
+{% endif %}
+
+{% if _humanize_context %}
+## 本轮上下文胶囊
+
+只用于判断候选是否误伤，禁止据此扩写剧情或新增审美维度：
+{{ _humanize_context | tojson(indent=2) }}
+{% endif %}
+
+{% if _humanize_context.world_rule_preservation | default([]) %}
+## 不可改变的世界规则边界
+
+以下仅用于拒绝会改变设定、代价或禁令的候选改写；不要据此进行设定审校，也不要扩写相关剧情。
+{% for item in _humanize_context.world_rule_preservation %}
+- [{{ item.rule_id | default('') }}] {{ item.content | default('') }}{% if item.forbidden_behavior | default([]) %}；禁止={{ item.forbidden_behavior | join('；') }}{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if _humanize_context.cognitive_constraints | default([]) %}
+## 去痕改写的认知保真边界（P0）
+- 候选建议若会改变任一角色的知情程度、认知等级或公开行动等级，必须判为误伤并保留原文。
+{{ render_cognitive_constraints(_humanize_context.cognitive_constraints) }}
+{% endif %}
+
+{% if _library_hits %}
+## 拟人化库候选
+
+{{ _library_hits | tojson(indent=2) }}
+{% endif %}
+
+{% if _prescreen_hits %}
+## 本地预扫描候选
+
+候选总数：{{ prescreen_hit_count | default(_prescreen_hits | length) }}；本轮最多输出 {{ _max_report_hits }} 条 `pattern_hits`。
+{{ _prescreen_hits | tojson(indent=2) }}
+{% endif %}
+
+{% if _prescreen_family_counts %}
+## 全章候选家族计数
+
+以下计数用于识别重复密度，不代表每条都可自动修复：
+{{ _prescreen_family_counts | tojson(indent=2) }}
+{% endif %}
+
+{% if _pattern_guidance %}
+## 当前候选模式规则
+
+{% for item in _pattern_guidance %}
+- `{{ item.pattern_id }}`：{{ item.rule }}
+{% endfor %}
+{% endif %}
+
+## 正文片段
+
+{{ chapter_text }}

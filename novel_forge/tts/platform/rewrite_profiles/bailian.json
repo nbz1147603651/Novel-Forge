@@ -1,0 +1,29 @@
+{
+  "provider_id": "bailian",
+  "profile_version": "1.0",
+  "display_name": "阿里百炼 (Qwen-Audio/CosyVoice)",
+  "sentence_limits": {
+    "narration": 30,
+    "dialogue": 22,
+    "inner_thought": 25
+  },
+  "pause_strategy": "依赖标点驱动韵律：逗号=短停、句号=长停、省略号=延长。长句在主语后、连词前断句。善用省略号表达犹豫或语意未尽，百炼会自然延长。",
+  "punctuation_guidance": "百炼对标点非常敏感，改写时主动利用标点传达情绪。避免过多感叹号（百炼会过度提升音量）。问号自带升调，无需额外标注。",
+  "interjection_policy": "百炼支持[laughing][sighing]等内联标签，由合成层注入。改写时确保情绪转折处有标点分界，为标签注入创造位置。例：'他叹了口气，算了'中逗号位置可注入[sighing]。",
+  "platform_prompt_guidance": "百炼专属：通用方向仍写标准字段，私有字段只写 platform_extensions.<当前平台>。只有 AIGC 标签模型（qwen-audio-3.0-tts-plus/flash、cosyvoice-v3-flash/plus、cosyvoice-v2）可以使用有证据的演出声；qwen3-tts-*、cosyvoice-v3.5-* 等仅保留 pause/silence，情绪改用简洁的 instruction/tone_hint。不要手写供应商标签或 SSML；适配器会按模型合同渲染。instruction 字数预算有限，禁止用数值语速或音高替代表演意图。",
+  "rhythm_guidance": "文本本身应'自解释'情绪——instruction预算有限（CosyVoice≤100字符）。通过措辞和标点传达语气：'你……你确定？'比'你确定吗'更能让百炼自动产生犹豫语气。",
+  "special_rules": [
+    "百炼对标点间文本的韵律建模较强，容忍略长的句子",
+    "避免连续多个感叹号或问号，会导致过度演绎",
+    "百炼多音字处理优于MiniMax，但遇到高歧义多音字仍优先选择无歧义同义表达",
+    "spoken_text中不得保留破折号（——/—/--），必须改写为逗号断句或独立短句",
+    "若原文仅为场景分隔符（---、——、***、···等纯符号），spoken_text必须返回空字符串"
+  ],
+  "polyphone_strategy": "遇到常见高歧义多音字（如'还/行/长/了/着/地/得'），优先选择无歧义的同义表达。例：'他还了一本书'→'他归还了一本书'。",
+  "emotion_vocabulary": {
+    "native_emotions": ["neutral", "happy", "sad", "angry", "fearful", "surprised", "disgusted"],
+    "instruction_emotions": ["愤怒", "悲伤", "忧郁", "愉悦", "欢快", "惊讶", "兴奋", "恐惧", "紧张", "厌恶", "温柔", "平静", "怀念", "坚定", "焦虑", "俏皮", "戏谑", "轻蔑", "轻声耳语"],
+    "emotion_guidance": "CosyVoice-v3-flash 仅 7 种原生枚举；instruction 模型支持 19 种中文描述。emotion 字段映射到 native_emotions，tone_hint 使用 instruction_emotions 中的描述。",
+    "narration_default": "平静从容，以建立氛围为主；开篇不急于高唤醒情绪"
+  }
+}

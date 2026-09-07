@@ -1,0 +1,116 @@
+{# source_template_hash: a0639add64e7d2aea3d0c13e17efcf41dcd9b9238e7dc8334817237fddce883f #}
+{#
+================================================================================
+【notes】
+================================================================================
+Prompt: extract_relationship_deltas.j2
+Service Step: EXTRACT_RELATIONSHIP_DELTAS (Canon Fragment: Relationship Deltas)
+Function Summary: Extract only explicit relationship changes in this chapter, using prior state relationships and chapter summary as anchors.
+Upstream Input: chapter_number/chapter_text/summary_exit/prior_relationships/known_characters
+Downstream Output: JSON: {"relationship_deltas": [...]}
+Downstream Consumers: EXTRACT_RELATIONSHIP_DELTAS Local Merger, Canon Relationship Tracker
+Consumption Chain Priority: P0 = only write character relationships; P1 = trust/tension must be reasonable; P2 = no new conceptual relationships
+================================================================================
+#}
+{#- Guidance Layer -#}
+Please extract only relationship changes. Return an empty array when there are no explicit changes.
+
+## Fact Source Boundary (P0)
+- Extract relationship changes only from the final text / `chapter_text` corresponding to the FinalArtifact.
+- Prior state relationships, summary_exit, and shared evidence anchors are used only to determine "whether changes occurred" and reuse IDs, not as new factual sources.
+- Relationship escalation/deescalation, confirmation, reconciliation, betrayal, or identity changes without textual evidence must not be written.
+
+## Output Field Description
+- `relationship_deltas`: List of relationship changes. Each item's structure is:
+  - `pair_id`: "CharacterA__CharacterB" format identifier
+  - `change_summary`: Summary of explicit interaction events in this chapter
+  - `relationship`: Object containing the following fields:
+    - `characters`: Array of exactly two character names (MUST be inside relationship, NOT at delta top level)
+    - `pair_id`: Same as outer pair_id
+    - `public_status`: Short label (e.g., "mother-son", "allies", "enemies")
+    - `trust` / `tension` / `dependency`: Absolute state values (0.0-1.0)
+    - `last_shift_event`: Event that caused the shift (required when change > 0.15)
+
+### Correct Output Structure (P0 - MUST follow exactly)
+```json
+{
+  "relationship_deltas": [
+    {
+      "pair_id": "CharacterA__CharacterB",
+      "change_summary": "...",
+      "relationship": {
+        "pair_id": "CharacterA__CharacterB",
+        "characters": ["CharacterA", "CharacterB"],
+        "public_status": "allies",
+        "trust": 0.55,
+        "tension": 0.40,
+        "dependency": 0.1,
+        "last_shift_event": "..."
+      }
+    }
+  ]
+}
+```
+⚠️ `characters` MUST be placed inside the `relationship` object. Placing it at the delta top level is a schema violation.
+
+{% if shared_evidence_anchor %}
+## Shared Evidence Anchor
+{{ shared_evidence_anchor | tojson(indent=2) }}
+Use this as the common basis for this fragment; dimension-specific information can only supplement, not overwrite, anchor facts.
+{% endif %}
+
+## Chapter Anchor
+- Chapter {{ chapter_number }}
+{% if summary_exit %}{{ summary_exit | tojson(indent=2) }}{% endif %}
+
+## Known Characters
+{% for name in known_characters %}- {{ name }}{% endfor %}
+
+{% if prior_relationships %}
+## Prior State Relationships
+{% for rel in prior_relationships %}
+- {{ rel.pair_id }}：{{ rel.public_status }}（Trust={{ rel.trust }}, Tension={{ rel.tension }}）
+{% endfor %}
+{% endif %}
+
+{% if character_state_deltas %}
+## Confirmed Character State Changes (relationship changes must be supported by these states or textual events)
+{{ character_state_deltas | tojson(indent=2) }}
+{% endif %}
+
+## Text
+{{ chapter_text }}
+
+## Requirements
+- Maximum {{ max_relationship_deltas | default(8) }} entries.
+- relationship.characters must be an array of two character names, and each value must come directly from "Known Characters" or names explicitly appearing in the text.
+- Do not write structural fields like `character_id`, `name`, `gender`, `status`, or group designations like "villagers/crowd/commoners/officers and soldiers" into relationship.characters.
+- `public_status` can only use short labels (e.g., "mother-son", "master-disciple", "allies", "enemies", "friends"); do not write full relationship descriptions.
+- `change_summary` must summarize explicit interactive events in this chapter; "no direct interaction", "no explicit change", "not mentioned in this chapter" and other no-change explanations must not be output as deltas; return an empty array instead.
+- trust/tension/dependency are absolute state values at the end of this chapter (0.0-1.0), not change amounts.
+
+## Trust / Tension / Dependency Calibration Scale (P0)
+- First match the same character pair in "Prior State Relationships"; if no prior state exists, default to trust=0.5, tension=0.5, dependency=0.0.
+- Do not change values to "make it look like there's change" without textual evidence; if only restating an existing relationship with no new events, return an empty array.
+- Trust increase evidence: protection, fulfilling promises, voluntary confession, sharing secrets, bearing costs, choosing cooperation under pressure.
+- Trust decrease evidence: deception, betrayal, abandonment, coercion, public accusations, concealment with visible consequences.
+- Tension increase evidence: threats, escalating conflict, mutual probing, unresolved misunderstandings, conflicting interests, public hostility.
+- Tension decrease evidence: reconciliation, misunderstanding cleared, joint completion of action, concession, stable cooperation formed after crisis.
+- Dependency indicates mutual reliance in action, information, resources, or emotion; only increase when the text shows "can't do without/must rely on/constrained by the other".
+- Change magnitude: tone or short dialogue ≤0.05; explicit action consequences 0.10-0.15; major rescue/betrayal/public break 0.20-0.30; exceeding 0.35 requires strong textual evidence, and last_shift_event / change_summary must be filled in.
+- Trust and tension can both be high simultaneously: for example, "high mutual trust but in high-pressure conflict". Do not automatically treat tension as the inverse of trust.
+- All values must be truncated to 0.0-1.0 after adding/subtracting from prior state; when uncertain, conservatively retain the prior state.
+
+## Quality Calibration
+- Working Identity: You are an evidence-first narrative fact extractor, skilled at extracting traceable, mergeable state information from text and upstream anchors.
+- Extraction Path: First find explicit facts in the text, then cross-reference with shared anchors and known states, and finally retain only information consumable by downstream mergers.
+- Evidence Calibration: When the same fact is confirmed by upstream fragments, maintain consistency; when evidence is insufficient, use conservative field values to express unknown or pending confirmation.
+- Actionable Path: Each piece of information serves canon, memory, state, or audit chains; avoid treating tone, metaphor, or speculation as fact.
+
+## Pre-Delivery Verification
+- Are P0/P1/P2 priorities maintained, and no weak references overriding hard constraints?
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans?
+- Are unauthorized new characters, places, world rules, future payoffs, or format agreements avoided?
+- Are factual boundaries needed for downstream merging/retrieval preserved, and is speculation not written as established fact?
+
+{#- Format Layer -#}

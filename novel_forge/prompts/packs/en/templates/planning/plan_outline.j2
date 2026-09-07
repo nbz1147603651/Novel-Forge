@@ -1,0 +1,479 @@
+{# ================================================================================
+source_template_hash: 40b94ff559b4ba83f379330d28c4a6bc2fffb076d25f284c89144ff904dc6230
+【Remarks】
+================================================================================
+Prompt: plan_outline.j2
+Service Step: PLAN_OUTLINE (Outline Planning)
+Brief Description: Generates a complete Narrative Blueprint based on story
+         specifications (Spec) and narrative element selections (ElementSelection),
+         providing structural constraints for subsequent batch chapter outline generation.
+Upstream Inputs:
+  - spec: User-input story specifications (genre, theme, tone, length_target, characters_hint,
+          world_hint, conflict_hint, pov_hint, opening_style, ending_style, etc.)
+  - story_bible: From INIT_STORY_BIBLE (era, geography, culture, magic_or_tech,
+                  rules, themes, etc.)
+  - character_bible: From INIT_CHARACTER_BIBLE (characters list and arc information)
+  - blueprint_element_selection: From BLUEPRINT_ELEMENT_SELECT (required_elements,
+                                  extension_elements, focus_constraints)
+  - style_profile: From PROFILE_STYLE (summary, global_style, hook_config, etc.)
+  - total_chapters: User-specified total number of chapters
+  - use_volume_mode: Whether volume mode is enabled
+  - narrative_complexity: Narrative complexity (simple/standard/complex/epic)
+Downstream Outputs:
+  - JSON (Narrative Blueprint): synopsis, volume_mode, volumes,
+    narrative_phases, key_turning_points, character_arcs, subplot_plan,
+    suspense_schedule, ending_strategy
+  - Downstream Consumers:
+    * PLAN_OUTLINE_BATCH: Consumes narrative_phases/key_turning_points to batch generate chapter outlines
+    * PLAN_CHAPTER: Consumes synopsis/character_arcs/subplot_plan to generate chapter-level plans
+    * DRAFT_CHAPTER: Consumes world_rules/ending_strategy through narrative_contract
+Consumption Chain Priority:
+  P0 = spec core fields (genre/tone/language) / total_chapters / immutable rules
+  P1 = story_bible world constraints / character_arcs mapping / key_turning_points
+  P2 = style_profile style suggestions / subplot_plan weaving structure
+Brief Example:
+  Input: spec={genre:"Fantasy", theme:"Revenge", tone:"dark"}, total_chapters=100
+  Output: {"synopsis":"...", "volume_mode":false, "volumes":[],
+         "narrative_phases":[...], "key_turning_points":[...],
+         "character_arcs":[...], "subplot_plan":[...],
+         "suspense_schedule":[...], "ending_strategy":"..."}
+
+【Protective Comments - Do Not Delete the Following】
+- The "World and Theme Anchors" section fully consumes story_bible's premise/era/geography/culture/magic_or_tech/rules/themes
+  fields, which are the worldview foundation constraints of the Narrative Blueprint. Deletion will cause subsequent chapter
+  outlines to deviate from the world setting.
+- The "Core Character Anchors" section consumes character_bible.characters' name/role/personality/arc/relationships
+  fields, which are the foundation of character arc planning. Deletion will cause missing character arcs or contradictions
+  with initialization settings.
+- story_bible.rules must be injected as "inviolable world rules". Both PLAN_OUTLINE_BATCH and PLAN_CHAPTER
+  rely on these rules to generate chapter plans that conform to worldview constraints.
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer: Task Definition + Context Consumption
+    --------------------------------------------------------------------------- -#}
+
+{% set story_bible = story_bible | default({}) %}
+{% set character_bible = character_bible | default({}) %}
+{% set blueprint_element_selection = blueprint_element_selection | default({}) %}
+{% set style_profile = style_profile | default({}) %}
+{% set creative_director_packet = creative_director_packet | default({}) %}
+{% set blueprint_fragment_request = blueprint_fragment_request | default(none) %}
+{% set blueprint_generation_mode = blueprint_generation_mode | default("") %}
+{% set blueprint_fragments_so_far = blueprint_fragments_so_far | default({}) %}
+{% set fragment_key = blueprint_fragment_request.block_key if blueprint_fragment_request else "" %}
+{% set is_blueprint_spine = blueprint_generation_mode == "quality_first_spine" or fragment_key == "spine" %}
+
+{% if is_blueprint_spine %}
+Please first generate a global narrative skeleton based on the following story specifications. This is not the final detailed draft, but the causal master template for subsequent serial expansion.
+{% elif blueprint_fragment_request %}
+Please generate the specified fragment of the Narrative Blueprint based on the following story specifications and completed fragments.
+{% else %}
+Please generate a complete Narrative Blueprint based on the following story specifications.
+{% endif %}
+
+## Story Specifications
+- Genre: {{ spec.genre }} | Theme: {{ spec.theme }} | Tone: {{ spec.tone }}
+- Target Word Count: {{ spec.length_target }} | Language: {{ describe_language(spec.language) }}
+{% if spec.characters_hint | default('') %}- Characters: {{ spec.characters_hint }}{% endif %}
+{% if spec.world_hint | default('') %}- World Setting: {{ spec.world_hint }}{% endif %}
+{% if spec.conflict_hint | default('') %}- Core Conflict: {{ spec.conflict_hint }}{% endif %}
+{% if spec.pov_hint | default('') %}- Narrative POV: {{ spec.pov_hint }}{% endif %}
+{% if spec.opening_style | default('') %}- Opening Style Sample (for writing technique reference only, do not verbatim copy into Chapter 1): {{ spec.opening_style }}{% endif %}
+{% if spec.ending_style | default('') %}- Ending Style Sample (for writing technique reference only, do not verbatim copy into the final chapter): {{ spec.ending_style }}{% endif %}
+
+{% if story_bible %}
+## World and Theme Anchors
+{% if story_bible.premise | default('') %}- Core Premise: {{ story_bible.premise }}{% endif %}
+{% if story_bible.era | default('') %}- Era Background: {{ story_bible.era }}{% endif %}
+{% if story_bible.geography | default('') %}- Main Settings: {{ story_bible.geography }}{% endif %}
+{% if story_bible.culture | default('') %}- Society and Culture: {{ story_bible.culture }}{% endif %}
+{% if story_bible.magic_or_tech | default('') %}- Heterodox Systems: {{ story_bible.magic_or_tech }}{% endif %}
+{% if story_bible.rules | default([]) %}
+- Inviolable World Rules: {{ story_bible.rules | join("; ") }}
+{% endif %}
+{% if story_bible.themes | default([]) %}
+- Theme Lines: {{ story_bible.themes | join("; ") }}
+{% endif %}
+{% endif %}
+
+{% if character_bible and character_bible.characters %}
+## Core Character Anchors
+The following character arcs and relationships should directly enter the blueprint design, not just remain as type labels:
+{% for character in character_bible.characters %}
+- {{ character.get('name', '') }} ({{ character.get('role', '') }}){% if character.get('personality') | default('') %}: Personality={{ character.get('personality') }}{% endif %}{% if character.get('arc') | default('') %}; Arc={{ character.get('arc') }}{% endif %}{% if character.get('relationships') | default({}) %}; Relationships={% for target, desc in character.get('relationships', {}).items() %}{{ target }}: {{ desc }}{% if not loop.last %} / {% endif %}{% endfor %}{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if relationship_overview | default([]) %}
+## Initial Character Relationship Overview
+The following relationships come from the final CharacterSystem; endpoint names must be preserved, and the blueprint must not contradict them:
+{% for rel in relationship_overview %}
+- {{ rel }}
+{% endfor %}
+{% endif %}
+
+{% set sel = blueprint_element_selection or {} %}
+{% set required_elements = sel.required_elements if sel.required_elements is defined else [] %}
+{% set extension_elements = sel.extension_elements if sel.extension_elements is defined else [] %}
+
+## Narrative Element Selector Injection
+{% if sel.selector_summary is defined and sel.selector_summary %}- Selection Conclusion: {{ sel.selector_summary }}{% endif %}
+{% if sel.focus_constraints is defined and sel.focus_constraints %}
+- Execution Constraints: {{ sel.focus_constraints | join("; ") }}
+{% endif %}
+{% if required_elements %}
+- Required Items (must all be reflected):
+{% for item in required_elements %}
+  - {{ item.name }} ({{ item.element_id }}): {{ item.description }}
+    Prompt Hint: {{ item.prompt_hint }}
+{% endfor %}
+{% endif %}
+{% if extension_elements %}
+- Extended Items (prioritized by this work's mechanism):
+{% for item in extension_elements %}
+  - {{ item.name }} ({{ item.element_id }} / {{ item.category }})
+    {% if item.selection_score is defined and item.selection_score %}Priority: {{ item.selection_score }}{% if item.selection_source is defined and item.selection_source %} | Source: {{ item.selection_source }}{% endif %}
+    {% endif %}
+    Recommended Genres: {{ item.recommended_genres | default([]) | join(", ") }}
+    Selection Reason: {{ item.selection_reason | default("") }}
+    Prompt Hint: {{ item.prompt_hint }}
+{% endfor %}
+{% endif %}
+
+{% if style_profile %}
+## Project Style Profile Injection
+{% if style_profile.summary | default('') %}- Style Summary: {{ style_profile.summary }}{% endif %}
+{% if style_profile.global_style | default({}) %}
+- Dialogue Proportion: {{ style_profile.global_style.dialogue_ratio | default("") }}
+- Pace Mode: {{ style_profile.global_style.pace_mode | default("") }}
+- Emotional Style: {{ style_profile.global_style.emotional_style | default("") }}
+{% endif %}
+{% if style_profile.hook_config | default({}) %}
+- Hook Preferences: {{ style_profile.hook_config.preferred_types | default([]) | join(", ") }}
+- Strength Baseline: {{ style_profile.hook_config.strength_baseline | default("") }}
+{% endif %}
+{% if style_profile.cool_point_config | default({}) and style_profile.cool_point_config.preferred_patterns | default([]) %}
+- Power-Up Patterns: {{ style_profile.cool_point_config.preferred_patterns | join(", ") }}
+{% endif %}
+{% if style_profile.strand_config | default({}) %}
+- Three-Strand Rhythm: Quest≤{{ style_profile.strand_config.quest_max_consecutive | default("") }} chapters,
+            Fire≤{{ style_profile.strand_config.fire_max_absent | default("") }} chapters gap,
+            Constellation≤{{ style_profile.strand_config.constellation_max_absent | default("") }} chapters gap
+{% endif %}
+{% endif %}
+
+{% if creative_director_packet %}
+## Creative Director Packet (For enhancing creativity, does not change JSON field structure)
+Please prioritize transforming the following into plot choices, scene tension, and subplot weaving, rather than rigidly restating:
+{% if creative_director_packet.emotional_engine | default([]) %}- Emotional Engine: {{ creative_director_packet.emotional_engine | join("; ") }}{% endif %}
+{% if creative_director_packet.thematic_promises | default([]) %}- Theme Promises: {{ creative_director_packet.thematic_promises | join("; ") }}{% endif %}
+{% if creative_director_packet.relationship_tensions | default([]) %}- Relationship Tensions: {{ creative_director_packet.relationship_tensions | join("; ") }}{% endif %}
+{% if creative_director_packet.anti_cliche_rules | default([]) %}- Anti-Cliché Rules: {{ creative_director_packet.anti_cliche_rules | join("; ") }}{% endif %}
+{% if creative_director_packet.scene_potential | default([]) %}- Key Scene Potential: {{ creative_director_packet.scene_potential | join("; ") }}{% endif %}
+{% endif %}
+
+{% if blueprint_fragments_so_far %}
+## Completed Blueprint Fragments
+These fragments have already passed local cache/verification; this content must remain consistent with them and not re-process unrequested fields:
+{% if blueprint_fragments_so_far.snapshot_mode is defined %}
+Currently provided is a compressed causal anchor snapshot; omitted details do not mean they can be rewritten. Please prioritize inheriting main line turns, subplot triggers/feedback/closure, character changes, and suspense payoff relationships from anchors.
+{% endif %}
+```json
+{{ blueprint_fragments_so_far | tojson }}
+```
+{% endif %}
+
+{% if blueprint_fragment_request %}
+## This Fragment's Task
+- Fragment: {{ blueprint_fragment_request.title }} ({{ fragment_key }})
+- Allowed Output Fields: {{ blueprint_fragment_request.required_keys | join(", ") }}
+{% if is_blueprint_spine %}
+- This is the overall skeleton in quality_first mode: All top-level blueprint fields may be output, but each field should only include necessary information for determining subsequent causality.
+- First determine the unified chain of "Main Turn → Character Change → Subplot Trigger/Feedback/Closure → Final Payoff"; subsequent fragments will expand on this basis.
+- subplot_plan must first provide each subplot's main line anchor, feedback node, and closure target to avoid subplots becoming independent parallel lines.
+{% elif blueprint_generation_mode == "quality_first_expansion" %}
+- This is serial expansion in quality_first mode: Only this fragment's fields may be output, but causal anchors from the completed skeleton and previous fragments must be inherited.
+- Do not rewrite confirmed main turns, subplot feedback, or closure targets; if details need refinement, write them into this fragment's allowed fields.
+{% else %}
+- This is fragmented blueprint generation: Only read and execute requirements related to this fragment; unmentioned fields must not be output.
+{% endif %}
+{% if blueprint_fragment_request.instructions %}
+{% for item in blueprint_fragment_request.instructions %}
+- {{ item }}
+{% endfor %}
+{% endif %}
+{% endif %}
+
+## Blueprint Requirements
+Generate a Narrative Blueprint that can be used for "batch chapter outline generation". This project is a long-form structured writing; please use **chapter number ranges** (not percentages) to divide phases and turning points.
+
+Known Planning:
+- Total Chapters: {{ total_chapters }}
+- Volume Mode: {{ "Enabled" if use_volume_mode else "Disabled" }}
+
+### Global Chapter Reference Constraints
+- All structured chapter fields must use real chapter numbers and must not exceed 1..{{ total_chapters }}.
+- If "Chapter N" is explicitly written in any text field, N must fall within the chapter range of that field's structure: volume text must fall within that volume's start_chapter/end_chapter, narrative phase text must fall within that phase's chapter_start/chapter_end, character arc milestone text must fall within that milestone's range.
+- If only relative rhythm is intended, write relative positions like "early in this volume/late in this phase/mid-point reversal" instead of hard-coding chapter numbers outside the applicable range.
+- Structured fields must be written as JSON keys; do not append field annotations like `.chapter_start: 19`, `.chapter_end: 36`, `field=value` into `description` or other text fields.
+
+{% if not blueprint_fragment_request or fragment_key == "overview" or is_blueprint_spine %}
+### 1. Book Synopsis (synopsis) ⚠️ Required Field
+- **This field is required, cannot be omitted or be an empty string**
+- Summarize the main story line, core conflict, and ending direction in 2-4 sentences
+- Language style and tone should match: {{ spec.tone }} (Genre: {{ spec.genre }})
+- When outputting JSON, must include `synopsis` field with a non-empty string value.
+
+### 2. Volume Planning (volume_mode / volumes)
+{% if use_volume_mode %}
+Volume mode is enabled. Please fill in the following **all fields** for each volume, no field can be left empty:
+
+- **volume_number**: Volume number (starting from 1, sequentially incrementing)
+- **title**: Volume title, reflecting this volume's core theme; must come from this work's imagery, conflict, or phase function, do not use external genre words or templated elegant phrases.
+- **start_chapter** / **end_chapter**: Chapter range (continuous, non-overlapping, covering 1..{{ total_chapters }})
+- **arc_goal**: This volume's narrative goal (one sentence, clearly state what verifiable change occurs in which main line, relationship, or identity)
+- **milestone_targets**: This volume's required milestone list (2-4 items, each being a specific event derivable from this work's input; if "Chapter N" is written, N must fall within this volume's range)
+- **main_conflicts**: This volume's core conflict list (1-3 items, directly from this work's main conflict, character goals, world rules, or relationship pressures)
+- **climax_hint**: This volume's climax direction hint (describe the core event and conflict escalation of the volume-ending climax)
+- **resolution_hint**: This volume's resolution hint (describe the volume-ending state: who gained what/lost what, which suspense is answered, which suspense is left, what is the entry point for the next volume)
+
+⚠️ All fields above are required; do not use empty arrays [] or empty strings "".
+{% else %}
+Volume mode is disabled: volume_mode=false and volumes=[]
+{% endif %}
+{% endif %}
+
+{% if not blueprint_fragment_request or fragment_key == "phases" or is_blueprint_spine %}
+### 3. Narrative Phases (narrative_phases)
+- 3-6 phases
+- Each phase must cover a **continuous chapter range**: chapter_start / chapter_end
+- Also provide that phase's key events, time anchors, main scenes, and core appearing characters to reduce drift
+{% endif %}
+
+{% if not blueprint_fragment_request or is_blueprint_spine %}
+### 3.1 Chapter Rhythm Curve (chapter_rhythm_curve)
+- Output one object for each chapter from 1..{{ total_chapters }}, no skipping or repeating chapter numbers.
+- Each object only contains: chapter_number, target_pacing, target_tension, beat_pattern, description.
+- target_pacing is an integer 1-5: 1=slow/underwater, 2=somewhat slow/setup, 3=moderate progression, 4=somewhat fast/pressured, 5=urgent/high pressure.
+- target_tension is an integer 1-5: 1=low tension aftermath, 2=mild pressure, 3=moderate pressure, 4=high pressure conflict, 5=peak/critical.
+- beat_pattern uses a short string to describe the chapter beats, such as "calm-suffocate-release" or "hook-question-suspend"; do not write as an array.
+- description uses one sentence to explain how this chapter's rhythm arrangement serves the main line, characters, or suspense; do not write generic atmosphere words.
+{% endif %}
+
+{% if not blueprint_fragment_request or fragment_key == "turning_points" or is_blueprint_spine %}
+### 4. Key Turning Points (key_turning_points)
+- List 3-8 key turning points, each turning point must be bound to a specific chapter_number
+- For each turning point, provide the occurrence location and involved characters
+- key_turning_points are also the "main skeleton" for visualization: these nodes must form a causal chain from beginning to ending; the description should clearly state the state change of the main conflict at this point, not just atmosphere, side events, or character daily routines
+- Should include starting trigger point, at least one mid-point reversal/upgrade point, and final closure point; if total chapters are known, the final closure point should be near the last chapter
+{% endif %}
+
+{% if not blueprint_fragment_request or fragment_key == "character_arcs" or is_blueprint_spine %}
+### 5. Character Arcs (character_arcs) and Emotional Arcs (emotional_arcs)
+- 2-6 core character arcs
+- **Conceptual Boundary: Character arcs focus on "internal changes", not event lines**
+  - Internal changes include: cognitive shifts, emotional fluctuations, value reshaping, belief persistence/collapse
+  - Arc describes the character's **internal** growth or decline, does not include independent event progressions
+  - If a thread has its own characters, events, beginning-development-turn-resolution, and closure, that is a **subplot**, not a character arc
+- milestones need to provide multiple milestone points by chapter range (chapter_start/chapter_end), and describe the specific change/choice/cost of that milestone
+- `character_arcs[].milestones[]` each object only allows 3 fields: `chapter_start`, `chapter_end`, `description`
+- Supplementary notes, psychological changes, choice costs, and phase functions for milestones should all be merged into one Chinese sentence in `description`; field names should only use the English `snake_case` keys listed in this section
+- `description` must be a plain text string, prohibited from writing as an object or structure with subfields
+
+#### 5.1 Emotional Arcs (emotional_arcs)
+- This fragment **must** output both `character_arcs` and `emotional_arcs` as top-level fields; missing either will be rejected by the contract.
+- 2-4 emotional arcs, tracking the emotional ups and downs throughout the book.
+- Each emotional arc fields: arc_name (Chinese name), emotion_type (tension/warmth/sadness/mourning/joy, etc.), peak_chapters (array of emotional peak chapter numbers), valley_chapters (array of emotional valley chapter numbers), description (1-2 Chinese sentences), related_characters (array of related character names), related_subplots (array of related subplot names).
+- peak_chapters and valley_chapters should cover the full book range and align with character_arcs milestone chapters.
+- Write character_arcs first, then emotional_arcs; do not merge the latter into the former's description.
+{% endif %}
+
+{% if not blueprint_fragment_request or fragment_key == "subplots" or is_blueprint_spine %}
+### 6. Subplot Planning (subplot_plan)
+- **Conceptual Boundary: Subplots are "independent narrative threads" with their own characters, events, beginning-development-turn-resolution, and closure**
+  - Subplots differ from character arcs: subplots have external event progressions, character arcs are internal psychological changes
+  - Subplots differ from main line: subplots serve the main line's theme or characters, but have independent story arcs
+- **Complexity Guidance** (recommended subplot count by narrative complexity):
+  {%- if narrative_complexity == "simple" %}
+  According to narrative complexity (simple), planning **1-2 subplots** is recommended.
+  {%- elif narrative_complexity == "standard" %}
+  According to narrative complexity (standard), planning **2-4 subplots** is recommended.
+  {%- elif narrative_complexity == "complex" %}
+  According to narrative complexity (complex), planning **3-6 subplots** is recommended.
+  {%- elif narrative_complexity == "epic" %}
+  According to narrative complexity (epic), planning **4-8 subplots** is recommended.
+  {%- else %}
+  According to narrative complexity, planning **2-4 subplots** (default standard) is recommended.
+  {%- endif %}
+  - **Subplot Source Derivation**:
+  Based on this work's genre ({{ spec.genre }}), core conflict ({{ spec.conflict_hint }}),
+  character lineup, world rules, and selected narrative elements, independently derive 2-6 subplots. Derivation directions are only functional axis references, not genre templates:
+  - Emotion/Relationship thread (tension and changes between characters)
+  - Mystery/Exploration thread (information asymmetry and revelation rhythm)
+  - Faction/Game thread (faction conflicts and power dynamics)
+  - Growth/Ability thread (character internal or external ability advancement)
+  - Worldview/Rules thread (setting revelation and verification)
+ - **Density Constraint**: Each subplot must have at least 3-5 chapter_events (ensure subplots have sufficient narrative capacity)
+ - **Weaving Structure Constraints** (each subplot must satisfy all 3 of the following):
+   ① At least 1 [Main→Subplot] link (link_type must be trigger_start or trigger_turn)
+   ② At least 1 [Subplot→Main] link (link_type must be feed_main or reveal_key)
+  ③ theme_echo / create_tension / constrain are bonus items, **not counted** toward the minimum requirements above
+  - For each subplot, provide involved_chapters (chapter number list) to prevent subsequent outlines from being unrealizable
+  - **Cross-constraint**: Each `trigger_chapter` in `weave_links` must be included in `involved_chapters`. If a subplot feeds back to the main line in a certain chapter, that chapter must appear in both `involved_chapters` and that weave_link's `trigger_chapter`
+  - Each subplot must provide chapter_events (chapter-by-chapter node events), each node binds chapter_number and event, chapter numbers must align with involved_chapters
+
+#### Subplot Weaving Relationships (Core Principle: Interconnected, Eventually Converging, Serving the Main Line)
+ - **Global Weaving Density**:
+   - Book level: subplot→main feedback relationships (feed_main/reveal_key) total count ≥ subplot count
+   - Time distribution: Weaving trigger chapters should be distributed across different narrative phases, avoid concentrating in a single phase
+   - Main turn association: At least half of the planned key turning points should have subplot weave_links pointing to them
+ - **Each subplot must form a closed loop with the main line**:
+   - Main line triggers subplot start (at least one link_type='trigger_start', prohibit using only trigger_turn to substitute)
+   - Subplot feeds back to main line progress (at least one link_type='feed_main' or 'reveal_key', **prohibit using theme_echo to substitute**)
+ - **Subplots can form causal chains**: A's result triggers B's start, but ultimately must converge to the main line
+ - **Weaving Relationship Types** (link_type):
+   - [Main→Subplot] trigger_start (trigger start) / trigger_turn (trigger turn) / constrain (constrain direction) / enable (provide condition) / conflict (create conflict)
+   - [Subplot→Main] feed_main (feedback to main turn) / reveal_key (reveal key information) / create_tension (create main tension) / theme_echo (theme echo and elevation)
+ - **Resolution Path Planning** (each subplot must clarify):
+   - resolution_chapter: In which chapter to resolve
+   - resolution_target: Resolve to what (**primary/normal priority must be** 'main_turning_point:N' or 'character_fate:CharacterName'; only background priority allows 'theme_echo')
+   - resolution_type: How to resolve ('resolve' problem resolution / 'reveal' suspense revelation / 'ascend' value elevation / 'merge' merge into main line)
+ - For key nodes in chapter_events involving interaction with other threads, fill in weave_notes to explain
+ - If a node depends on previous subplot results, `depends_on` must be filled as an array; single dependency should also be written as ["SubplotName:ChapterNumber"], empty dependency is [], prohibit writing as string
+ - `weave_links` must be an object array; array elements can only be {...} objects, prohibit inserting empty strings "", prohibit flattening fields like "source_type": ... directly into the array
+ - For each subplot, mark priority (primary/normal/background)
+{% endif %}
+
+{% if not blueprint_fragment_request or fragment_key == "ending" or is_blueprint_spine %}
+### 7. Ending Strategy (ending_strategy)
+- Explain how to wrap up main line suspense and foreshadowing, character fate arrangements, theme echo methods
+- `ending_strategy` must be a string paragraph, prohibited from writing as object, array, or any nested structure; if character endings/suspense payoff/final scene need to be included, compress all into this string.
+{% endif %}
+
+{% if not blueprint_fragment_request or fragment_key == "suspense" or is_blueprint_spine %}
+### 8. Suspense Schedule (suspense_schedule)
+
+Plan core suspense nodes for the entire book to ensure suspense deployment and payoff rhythm is controllable:
+
+#### Suspense Types (must choose from the following 5):
+- **mystery**: Key information, truth, or rule gaps not yet obtained by readers or characters.
+- **crisis**: Imminent external threat, loss risk, or out-of-control point.
+- **emotion**: Relationship changes, emotional shocks, trust cracks, or intimacy tension.
+- **choice**: Choices that will change costs, camps, relationships, or main direction.
+- **desire**: Strong pursuits by characters that are blocked, delayed, or redefined.
+
+#### Suspense Urgency (determines suspense duration tension):
+- **critical**: Suspense must be resolved in the current chapter immediately
+- **high**: Suspense should be fulfilled within 2-3 chapters
+- **normal**: Suspense can be fulfilled after spanning 5-10 chapters
+- **low**: Suspense can serve as book-level foreshadowing, long-term setup
+
+#### Planning Requirements:
+ - Each suspense must be associated with **related_subplot** (subplot name), forming suspense-subplot binding
+ - `related_subplot` can only write "MainLine" or the complete original text of an existing subplot name; prohibit inventing any names not documented in subplot planning
+ - If suspense belongs to character arc, main reversal, or character choice but has no corresponding independent subplot, then related_subplot="MainLine"
+ - If an independent subplot is truly needed, first establish a subplot with the same name in subplot planning, then precisely reference that name in `suspense_schedule`
+ - Each suspense needs to plan introduce_chapter (introduction chapter) and resolve_chapter (planned fulfillment chapter)
+ - Total suspense count suggestion: 3-8, covering key nodes throughout the book
+ - **strand_affinity** (required for serialized reading system): Each suspense needs to mark affinity with three plot threads
+   - quest (main progression) / fire (emotional eruption) / constellation (foreshadowing weaving)
+   - Value is a float 0-1, sum approximately equal to 1.0; estimate based on the actual function this suspense promotes, not mechanical average.
+{% endif %}
+
+{% if not blueprint_fragment_request or is_blueprint_spine %}
+### 9. Serialized Reading Boundary
+- This task only plans the book-level `suspense_schedule`, must not output `chapter_hooks`.
+- Each chapter's `expected_hook` and `expected_payoffs` will be generated by subsequent PLAN_OUTLINE_BATCH / PLAN_OUTLINE_CONTINUE; current blueprint must not expand chapter by chapter.
+{% endif %}
+
+## Project-Specific Guidance
+- Do not apply fixed plot devices based on genre labels. First extract this work's real conflict mechanisms, information gaps, relationship pressures, world rules, and promised payoffs from `spec`, `story_bible`, `character_bible`, and selected narrative elements.
+- If conventions of a certain genre conflict with this work's input, this work's input takes precedence; if input lacks support, do not add mysteries, ability systems, historical events, romance obstacles, or other external templates just to "seem like a certain genre".
+- All distinctive designs must be grounded in verifiable chapter nodes, character changes, subplot feedback, or suspense payoffs; do not write generic genre slogans.
+
+## Quality Calibration
+- Work Identity: You are a long-form narrative architect, skilled at decomposing story assets into executable, verifiable, non-spoiler-heavy execution plans.
+- Planning Inference Path: First lock P0 hard constraints, then allocate P1 progression rhythm, finally use P2 style/theme to supplement the presentation layer.
+- Field-Level Quality Example (not output format): Weak = "Advance relationship"; High-Quality = "Clearly state who takes what action due to what, how the relationship changes, how the next link connects".
+- Actionable Path: Plan items must be directly checkable by subsequent writing/audit, avoid only giving abstract wishes or theme slogans.
+
+## Pre-Delivery Verification
+- Are P0/P1/P2 priorities maintained, and no weak references overriding hard constraints?
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans?
+- Are unauthorized new characters, places, world rules, future payoffs, or format agreements avoided?
+- Are abstract goals transformed into observable actions, conflicts, state changes, or chapter connection points?
+
+{#- ---------------------------------------------------------------------------
+    System Contract Injected by PromptBuilder
+    --------------------------------------------------------------------------- -#}
+
+{% if blueprint_fragment_request %}
+{% set fragment_key = blueprint_fragment_request.block_key %}
+## This Fragment's Field Requirements
+{% if is_blueprint_spine %}
+Output all top-level blueprint fields: `synopsis`, `volume_mode`, `volumes`, `narrative_phases`, `key_turning_points`, `character_arcs`, `subplot_plan`, `suspense_schedule`, `ending_strategy`. This is the global skeleton draft: keep each array within readable core nodes, but must retain causal anchors between main line, subplots, character arcs, suspense, and endings.
+{% elif fragment_key == "overview" %}
+Output `synopsis`, `volume_mode`, `volumes`. `synopsis` uses 2-4 sentences to summarize the main story line, core conflict, emotional/theme promises, and ending direction; `volume_mode` matches the current volume mode; `volumes` is empty array in non-volume mode.
+{% elif fragment_key == "phases" %}
+Output `narrative_phases`. Each phase writes phase name, start/end chapters, phase description, key events, tension level, time context, main location, and key characters; chapter ranges must cover the entire book without overlap.
+{% elif fragment_key == "turning_points" %}
+Output `key_turning_points`. Each turning point writes chapter number, turn description, occurrence location, and involved characters; turns must be able to change main direction, relationship state, or core suspense.
+{% elif fragment_key == "character_arcs" %}
+Output `character_arcs` and `emotional_arcs` as two top-level fields. First completely write and close `character_arcs` array, then write sibling `emotional_arcs` array; prohibit putting `emotional_arcs` inside `character_arcs[]`. Each character arc writes character name, arc overview, and milestones; each milestone only contains `chapter_start`, `chapter_end`, `description`.
+{% elif fragment_key == "subplots" %}
+Output `subplot_plan`. Each subplot writes name, description, involved chapters, chapter events, weave links, priority, resolution chapter, resolution target, and resolution type. Each `chapter_events` item writes chapter number, event, weave notes, and dependency array; each `weave_links` item writes source type, source reference, target subplot, trigger chapter, link type, and description.
+{% elif fragment_key == "suspense" %}
+Output `suspense_schedule`. Each suspense writes stable ID, suspense type, introduction chapter, planned fulfillment chapter, description, urgency, related subplot, and `strand_affinity`; `related_subplot` can only write "MainLine" or complete original text of completed subplot name, no new subplot names; `strand_affinity` must contain quest, fire, constellation three 0-1 float values.
+{% elif fragment_key == "ending" %}
+Output `ending_strategy` string, explaining how main line, character arcs, theme promises, and key suspense land at the ending; do not add new fields, and do not write `ending_strategy` value as object.
+{% endif %}
+{% else %}
+## Full Blueprint Field Requirements
+- `synopsis`: 2-4 sentences summarizing the main story line, core conflict, emotional/theme promises, and ending direction.
+- `volume_mode` matches current volume mode; `volumes` in volume mode writes volume number, title, start/end chapters, volume goals, milestones, main conflicts, climax direction, and resolution method, empty array in non-volume mode.
+- `narrative_phases` writes complete phase array, each phase containing phase name, start/end chapters, description, key events, tension level, time context, main location, and key characters.
+- `key_turning_points` writes book-wide key turns, each item containing chapter number, description, location, and involved characters.
+- `character_arcs` writes character arc array, each item containing character name, arc overview, and milestones; milestones each only contain `chapter_start`, `chapter_end`, `description`.
+- `subplot_plan` writes subplot plan, each subplot containing name, description, involved chapters, chapter events, weave links, priority, resolution chapter, resolution target, and resolution type.
+- `suspense_schedule` writes 3-8 core suspense items, each containing stable ID, type, introduction chapter, fulfillment chapter, description, urgency, related subplot, and `strand_affinity`; `related_subplot` can only write "MainLine" or complete original text of `subplot_plan[].name`.
+- `ending_strategy` explains how main line, character arcs, theme promises, and key suspense land at the ending.
+- `chapter_rhythm_curve` writes rhythm targets for each chapter from 1..{{ total_chapters }}, each item containing chapter_number, target_pacing(1-5), target_tension(1-5), beat_pattern(string), description.
+{% endif %}
+
+{% if blueprint_fragment_request %}
+## Important Constraints
+1. This blueprint fragment needs to cover: {{ blueprint_fragment_request.required_keys | join("`, `") }}
+2. Content must remain causally, character-wise, and chapter-number consistent with "Completed Blueprint Fragments"
+3. All chapter numbers must be within 1..{{ total_chapters }}
+{% if is_blueprint_spine %}
+4. Each subplot in the skeleton must clearly write main line trigger, subplot feedback, and final resolution three types of functions; subsequent expansions must not overturn these causal anchors.
+{% elif fragment_key == "subplots" %}
+4. `weave_links` must be an object array; prohibit empty string placeholders, prohibit writing as `["", "source_type": ...]` or `[{}, "", "source_type": ...]`
+{% elif fragment_key == "character_arcs" %}
+4. `character_arcs[].milestones[]` each object only allows `chapter_start`, `chapter_end`, `description` three fields; supplementary notes all merge into `description`
+{% elif fragment_key == "ending" %}
+4. `ending_strategy` value must be string; prohibit object, array, nested fields, and extra fields
+{% endif %}
+{% else %}
+## Important Constraints
+1. Ensure all parts coordinate with each other to form a unified story vision
+2. Main line, subplots, character arcs, suspense, and endings must cross-check each other; subplots must not be like independent tracks pasted on afterward.
+3. narrative_phases chapter ranges must cover 1..{{ total_chapters }}, and ranges must not overlap or have gaps
+4. key_turning_points and character_arcs milestones must fall within valid chapter numbers
+5. Maintain consistency with story specifications, prohibit deviating from genre/tone/language requirements
+6. Blueprint must be actionable, able to directly guide subsequent batch chapter outline generation
+7. Each `chapter_number` in `subplot_plan[].chapter_events` must belong to corresponding `involved_chapters`
+8. **Subplot Density Constraint**: Each subplot's `chapter_events` count in `subplot_plan` ≥ 3
+9. **Subplot Weaving Structure Constraint**:
+   a. Each subplot `weave_links` ≥ 2
+   b. Among them at least 1 `link_type` is `trigger_start` or `trigger_turn` (main triggers subplot)
+   c. Among them at least 1 `link_type` is `feed_main` or `reveal_key` (subplot feedbacks to main)
+   d. Prohibit all `weave_links` being `theme_echo`/`create_tension`/`constrain`
+10. **Suspense strand_affinity**: Each suspense in `suspense_schedule` must contain `strand_affinity` field, keys are quest/fire/constellation, values are 0-1 floats
+11. `subplot_plan[].chapter_events[].depends_on` must always be JSON array; single dependency written as ["SubplotName:ChapterNumber"], empty dependency is []
+12. `character_arcs[].milestones[]` each object only allows `chapter_start`, `chapter_end`, `description` three English `snake_case` fields; supplementary notes must be written into description
+13. `suspense_schedule[].related_subplot` must precisely match "MainLine" or some `subplot_plan[].name`; if it's a character arc node without independent subplot, write "MainLine", do not create new subplot names
+14. `chapter_rhythm_curve` must cover 1..{{ total_chapters }}, target_pacing and target_tension must be 1-5 integers, beat_pattern must be string.
+{% endif %}

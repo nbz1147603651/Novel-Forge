@@ -1,0 +1,199 @@
+{# ================================================================================
+source_template_hash: c5b558382723b30292626b7d821da864b3153a319ae1d12cdafe228c7e24504d
+[NOTES]
+================================================================================
+Prompt: guardrail_repair.j2
+Service Step: REPAIR_GUARDRAIL
+Function Summary: Perform targeted repairs based on guardrail violation reports, strictly protecting main plot progression points and outline alignment relationships.
+Upstream Inputs:
+  - chapter_number: Chapter number
+  - chapter_text: Chapter text to be repaired
+  - guardrail_report: Guardrail violation report from GuardrailEvalStep
+  - stage_cards.source: ChapterSourceSlice, containing reveal prohibition boundaries (if provided by caller)
+  - chapter_plan: Chapter plan from PLAN_CHAPTER (including main plot point protection anchors)
+  - alignment_report: Alignment score report from AlignmentStep
+  - alignment_score_current: Current alignment score
+  - style_profile: Style specifications from PROFILE_STYLE
+  - repair_plan: Repair plan from decision engine
+  - word_count_min / word_count_max: Word count constraints
+Downstream Outputs:
+  - TEXT: Repaired complete chapter text (no JSON, no explanations)
+  - Downstream consumers: CheckStep / GuardrailEvalStep (for re-inspection)
+Consumption Chain Priority: P0 (Main Plot Point Protection) > P1 (Alignment Score Maintenance/Improvement)
+              > P2 (Guardrail Violation Repair) > P3 (Style Specifications)
+Brief Example:
+  Input: guardrail_report={"violations": [{"type": "pacing", "severity": "high"}]}
+        chapter_plan={"main_plot_points": ["Protagonist discovers truth", "First confrontation with antagonist"]}
+        alignment_score_current=7.5
+  Output: [Repaired complete text, main plot points fully preserved, outline alignment not weakened]
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer: Task Definition + Context Consumption
+    --------------------------------------------------------------------------- -#}
+{%- from "_styles/_render_style_profile.j2" import render_style_profile_for_stage -%}
+{%- from "_quality_standards.j2" import creative_specificity_rules -%}
+{%- from "_base/_artifact_source_contract.j2" import render_artifact_source_contract -%}
+{%- from "_base/_repair_attempt_guidance.j2" import render_repair_attempt_guidance -%}
+{%- from "_base/_repair_quality_calibration.j2" import render_repair_quality_calibration, render_repair_pre_delivery_checklist -%}
+{% set cards = stage_cards | default({}) %}
+{% set source = cards.source | default({}) %}
+{{ render_style_profile_for_stage(style_profile | default(None), stage="edit", include_banned_phrases=true) }}
+
+Please perform **targeted repairs** on the chapter based on the following guardrail violation report.
+
+{{ render_artifact_source_contract(source, title="## Source Artifact Boundary (P0)", mode="repair") }}
+
+## ticket/window Rules
+- First examine the violation type, location, description, and repair suggestions in guardrail_report.
+- chapter_plan / alignment_report are only used to protect existing main plot points and for acceptance verification, not for adding new plotlines or reordering chapters.
+- Only repair the violated text covered by ticket/window; do not freely rewrite the entire chapter.
+
+{% if _retry_warning %}
+## ⚠️ Retry Warning
+{{ _retry_warning }}
+{% endif %}
+
+{{ render_repair_attempt_guidance(repair_attempt_guidance | default(none)) }}
+
+## Chapter {{ chapter_number }}
+
+{#- ═══════════════════════════════════════════════════ -#}
+{#- Core Constraint 1: Main Plot Point Protection (No Touch) -#}
+{#- ═══════════════════════════════════════════════════ -#}
+{% if chapter_plan and chapter_plan.main_plot_points %}
+## 🔒 Main Plot Point Protection (Absolutely Unmodifiable)
+
+The following main plot points are the narrative core of this chapter, **and must not be modified, deleted, or weakened during the repair process** - paragraphs containing these points:
+
+{% for point in chapter_plan.main_plot_points %}
+- **Main Plot Point {{ loop.index }}**: {{ point }}
+{% endfor %}
+
+### Protection Rules
+1. **Locate**: Find the paragraphs in the text that implement the above main plot points
+2. **Freeze**: The content of these paragraphs must not be modified, rewritten, or deleted
+3. **Bypass**: Repair operations must go around these paragraphs, only modifying non-main-plot areas
+4. **Verify**: After repair, confirm that all main plot points still exist completely
+{% endif %}
+
+{#- ═══════════════════════════════════════════════════ -#}
+{#- Core Constraint 2: Outline Alignment Protection -#}
+{#- ═══════════════════════════════════════════════════ -#}
+{% if alignment_score_current is defined %}
+## 📊 Outline Alignment Protection
+
+Current alignment score (for reference only, actual score will be re-inspected by downstream AlignmentStep): **{{ alignment_score_current }} / 10.0**
+
+### Alignment Protection Rules
+1. After repair, all main plot points must remain completely intact; their narrative outcomes must not be deleted, weakened, or rewritten.
+2. Do not weaken established outline alignment relationships; if there are positive subplot points in alignment_report, preserve their function of supporting the main plot.
+3. If the current alignment score is already on the low side, this is not permission to continue lowering alignment quality; repairs should only make minimal necessary adjustments around guardrail violations.
+4. Do not output alignment scores, self-assessments, re-inspection notes, or any non-text markers in the body.
+5. Downstream alignment score calculation is based on:
+   - Main plot point completeness (each missing point deducts 2.0 points)
+   - Subplot progression quality (excessive weak subplots deduct 0.4 points)
+   - Positive subplot support (each adds 0.2 points)
+
+{% if alignment_report %}
+### Current Alignment Report Summary
+{% if alignment_report.missing_main_points %}
+- **Missing Main Plot Points**:
+{% for mp in alignment_report.missing_main_points %}
+  - {{ mp }}
+{% endfor %}
+{% endif %}
+{% if alignment_report.supportive_subplot_points %}
+- **Positive Subplot Points**:
+{% for sp in alignment_report.supportive_subplot_points %}
+  - {{ sp }}
+{% endfor %}
+{% endif %}
+{% if alignment_report.weak_subplot_points %}
+- **Weak Subplot Points**:
+{% for wp in alignment_report.weak_subplot_points %}
+  - {{ wp }}
+{% endfor %}
+{% endif %}
+{% if alignment_report.summary %}
+- **Summary**: {{ alignment_report.summary }}
+{% endif %}
+{% endif %}
+{% endif %}
+
+{#- ═══════════════════════════════════════════════════ -#}
+{#- Core Constraint 3: Repair Scope Limitation -#}
+{#- ═══════════════════════════════════════════════════ -#}
+{% if guardrail_report %}
+## 🎯 Guardrail Violation Report
+
+### Violation Details
+{% if guardrail_report.violations is defined %}
+{% for violation in guardrail_report.violations %}
+- **Violation {{ loop.index }}**:
+  - Type: {{ violation.type or violation.violation_type or 'unknown' }}
+  - Severity: {{ violation.severity or 'medium' }}
+  - Location: {{ violation.location or 'entire text' }}
+  - Description: {{ violation.description or violation.detail or 'none' }}
+{% if violation.suggestion or violation.repair_hint %}
+  - Repair Suggestion: {{ violation.suggestion or violation.repair_hint }}
+{% endif %}
+{% endfor %}
+{% else %}
+{{ guardrail_report }}
+{% endif %}
+{% endif %}
+
+## Repair Scope Limitation
+
+### Areas Permitted for Modification
+1. Paragraphs not containing main plot points
+2. Transitional descriptions, environmental descriptions, psychological descriptions
+3. Paragraphs related to subplot progression (without affecting the main plot)
+4. Opening/closing transition paragraphs (if not containing main plot points)
+
+### Areas Prohibited from Modification
+1. **Paragraphs containing main plot points** (absolutely prohibited)
+2. Paragraphs that have already passed guardrail checks
+3. Character dialogues unrelated to current violations
+4. Established scene settings (unless directly related to the violation)
+
+### Repair Strategy
+1. **Minimum Intervention Principle**: Only modify parts directly related to the violation
+2. **Local Rewrite**: Prioritize local modifications, avoid full-text rewriting
+3. **Maintain Coherence**: Must maintain narrative coherence after repair
+4. **Word Count Compliance**: Repaired text must be within {{ word_count_min | default('unlimited') }} - {{ word_count_max | default('unlimited') }} words
+5. **Do Not Create New Violations**: When repairing a guardrail issue, do not add unplanned POVs, positive-appearing characters, organizations, key props, or major events; do not change opening_contract / closing_contract / completed main plot outcomes.
+6. **Prohibited Appearance/Reveal Priority**: If the violation involves prohibited character appearances, prohibited active contact, or prohibited early reveals, only delete, rewrite, or convert to observable indirect traces; do not replace with synonymous expressions of the same subject that continue to appear.
+7. **Prevent Word Count Bloat**: If additional sentences are needed for repair, simultaneously compress low-information narration in the same area to avoid structurally overweight chapters after repair.
+
+{#- ---------------------------------------------------------------------------
+    Execution Layer: Text to be Repaired
+    --------------------------------------------------------------------------- -#}
+
+## Text to be Repaired
+
+{{ chapter_text }}
+
+{{ render_repair_quality_calibration("repair") }}
+
+{{ render_repair_pre_delivery_checklist("repair") }}
+
+{#- ---------------------------------------------------------------------------
+    Format Layer: Output Format
+    --------------------------------------------------------------------------- -#}
+
+## Repaired Draft Semantic Constraints
+
+1. **Repaired draft must be complete body text**, without explanations, comments, or structured data
+2. **Maintain original paragraph structure**, only modify parts requiring repair
+3. **Main plot points must be preserved exactly as-is**, with no alterations
+4. **Self-check after repair**:
+   - Are all main plot points still completely present?
+   - Have main plot points and outline alignment relationships been weakened?
+   - Have guardrail violations been repaired?
+   - Have no unplanned POVs, prohibited-appearing characters, major events, or future reveals been added?
+   - Is word count within constraints?
+   - Is there no dense use of definitional negative turns to self-justify descriptive quality?
+{{ creative_specificity_rules(title="") }}

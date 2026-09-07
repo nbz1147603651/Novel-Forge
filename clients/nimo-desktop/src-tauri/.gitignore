@@ -1,0 +1,6 @@
+/target/
+/gen/
+/icons/*
+!/icons/icon.icns
+!/icons/icon.ico
+!/icons/128x128.png

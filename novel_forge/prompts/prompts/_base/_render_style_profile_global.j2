@@ -1,0 +1,143 @@
+{#- 风格规范全局样式渲染宏 — base 模块 -#}
+{#- 提取 style_profile.global_style 的访问模式，兼容 dict/object 两种数据形状 -#}
+
+{#-
+  === 宏模块：全局风格规范渲染 ===
+  文件类型：宏模块（macro module）
+  作用简述：安全提取和访问 style_profile.global_style，兼容 dict/object 两种数据形状，渲染全局风格约束段落。
+
+  定义的宏及参数：
+  1. extract_global_style(style_profile) → global_style 子对象或 none
+     - 安全提取 global_style，兼容 dict/object
+  2. gs_field(global_style, field_name: str, default=None) → 字段值
+     - 安全访问 global_style 上的某个字段
+  3. global_style_value(style_profile, field_name: str, default="")
+     - 从完整 style_profile 直接安全读取 global_style 字段
+  4. dialogue_ratio_min/max(style_profile)
+     - 从 dialogue_ratio 推导对话占比数值边界
+  5. render_style_profile_global(style_profile, include_dialogue_ratio=True)
+     - 渲染正文生成用全局风格约束段落，包含 pace_mode, environment_ratio, emotional_style, info_density, dialogue_ratio 与项目级禁用短语
+
+  使用方式：
+  - 当前被 writing/draft_chapter.j2 调用，用于实际正文生成阶段；规划/桥接层使用 _styles/_render_style_profile.j2 的默认粗粒度渲染
+-#}
+
+{#-
+  安全提取 style_profile.global_style，兼容 dict-shaped 和 object-shaped 数据。
+
+  参数：
+    - style_profile: 风格规范对象或字典
+
+  返回：global_style 子对象/子字典，若不存在则返回 none
+-#}
+{% macro extract_global_style(style_profile) %}
+{%- set _sp_gs = none -%}
+{%- if style_profile is defined -%}
+{%- if style_profile is mapping and style_profile.get('global_style') -%}
+{%- set _sp_gs = style_profile.get('global_style') -%}
+{%- elif style_profile is not mapping and style_profile.global_style is defined -%}
+{%- set _sp_gs = style_profile.global_style -%}
+{%- endif -%}
+{%- endif -%}
+{{ _sp_gs }}
+{% endmacro %}
+
+{#-
+  安全访问 global_style 上的某个字段，兼容 dict/object 两种形状。
+
+  参数：
+    - global_style: global_style 对象或字典
+    - field_name: 字段名（如 'pace_mode', 'dialogue_ratio'）
+    - default: 默认值（默认 None）
+
+  返回：字段值或默认值
+-#}
+{% macro gs_field(global_style, field_name, default=None) %}
+{%- if global_style is mapping -%}
+{{ global_style.get(field_name, default) }}
+{%- else -%}
+{{ global_style[field_name] if global_style[field_name] is defined else default }}
+{%- endif -%}
+{% endmacro %}
+
+{#-
+  从完整 style_profile 直接安全访问 global_style 字段。
+
+  参数：
+    - style_profile: 风格规范对象或字典
+    - field_name: 字段名（如 'dialogue_ratio', 'emotional_style'）
+    - default: 默认值（默认空字符串）
+
+  返回：字段值或默认值
+-#}
+{% macro global_style_value(style_profile, field_name, default="") %}
+{%- set _sp_gs = none -%}
+{%- if style_profile is defined and style_profile -%}
+{%- if style_profile is mapping and style_profile.get('global_style') -%}
+{%- set _sp_gs = style_profile.get('global_style') -%}
+{%- elif style_profile is not mapping and style_profile.global_style is defined -%}
+{%- set _sp_gs = style_profile.global_style -%}
+{%- endif -%}
+{%- endif -%}
+{%- if _sp_gs is mapping -%}
+{{ _sp_gs.get(field_name, default) }}
+{%- elif _sp_gs and _sp_gs[field_name] is defined -%}
+{{ _sp_gs[field_name] }}
+{%- else -%}
+{{ default }}
+{%- endif -%}
+{% endmacro %}
+
+{#- dialogue_ratio → 对话占比下限。返回数字文本，调用方可 `| trim | int`。 -#}
+{% macro dialogue_ratio_min(style_profile) %}
+{%- set _ratio = global_style_value(style_profile, 'dialogue_ratio', 'medium') | trim -%}
+{%- if _ratio == 'high' -%}50
+{%- elif _ratio == 'low' -%}20
+{%- else -%}30
+{%- endif -%}
+{% endmacro %}
+
+{#- dialogue_ratio → 对话占比上限。返回数字文本，调用方可 `| trim | int`。 -#}
+{% macro dialogue_ratio_max(style_profile) %}
+{%- set _ratio = global_style_value(style_profile, 'dialogue_ratio', 'medium') | trim -%}
+{%- if _ratio == 'high' -%}70
+{%- elif _ratio == 'low' -%}35
+{%- else -%}45
+{%- endif -%}
+{% endmacro %}
+
+{#-
+  渲染全局风格约束段落。
+
+  参数：
+    - style_profile: 风格规范对象或字典
+    - include_dialogue_ratio: 是否包含对话占比约束（默认 True）
+
+  渲染字段：pace_mode, environment_ratio, emotional_style, info_density, banned_phrases, dialogue_ratio
+-#}
+{% macro render_style_profile_global(style_profile, include_dialogue_ratio=True) %}
+{%- set _sp_gs = none -%}
+{%- if style_profile is defined -%}
+{%- if style_profile is mapping and style_profile.get('global_style') -%}
+{%- set _sp_gs = style_profile.get('global_style') -%}
+{%- elif style_profile is not mapping and style_profile.global_style is defined -%}
+{%- set _sp_gs = style_profile.global_style -%}
+{%- endif -%}
+{%- endif -%}
+{%- if _sp_gs -%}
+## 节奏与风格约束
+- 节奏模式：{{ _sp_gs.pace_mode if _sp_gs is not mapping else _sp_gs.get('pace_mode') }}（fast=快速推进/moderate=平衡/slow=细腻铺陈）
+- 环境描写占比：{{ _sp_gs.environment_ratio if _sp_gs is not mapping else _sp_gs.get('environment_ratio') }}
+- 情绪风格：{{ _sp_gs.emotional_style if _sp_gs is not mapping else _sp_gs.get('emotional_style') }}（direct=直给/balanced=平衡/subtle=含蓄）
+- 信息密度：{{ _sp_gs.info_density if _sp_gs is not mapping else _sp_gs.get('info_density') }}
+{%- set _banned_phrases = _sp_gs.get('banned_phrases', []) if _sp_gs is mapping else (_sp_gs.banned_phrases if _sp_gs.banned_phrases is defined else []) -%}
+{%- if _banned_phrases %}
+- 项目级禁用短语：{{ _banned_phrases | join('、') }}（避免原样或近似复用）
+{%- endif %}
+{%- if include_dialogue_ratio %}
+{%- if (_sp_gs is mapping and _sp_gs.get('dialogue_ratio')) or (_sp_gs.dialogue_ratio is defined and _sp_gs.dialogue_ratio) %}
+- 对话占比遵守风格规范：{{ _sp_gs.dialogue_ratio if _sp_gs is not mapping else _sp_gs.get('dialogue_ratio') }}
+{%- endif %}
+{%- endif %}
+{%- endif %}
+{% endmacro %}

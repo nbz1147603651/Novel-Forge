@@ -1,0 +1,17 @@
+/* PySide6 settings/page.py section ordering and parameter accordion cadence. */
+.creation-parameter-sections { display: grid; gap: 12px; }
+.parameter-accordion { overflow: hidden; border: 1px solid color-mix(in srgb, var(--nf-border-default) 20%, transparent); border-radius: 12px; background: color-mix(in srgb, var(--nf-bg-surface) 75%, transparent); box-shadow: 0 5px 12px color-mix(in srgb, var(--nf-shadow) 5%, transparent); }
+.parameter-accordion-toggle { display: flex; align-items: center; gap: 8px; width: 100%; border: 0; color: var(--nf-text-heading); background: transparent; text-align: left; }
+.parameter-accordion-toggle:hover { background: color-mix(in srgb, var(--nf-bg-hover-secondary) 64%, transparent); }
+.parameter-accordion-toggle > span { color: var(--nf-accent-primary); }
+.parameter-accordion-body { padding: 0 18px 16px; border-top: 1px solid color-mix(in srgb, var(--nf-separator) 66%, transparent); }
+.parameter-accordion-description { margin: 13px 0 10px; color: var(--nf-text-secondary); font-size: var(--nf-font-subsection); line-height: 1.55; }
+.parameter-field { display: grid; grid-template-columns: 245px 200px; align-items: center; justify-content: start; gap: 20px; min-height: 100px; padding: 10px 8px; border-top: 1px solid color-mix(in srgb, var(--nf-separator) 52%, transparent); }
+.parameter-field > span { display: grid; gap: 4px; min-width: 0; }
+.parameter-field strong { color: var(--nf-text-heading); font-size: var(--nf-font-subsection); }
+.parameter-field small { max-width: 230px; color: var(--nf-text-muted-soft); font-size: var(--nf-font-body); line-height: 1.42; }
+.parameter-field select, .parameter-field input { width: 100%; height: 39px; padding: 0 34px 0 12px; border: 1px solid color-mix(in srgb, var(--nf-border-default) 25%, transparent); border-radius: 9px; outline: 0; color: var(--nf-text-body); background: var(--nf-bg-input); font-size: var(--nf-font-subsection); }
+.parameter-field input { padding-right: 10px; }
+.parameter-field select:focus, .parameter-field input:focus { border-color: var(--nf-accent-primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--nf-accent-primary) 11%, transparent); }
+.creation-parameter-heading { margin-top: 10px; }
+@media (max-width: 880px) { .parameter-field { grid-template-columns: 1fr; gap: 9px; }.parameter-field small { max-width: none; } }

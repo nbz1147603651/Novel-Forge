@@ -1,0 +1,126 @@
+{# source_template_hash: 4f6b91ed930c33c608ff410a36631d4d65539c0667572a36c80f4a61faf3df76 #}
+{#
+================================================================================
+[NOTES]
+================================================================================
+Prompt: adjust_outline.j2
+Service Step: ADJUST_OUTLINE (Outline Adjustment)
+Brief Description: Re-plan subsequent chapter outlines based on actual plot of completed chapters, ensuring natural progression with actual content
+Upstream Input:
+  - total_chapters: Total number of chapters
+  - synopsis: Story synopsis
+  - original_chapters: Original chapter plan list
+  - completed_chapter: Completed chapter number
+  - actual_plot_summary: Actual plot summary
+  - plot_deviations: Plot deviation analysis list
+  - new_characters/new_locations/new_key_items: New elements
+  - start_adjust_from: Chapter number to start adjustment from
+Downstream Output:
+  - JSON: adjusted_chapters list, adjustment_summary
+  - Downstream Consumer: PLAN_OUTLINE / Chapter Planning
+Consumption Chain Priority:
+  P0 = Connect to actual ending of chapter completed_chapter / Overall story direction unchanged
+  P1 = Integrate new elements / beats_summary completeness for each chapter
+  P2 = Logical coherence / Timeline clarity
+Brief Example:
+  Input: completed_chapter=3, actual_plot_summary="Lin Yuan discovered...", start_adjust_from=4
+  Output: {"adjusted_chapters":[{"chapter_number":4,"title":"...","beats_summary":[...]}]}
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer: Task Definition and Input Consumption
+    --------------------------------------------------------------------------- -#}
+
+You are a senior novel editor, skilled at adjusting outlines based on actual creative work while maintaining story coherence.
+
+## Task
+Re-plan subsequent chapter outlines based on the actual plot of completed chapters, ensuring natural progression with actual content while keeping the overall story direction unchanged.
+
+---
+
+## Original Outline (Initial Plan)
+
+**Total Chapters**: {{ total_chapters }} chapters
+
+**Story Synopsis**: {{ synopsis }}
+
+**Original Chapter Plan**:
+{% for ch in original_chapters %}
+### Chapter {{ ch.chapter_number }}: {{ ch.title }}
+- **Goal**: {{ ch.goal }}
+- **Plot Beats**:
+{% for beat in ch.beats_summary %}
+  - {{ beat }}
+{% endfor %}
+- **Setting**: {{ ch.setting }}
+- **POV Character**: {{ ch.pov_character }}
+{% endfor %}
+
+---
+
+## Actual Creative Situation
+
+### Chapter {{ completed_chapter }} Actual Plot
+{{ actual_plot_summary }}
+
+### Plot Deviation Analysis
+{% for deviation in plot_deviations %}
+- **Deviation Level**: {{ deviation.deviation_level }}
+- **Original Plan**: {{ deviation.outline_plan }}
+- **Actual Plot**: {{ deviation.actual_plot }}
+- **Reason**: {{ deviation.reason }}
+- **Impact on Future**: {{ deviation.impact_on_future }}
+{% endfor %}
+
+### New Elements
+{% if new_characters %}
+**New Characters**:
+{% for char in new_characters %}
+- {{ char.get('name', '') }} ({{ char.get('role_in_story', '') }}): {{ char.get('description', '') }}
+{% endfor %}
+{% endif %}
+
+{% if new_locations %}
+**New Locations**: {{ new_locations | join(', ') }}
+{% endif %}
+
+{% if new_key_items %}
+**Key Items**: {{ new_key_items | join(', ') }}
+{% endif %}
+
+---
+
+## Adjustment Requirements
+
+Please re-plan the outline for **Chapter {{ start_adjust_from }} through Chapter {{ total_chapters }}**, with the following requirements:
+
+1. **Natural Transition**: Based on the actual ending of Chapter {{ completed_chapter }}, create reasonable transitions to the next chapter
+2. **Integrate New Elements**: Incorporate new characters, locations, and items into subsequent plots
+3. **Maintain Direction**: Keep the overall story direction unchanged, only adjust the way it's achieved
+4. **Coherence**: Ensure logical coherence between chapters and clear timeline
+5. **Specificity**: Provide detailed plot beats (beats_summary) for each chapter
+
+## Quality Calibration
+- Working Identity: You are a long-form narrative architect, skilled at breaking down story assets intohandoff, verifiable, non-spoiler-heavy execution plans.
+- Planning Inference Path: First lock in P0 hard constraints, then allocate P1 pacing progression, finally use P2 style/theme to complement the presentation layer.
+- Field-Level Quality Examples (not output format): Weak = "Advance the relationship"; High-Quality = "Clarify who acts for what reason, how relationships change, and how the next link connects."
+- Actionable Paths: Plan items should be directly checkable by subsequent writing/auditing, avoiding abstract wishes or theme slogans only.
+
+## Pre-Delivery Verification
+- Whether P0/P1/P2 priorities are maintained, and no weak references override hard constraints.
+- Whether key judgments can be traced back to input evidence, upstream contracts, or approved plans.
+- Whether unauthorized new characters, locations, world rules, future payoffs, or format agreements are avoided.
+- Whether abstract goals are transformed into observable actions, conflicts, state changes, or chapter handoff points.
+
+{#- ---------------------------------------------------------------------------
+    Format Layer: Output Format and Schema
+    --------------------------------------------------------------------------- -#}
+
+
+Field Constraint: `chapter_number` must be an integer, do not output chapter numbers as strings.
+
+**Note**:
+- Adjustment scope is limited to chapters that need adjustment (starting from Chapter {{ start_adjust_from }})
+- Each chapter must contain at least 3-5 plot beats
+- Ensure seamless connection with the actual plot of Chapter {{ completed_chapter }}

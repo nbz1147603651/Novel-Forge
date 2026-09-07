@@ -1,0 +1,66 @@
+{%- from "_base/_summary_pass.j2" import render_summary_pass -%}
+{# source_template_hash: e2d92b019c4ea6e8989353ce54c787957ded7e08475520e251655b2cf4da14aa #}
+{#
+================================================================================
+[NOTES]
+================================================================================
+Prompt: summarize_scene.j2
+Service Step: SUMMARIZE_SCENE (Scene Summary)
+Function: Compress scene content into high-density summary for quick context positioning during continuation writing
+Upstream Input:
+  - chapter_number/scene_index/scene_title: scene information
+  - target_words: target word count (default 50, max 100)
+  - scene_text/text: scene body text
+Downstream Output:
+  - JSON: summary
+  - Downstream consumer: Scene continuation / Memory system
+Consumption Chain Priority:
+  P0 = Keep location/characters/core actions/emotional twists/suspense state
+  P1 = Ensure next scene can directly inferhandoff state
+  P2 = Delete background rendering/repeated statements
+Brief Example:
+  Input: chapter_number=3, scene_index=2, scene_text="Lin Yuan walks into the tavern..."
+  Output: {"summary":"Lin Yuan enters tavern, meets old acquaintance, learns..."}
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer: Task Definition and Input Consumption
+    --------------------------------------------------------------------------- -#}
+
+Compress the following scene content into a high-density scene summary for quick context positioning during continuation writing.
+
+{{ render_summary_pass(summary_pass | default(''), source_scope | default('')) }}
+
+{% if chapter_number %}- Chapter: Chapter {{ chapter_number }}{% endif %}
+{% if scene_index %}- Scene Number: Scene {{ scene_index }}{% endif %}
+{% if scene_title %}- Scene Title: {{ scene_title }}{% endif %}
+- Target Length: approximately {{ target_words | default(50) }} words (may slightly exceed, but do not exceed 100 words)
+
+## Scene Text
+{{ scene_text if scene_text else text }}
+
+## Output Field Description
+- `summary`: High-density scene-level summary, preserving location/characters/core actions/emotional twists/suspense state, approximately {{ target_words | default(50) }} words.
+
+## Rules
+1. Keep: location of occurrence, present characters, core actions/dialogue, emotional turning points, remaining suspense or state changes.
+2. Delete: background rendering, repeated statements, rhetorical details.
+3. Ensure the next scene can directly infer thehandoff state from this summary.
+4. Do not output any explanations, titles, or code blocks.
+
+## Quality Calibration
+- Working Identity: You are a chapter memory editor, skilled at compressing main text into high-density narrative summaries that subsequent creation can directlyhandoff.
+- Summary Path: First extract core events in chronological order, then supplement character states, unresolved questions, and new facts, finally compress into retrievable representation.
+- Evidence Calibration: Summary only connects information actually occurring or explicitly established in this chapter; rhetorical atmosphere is reduced to background, not elevated to hard facts.
+- Actionable Path: Each piece of summary information should be directly referenceable by downstream chapters' Bridge, Memory, or VolumeAudit.
+
+## Pre-Delivery Verification
+- Is P0/P1/P2 priority being maintained, without weak references overriding hard constraints.
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans.
+- Are unauthorized characters, locations, world rules, future payoffs, or format agreements avoided.
+- Are factual boundaries needed for subsequent merging/retrieval preserved, without writing speculation as established facts.
+
+{#- ---------------------------------------------------------------------------
+    Format Layer: Output Format and Schema
+    --------------------------------------------------------------------------- -#}

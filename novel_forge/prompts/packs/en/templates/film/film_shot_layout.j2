@@ -1,0 +1,60 @@
+{# source_template_hash: fa4fb2c7efa458d71897e623ef845dbb6ee8d8dcdd279f85b496cff79746785f #}
+{#
+================================================================================
+[NOTES]
+================================================================================
+Prompt: film_shot_layout.j2
+Step: FILM_SHOT_LAYOUT (film pipeline: storyboard pacing plan)
+Summary: Given the locked screenplay scene list, decide how many shots
+         (FilmShot) each scene carries and the pacing intent. Rhythm
+         judgement only — never rewrite dialogue or invent plot. Outputs a
+         PARTIAL_OBJECT: {"scenes":[...]}. Same division of labour as
+         COMIC_PANEL_LAYOUT: the LLM only advises pacing; the deterministic
+         planner clamps, pads and packs beats
+         (film/storyboard.py::plan_storyboard_shots).
+Upstream inputs:
+  - title: project title
+  - shot_budget_low/shot_budget_high: hard shot budget per scene
+  - scenes: scene list (scene_id/heading/duration_s/dialogue_count/
+    action_count) from the screenplay projection, read-only
+Downstream outputs:
+  - JSON (PARTIAL_OBJECT): {"scenes":[{"scene_id":"sc-001","shot_count":5,
+    "rhythm_note":"..."}], "notes":"..."}
+  - Consumers:
+    * film/storyboard.py::plan_storyboard_shots fills shots against shot_count
+    * film/storyboard.py::audit_storyboard re-checks the hard budget
+Priority chain:
+  P0 = hard budget: shot_count must fall in [low, high]
+  P1 = pacing: dialogue-heavy scenes get more shots; action climax lands on
+       a hook close-up at the end of the scene
+  P2 = continuity: scene_id must come from the given scene list; no gaps,
+       no invented scenes
+Example:
+  in: {"shot_budget_low":3,"shot_budget_high":8,"scenes":[{"scene_id":"sc-001","heading":"old studio, night","duration_s":60,"dialogue_count":6,"action_count":2}]}
+  out: scenes=[{"scene_id":"sc-001","shot_count":6,"rhythm_note":"dense dialogue, shot-reverse-shot driven"}]
+================================================================================
+#}
+{#- ---------------------------------------------------------------------------
+    Guidance layer: task and inputs
+    --------------------------------------------------------------------------- -#}
+
+You are the storyboard director planning per-scene shot pacing for a locked screenplay. Rhythm judgement only: decide how many shots each scene carries and how pacing rises and falls. Never rewrite dialogue, never add or remove plot.
+
+## Project info
+- Title: {{ title }}
+- Hard shot budget per scene: {{ shot_budget_low }}-{{ shot_budget_high }} shots
+
+## Scene list (from the screenplay projection, read-only)
+{{ scenes | tojson(ensure_ascii=False) }}
+
+{#- ---------------------------------------------------------------------------
+    Constraint layer: quality and boundaries
+    --------------------------------------------------------------------------- -#}
+
+## Storyboard rules
+- **Hard budget**: each item in `scenes` carries `scene_id`, `shot_count`, `rhythm_note`; `shot_count` must be an integer between {{ shot_budget_low }} and {{ shot_budget_high }}; out-of-range values are invalid.
+- **Continuity**: every `scene_id` must come from the given scene list — no gaps, no duplicates, no invented scenes; every listed scene should receive a suggestion.
+- **Pacing**: dialogue-heavy scenes get more shots (shot-reverse-shot / reaction shots); action climaxes and cliffhangers land on a hook close-up at the end of the scene; `rhythm_note` states the pacing intent in one sentence.
+- **Fidelity**: consume only the given scene list; never invent unlisted scenes or characters.
+- **JSON stability**: output only the schema-conforming object; integer fields must be numbers, not strings; no Markdown, comments or ellipses.
+- The top level MUST include the `scenes` key (array); an optional `notes` may summarise the overall pacing strategy.

@@ -1,0 +1,217 @@
+{#- 共享的连续性检查核心模块 — continuity_eval 和 critic_continuity 共用 -#}
+{% from "_base/_retrieval_evidence.j2" import render_retrieval_evidence %}
+
+{% macro continuity_context(chapter_bridge, chapter_plan, chapter_state_packet) %}
+{% set scene_intents = chapter_plan.scene_intents | default([]) %}
+{% set character_profiles = chapter_state_packet.character_profiles | default([]) %}
+{% set previous_exit_state = chapter_state_packet.previous_exit_state | default(none) %}
+{% set continuity_context_brief = chapter_state_packet.continuity_context_brief | default('') %}
+{% set must_carry_forward = chapter_state_packet.must_carry_forward | default([]) %}
+{% set active_relationships = chapter_state_packet.active_relationships | default([]) %}
+{% set retrieval_evidence = chapter_state_packet.retrieval_evidence | default({}) %}
+## 桥接合同
+- 章节：from_chapter={{ chapter_bridge.from_chapter | default('') }} → to_chapter={{ chapter_bridge.to_chapter | default('') }}
+- 时间/地点/POV：{{ chapter_bridge.opening_time | default('') }} / {{ chapter_bridge.opening_location | default('') }} / {{ chapter_bridge.opening_pov | default('') }}
+- 过渡方式：{{ chapter_bridge.transition_mode | default('') }}
+- 情绪承接：{{ chapter_bridge.emotional_carryover | default('') }}
+- 动作接力：{{ chapter_bridge.action_handoff | default('') }}
+{% if chapter_bridge.causal_link | default(none) %}
+- 因果接力：{{ chapter_bridge.causal_link }}
+{% endif %}
+- 概述：{{ chapter_bridge.bridge_summary | default('') }}
+
+## 规划合同
+- 开场合同：{{ chapter_plan.opening_contract | default('') }}
+- 结尾合同：{{ chapter_plan.closing_contract | default('') }}
+- 情绪弧线：{{ chapter_plan.emotional_arc | default('') }}
+{% if chapter_plan.required_state_transitions | default([]) %}
+- 必须状态转移：{{ chapter_plan.required_state_transitions | join('；') }}
+{% endif %}
+{% if chapter_plan.key_revelations | default([]) %}
+- 关键信息揭示：{{ chapter_plan.key_revelations | join('；') }}
+{% endif %}
+{% if chapter_plan.foreshadowing_plan | default([]) %}
+- 伏笔计划：{{ chapter_plan.foreshadowing_plan | join('；') }}
+{% endif %}
+{% if scene_intents %}
+- 场景里程碑：
+{% for s in scene_intents %}
+  - {{ s.summary | default('') }}{% if s.required_outcome | default('') %}（必须达成：{{ s.required_outcome }}）{% endif %}{% if s.exit_target_state | default('') %}（出口状态：{{ s.exit_target_state }}）{% endif %}{% if s.required_characters | default([]) %}（规划出场：{{ s.required_characters | join('、') }}）{% endif %}
+{% endfor %}
+{%- set ns = namespace(all_chars=[]) -%}
+{%- for s in scene_intents -%}
+  {%- for c in s.required_characters | default([]) -%}
+    {%- if c not in ns.all_chars -%}{%- set ns.all_chars = ns.all_chars + [c] -%}{%- endif -%}
+  {%- endfor -%}
+{%- endfor -%}
+{% if ns.all_chars %}
+- 本章规划出场角色：{{ ns.all_chars | join('、') }}（规划外具名角色出现视为非预期引入）
+{% endif %}
+{% endif %}
+{% if chapter_plan.relationship_evolution | default([]) %}
+- 关系演进：{{ chapter_plan.relationship_evolution | join('；') }}
+{% endif %}
+
+{{ render_retrieval_evidence(retrieval_evidence, title="## 连续性核验动态证据") }}
+
+## 角色权威参考（性别/代词/身份以此为准）
+{% if character_profiles %}
+{% for p in character_profiles %}
+- **{{ p.name | default('') }}**：{{ p.role | default('') }}{% if p.gender | default('') %}，{{ p.gender }}，代词"{% if p.gender == '女' %}她{% elif p.gender == '男' %}他{% else %}{{ p.gender }}{% endif %}"{% endif %}{% if p.backstory | default('') %}，身份背景：{{ p.backstory }}{% endif %}
+{% endfor %}
+{% else %}
+（暂无角色档案）
+{% endif %}
+
+## 章节上下文
+{% if continuity_context_brief %}
+- 连续性摘要：{{ continuity_context_brief }}
+{% endif %}
+- 上章末尾：{{ chapter_state_packet.previous_chapter_ending | default('无') }}
+- 必须承接：{{ must_carry_forward | join('、') if must_carry_forward else '无' }}
+{% if previous_exit_state %}
+- 上章退场：时间={{ previous_exit_state.time_marker | default('') }}，地点={{ previous_exit_state.location | default('') }}，POV={{ previous_exit_state.pov | default('') }}，情绪={{ previous_exit_state.emotional_state | default('') }}{% if previous_exit_state.open_questions | default([]) %}，未决={{ previous_exit_state.open_questions | join('、') }}{% endif %}
+{% endif %}
+{% if chapter_state_packet.narrative_state_projection | default(none) %}
+- 权威状态投影：{{ chapter_state_packet.narrative_state_projection }}
+{% endif %}
+{% if chapter_state_packet.chapter_contract | default(none) %}
+- 本章执行合同：{{ chapter_state_packet.chapter_contract }}
+{% endif %}
+{% if active_relationships and not continuity_context_brief %}
+- 人物关系：
+{% for rel in active_relationships %}
+{% set trust_value = rel.trust | default(0.5, true) | float %}
+{% set tension_value = rel.tension | default(0.5, true) | float %}
+{% set dependency_value = rel.dependency | default(none, true) %}
+{% set trust_label = '高' if trust_value >= 0.7 else ('低' if trust_value <= 0.3 else '中') %}
+{% set tension_label = '高' if tension_value >= 0.7 else ('低' if tension_value <= 0.3 else '中') %}
+  - {{ rel.characters | default([]) | join(' ↔ ') }}：{{ rel.public_status | default('') }}（信任={{ trust_label }}；张力={{ tension_label }}{% if dependency_value is not none %}{% set dependency_num = dependency_value | float %}；依赖={{ '高' if dependency_num >= 0.7 else ('低' if dependency_num <= 0.3 else '中') }}{% endif %}）{% if rel.last_shift_event | default('') %}；最近变化={{ rel.last_shift_event }}{% endif %}
+{% endfor %}
+{% endif %}
+{% endmacro %}
+
+{% macro continuity_checks() %}
+## 检查范围（白名单模式）
+
+**你只检查以下 5 项，其余内容无需排查**：
+1. 开头承接质量（桥接合同是否落地）
+2. 人物/地点/POV 边界状态一致性（跨章状态变化是否有铺垫）
+3. 桥接数据一致性（bridge 与上一章退场状态是否冲突）
+4. must_carry_forward 承接（规划信息是否在叙事中体现）
+5. 章末交接（结尾是否与 closing_contract 一致）
+
+以下结构性问题已由本地预检覆盖（你无需主动扩展排查；若预筛选给出证据，可复核其是否仍成立）：
+`location_jump` · `custody_break` · `pov_jump` · `bridge_contract_not_followed`
+
+以下内容不属于连续性：提示词泄漏、重复句、禁用意象、章内 POV 侵入、称呼表达、非法时间刻度、局部文风和修辞偏好。不要把这些新增为连续性问题。
+
+---
+
+## 逐项检查标准
+
+### 1. 开头承接质量（仅检查第 1-3 段）
+**触发条件（满足任一则标记 `bridge_contract_not_followed`，critical，≤ 6 分）**：
+- `action_handoff` 描述了具体转移过程，但正文第 1-3 段跳过了该过程
+- 开头时间/地点/POV 与桥接合同明确矛盾（非含蓄暗示，而是直接冲突）
+
+**不触发的情况**：
+- 场景切换但通过角色感官/回忆建立了连续性
+- 时间跳跃但有明确的过渡标记（如"三日后""次日清晨"）
+
+### 2. 人物/地点/POV 边界状态一致性（只看跨章边界）
+**触发条件（满足则标记 `character_state_break`，high）**：
+- 角色在正文中表现出与上章结尾或角色档案矛盾的情绪/能力/认知
+- 状态变化无前置铺垫（如从上章"极度恐惧"直接变为"冷静指挥"，中间无过渡）
+- 地点或 POV 与上一章/桥接合同发生硬切，且正文没有转场说明
+
+**不触发的情况**：
+- 角色状态变化有明确的触发事件（对话/动作/环境变化）
+- 状态变化发生在同一章节内部且有过程描写
+
+### 3. 桥接数据一致性
+**触发条件（满足则标记 `bridge_contract_not_followed`，high/critical）**：
+- bridge.from_chapter 与上一章退场状态的章节号不一致
+- bridge 缺少 opening_pov/opening_location 等用于承接的关键字段
+- 桥接合同与正文开头同时冲突，导致读者无法判断本章从何处接起
+
+**不触发的情况**：
+- 只是表达方式不同，但同一时间/地点/动作接力能被读者识别
+- 章内出现的普通称呼、措辞或局部事实瑕疵
+
+### 4. must_carry_forward 承接（逐项核对）
+**触发条件（某条信息完全未提及且对叙事逻辑关键，标记 `missing_carry_forward`，high）**：
+- 规划明确要求承接的信息在整章中毫无体现
+- 信息的核心意图丢失（非字面匹配，而是叙事功能缺失）
+
+**不触发的情况**：
+- 信息以改编或合并形式出现，但核心意图保留
+- 信息非关键，不影响后续叙事逻辑
+
+### 5. 章末交接（仅检查最后 2-3 段）
+**触发条件（结尾与 closing_contract 完全无关，标记 `closing_contract_missing`，medium）**：
+- 结尾未留下与规划一致的交接点（悬念/动作/情绪）
+- 结尾方向与规划完全偏离
+
+**不触发的情况**：
+- 结尾以不同方式实现了相同的叙事功能
+- 交接点隐含在对话或动作中，非直白表述
+
+---
+
+## 硬问题（出现任一则 ≤ 6 分）
+明确跨章矛盾 · 失忆式信息跳变 · 关系无理由跳变 · 开头/章末合同硬断裂
+
+## 打分
+- 9-10：仅有细小润色空间
+- 7-8.5：轻微衔接问题，不影响阅读
+- 5-6.5：明显缺口，需定向修补
+- ≤ 4.5：硬性矛盾，读者直接出戏
+{% endmacro %}
+
+{% macro prescreen_and_prior(local_prescreen_issues, local_check_note, prior_issues) %}
+{% set local_prescreen_issues = local_prescreen_issues | default([]) %}
+{% set local_check_note = local_check_note | default('') %}
+{% set prior_issues = prior_issues | default([]) %}
+{% if local_prescreen_issues %}
+## ⚡ 本地预筛选问题
+{% for issue in local_prescreen_issues %}
+{{ loop.index }}. [{{ issue.issue_type | default('') }}] 置信度 {{ ((issue.confidence | default(0)) * 100) | int }}%：{{ issue.summary | default('') }}
+   证据：{{ issue.evidence | default('') }}
+{% endfor %}
+置信度 ≥ 85% 的问题可直接确认；低置信度问题需结合正文叙事逻辑判定。
+{% if local_check_note %}{{ local_check_note }}{% endif %}
+{% endif %}
+
+{% if prior_issues %}
+## ⚠️ 历次问题核查
+以下问题已提交修复，逐一判定是否解决：
+{% for issue in prior_issues %}
+{{ loop.index }}. [{{ issue.issue_type | default('') }}] ({{ issue.severity | default('') }}){% if issue.issue_id | default('') %} id={{ issue.issue_id }}{% endif %}{% if issue.repair_surface | default('') %} surface={{ issue.repair_surface }}{% endif %} — {{ issue.summary | default('') }}
+   {% if issue.evidence | default('') %}证据：{{ issue.evidence }}{% endif %}
+   {% if issue.repair_focus | default('') %}修复重点：{{ issue.repair_focus }}{% endif %}
+   {% if issue.missing_anchors | default([]) %}
+   需回扣锚点：
+   {% for anchor in issue.missing_anchors | default([]) %}
+   - {{ anchor.source | default('') }} / {{ anchor.role | default('') }}：{{ anchor.text | default('') }}
+   {% endfor %}
+   {% endif %}
+   {% if issue.postconditions | default([]) %}
+   修复验收条件：
+   {% for condition in issue.postconditions | default([]) %}
+   - [{{ condition.validator_id | default('') }}] {{ condition.description | default('') }}{% if condition.evidence_hint | default('') %}（证据提示：{{ condition.evidence_hint }}）{% endif %}
+   {% endfor %}
+   {% endif %}
+{% endfor %}
+已修复的不再列入 issues；未修复的保留并说明原因。若某条 prior_issue 仍未解决，输出 issues 时必须沿用它的 `issue_id`，并在 evidence 或 diagnostic_note 中说明哪些 postconditions 未满足。
+{% endif %}
+
+{% if must_resolve_summaries | default([]) %}
+## 🚨 阻断归档问题·逐条核实（必须已解决）
+以下为经多轮修复仍可能残留的严重问题，请逐条在正文中核实是否彻底消除：
+{% for summary in must_resolve_summaries | default([]) %}
+- {{ summary }}
+{% endfor %}
+若上述任何一条在修复后的正文中仍然存在，请在 issues 中以原 severity（critical 或 high）如实报告，不得降级。
+{% endif %}
+{% endmacro %}

@@ -1,0 +1,54 @@
+{%- macro render_repair_attempt_guidance(guidance) -%}
+{% if guidance %}
+## 本轮修复策略更新
+- 轮次：第 {{ guidance.round_number }} / {{ guidance.max_rounds }} 轮
+{% if guidance.strategy_id is defined and guidance.strategy_id %}- 策略：{{ guidance.strategy_id }}
+{% endif %}- 本轮新方向：{{ guidance.new_direction }}
+- 禁止重复：{{ guidance.avoid }}
+{% if guidance.diagnosis is defined and guidance.diagnosis %}
+- 失败/停滞原因判断：
+{% for item in guidance.diagnosis %}
+  - {{ item }}
+{% endfor %}
+{% endif %}
+{% if guidance.issue_focus is defined and guidance.issue_focus %}
+- 本轮聚焦问题：{{ guidance.issue_focus | join('；') }}
+{% endif %}
+{% if guidance.previous_issue_focus is defined and guidance.previous_issue_focus %}
+- 上轮残留问题：{{ guidance.previous_issue_focus | join('；') }}
+{% endif %}
+{% if guidance.previous_attempted_patches is defined and guidance.previous_attempted_patches %}
+- 上轮模型尝试：
+{% for item in guidance.previous_attempted_patches %}
+  - {{ item }}
+{% endfor %}
+{% endif %}
+{% if guidance.previous_applied_patches is defined and guidance.previous_applied_patches %}
+- 上轮已应用修改：
+{% for item in guidance.previous_applied_patches %}
+  - {{ item }}
+{% endfor %}
+{% endif %}
+{% if guidance.previous_skipped_patches is defined and guidance.previous_skipped_patches %}
+- 上轮被拒绝修改：
+{% for item in guidance.previous_skipped_patches %}
+  - {{ item }}
+{% endfor %}
+{% endif %}
+{% if guidance.steps is defined and guidance.steps %}
+- 操作步骤：
+{% for step in guidance.steps %}
+  {{ loop.index }}. {{ step }}
+{% endfor %}
+{% endif %}
+请按上述新方向修复；如果你发现原方案只能重复上一轮动作，必须改用动作、对白、场景调度或更大窗口改写来解决根因。
+{% endif %}
+{%- endmacro -%}
+
+{%- macro render_repair_self_check(repair_kind="targeted") -%}
+## 修复后自检清单
+- 是否只处理了本轮目标问题，未扩大到无关段落？
+- 是否保留了章节计划、bridge/contract、主线推进点、既有事实和字数边界？
+- 是否没有新增计划外 POV、禁出角色、关键道具、重大事件、后续章节答案或解释性报告？
+- 若某个问题无法在不破坏上述约束的前提下安全修复，请优先保持相关事实不变并完成其他安全修复；不要在正文中插入 `[UNRESOLVED]`、注释、修复说明或任何非正文标记，后续复检会继续暴露残留问题。
+{%- endmacro -%}

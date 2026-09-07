@@ -1,0 +1,30 @@
+{
+  "provider_id": "default",
+  "profile_version": "1.0",
+  "emotion_compensation": {},
+  "tone_hint_rules": [],
+  "vocal_direction_bridge": {
+    "enabled": false,
+    "guards": {
+      "skip_when_short_utterance": true,
+      "skip_when_extreme_short": true,
+      "skip_when_voice_identity_lock": true
+    },
+    "clamp": {
+      "max_speed_delta": 0.05,
+      "max_vol_delta": 0.05
+    },
+    "dimension_rules": {}
+  },
+  "expression_scale": {
+    "extreme_short": 0.0,
+    "short_base": 0.10,
+    "short_intensity_factor": 0.20,
+    "normal_base": 0.15,
+    "normal_intensity_factor": 0.35
+  },
+  "sub_emotion_modulation": {
+    "energy_deltas": {},
+    "tension_deltas": {}
+  }
+}

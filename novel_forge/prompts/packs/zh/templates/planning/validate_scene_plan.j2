@@ -1,0 +1,77 @@
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：validate_scene_plan.j2
+服务步骤：VALIDATE_SCENE_PLAN（高级场景级写作模式：场景计划验证）
+作用简述：检查 scene_plan 的场景边界、依赖、交接与可并行分组，给出串行边和修复意见。
+上游输入：scene_plan、bridge_card、chapter_card、chapter_number、target_word_count
+下游输出：JSON：{"valid", "issues", "parallel_groups", "serial_edges", "summary"}
+下游消费者：scene_writing.validate_scene_plan_with_llm、planning 阶段二次重规划、
+         DRAFT_SCENE 执行分组与场景生成调度
+消费链优先级：P0 = valid/issues/parallel_groups/serial_edges 结构准确；
+         P1 = 场景 owned facts 不重叠且 entry/exit/handoff 连续；
+         P2 = 并行优化建议
+================================================================================
+#}
+{% set plan = scene_plan | default({}) %}
+{% set scenes = plan.scene_intents | default([]) %}
+{% set bridge = bridge_card | default({}) %}
+{% set chapter = chapter_card | default({}) %}
+
+## 任务
+验证第 {{ chapter.chapter_number | default(chapter_number) }} 章的场景级写作计划是否适合进入场景草稿。
+
+你不是重新规划者，只负责判断边界、依赖和可并行性。若不能并行，降级为串行，不要为了效率强行并行。
+
+## 章节锚点
+- 标题：{{ chapter.title }}
+- 目标：{{ chapter.goal }}
+- 目标字数：{{ chapter.target_word_count | default(target_word_count) }}
+{% if bridge.action_handoff %}- 开头桥接：{{ bridge.action_handoff }}{% endif %}
+{% if bridge.causal_link %}
+- 桥接因果：{{ bridge.causal_link | tojson }}
+{% endif %}
+{% if plan.opening_contract %}- 开场契约：{{ plan.opening_contract }}{% endif %}
+{% if plan.closing_contract %}- 结尾契约：{{ plan.closing_contract }}{% endif %}
+
+## 场景计划
+{% for scene in scenes %}
+- {{ scene.scene_id }} / order={{ scene.draft_order | default(loop.index) }} / group={{ scene.parallel_group | default("") }}
+  - goal：{{ scene.scene_goal or scene.purpose }}
+  - deps：{{ scene.dependency_scene_ids | default([]) | join('、') }}
+  - owned_events：{{ scene.owned_events | default([]) | join('；') }}
+  - owned_revelations：{{ scene.owned_revelations | default([]) | join('；') }}
+  - owned_state_changes：{{ scene.owned_state_changes | default([]) | join('；') }}
+  - entry：{{ scene.entry_state or scene.entry_state_refs | default([]) | join('；') }}
+  - exit：{{ scene.exit_state or scene.exit_target_state }}
+  - handoff：{{ scene.handoff_to_next }}
+{% endfor %}
+
+## 验证标准
+1. 检查是否有两个场景抢同一事件、揭示或状态变化。
+2. 检查 entry/exit/handoff 是否能接上。
+3. 检查 dependency_scene_ids 是否足以表达因果顺序。
+4. 只把真正独立、不共享 owned facts、互不依赖的场景放入同一 parallel group。
+5. 有疑问的场景必须通过 serial_edges 串行化。
+6. 判断开场地点/时间/POV 承接时，必须优先读取 `bridge.action_handoff`、`bridge.causal_link.causal_mechanism` 和 `plan.opening_contract`。若这些字段已经交代移动路径、时间跳转或抵达方式，不得再输出“Bridge 未解释移动过程/地点跳转未解释”类 issue；只能在 `scene_01` 完全没有承接这些字段时标注首场承接较弱。
+
+## 字段要求
+- `valid` 表示计划是否可直接进入场景草稿。
+- `issues` 为问题数组，每项写 code、severity、scene_ids、message 和 suggested_fix；无问题可为空数组。
+- `parallel_groups` 为可并行场景组数组；不能并行的场景单独成组。
+- `serial_edges` 为串行边数组，每项写 before、after 和 reason。
+- `summary` 用一句话说明总体判断。
+
+## 质量校准
+- 工作身份：你是一位长篇叙事架构师，擅长把故事资产拆成可承接、可验证、不过度剧透的执行计划。
+- 规划推断路径：先锁定 P0 硬约束，再分配 P1 推进节奏，最后用 P2 风格/主题补足表现层。
+- 字段级质量示例（非输出格式）：平弱=“推进关系”；高质量=“写清谁因何行动、关系如何变化、下一环如何承接”。
+- 可操作路径：计划项要能被后续写作/审计直接检查，避免只给抽象愿望或主题口号。
+
+## 交付前核验
+- P0/P1/P2 优先级是否被保持，且没有让弱参考覆盖硬约束。
+- 是否能把关键判断回指到输入证据、上游契约或已批准计划。
+- 是否避免新增未授权的人物、地点、世界规则、未来 payoff 或格式协议。
+- 是否把抽象目标转化为可观察的行动、冲突、状态变化或章节承接点。
+- 若报告地点/时间跳转问题，是否已经核对 bridge.action_handoff 与 causal_link 中没有移动路径或时间跳转说明。

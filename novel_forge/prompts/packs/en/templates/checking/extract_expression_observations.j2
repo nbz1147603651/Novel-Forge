@@ -1,0 +1,65 @@
+{# source_template_hash: 76168387473f7483dfb78603f482402f5d41ce95ae1977ad481c391d534b81ac #}
+{#
+[Notes]
+task_id: extract_expression_observations
+service step: ExpressionObservationStep
+purpose: Extract verifiable expression channel observation items from the final chapter text for expression channel Zvec semantic evidence memory.
+upstream: final chapter text, compact expression_channel_profiles, scene_intents, POV/actor hint.
+downstream: Local quote verification, source hash protection, Zvec expression-channel memory; not an audit conclusion.
+priority: P0 only extracts observations that truly exist in the original text and can bind to existing profiles; P1 keep quantity small; P2 can explain skip reason.
+[/Notes]
+#}
+[Guidance Layer]
+You are an expression channel observation extractor, not an auditor, and not a polishing editor.
+
+Task: Only extract expression mechanism evidence from this chapter's final text that "might be mechanically reused by models in subsequent chapters", and must bind to given expression profiles.
+
+Hard Constraints:
+- Only extract short quotes that truly exist in the original text; do not rewrite quotes.
+- Each observation must bind to an existing profile's channel_id; do not create new profiles.
+- Do not output regex, template libraries, generic writing advice, plot settings, or audit conclusions.
+- Output at most 12 items; for the same channel_id, keep only the most representative 1-3 items.
+- If there are no reliable observation items, return empty observations, and write a short reason in skipped_reason.
+- Do not output candidates with confidence below 0.55.
+
+Profile Usage Boundary:
+{% for profile in expression_channel_profiles | default([]) %}
+- {{ profile.channel_id }}｜{{ profile.channel | default("other") }}｜{{ profile.label | default("") }}
+  Surface Forms: {{ profile.surface_forms | default([]) | join(", ") }}
+  Trigger Contexts: {{ profile.trigger_contexts | default([]) | join(", ") }}
+  Risk: {{ profile.risk_reason | default("") }}
+{% endfor %}
+
+Chapter Context:
+- chapter_number: {{ chapter_number }}
+- pov_character: {{ pov_character | default("") }}
+{% if scene_intents | default([]) %}
+- scene_intents:
+{% for scene in scene_intents %}
+  - scene_index={{ loop.index }}; summary={{ scene.summary | default(scene.purpose | default("")) }}; emotional_beat={{ scene.emotional_beat | default("") }}
+{% endfor %}
+{% endif %}
+
+Observation Field Definitions:
+- scene_index: Fill in scene sequence number if determinable; fill 0 if not.
+- quote: Must be a continuous original short sentence or phrase from the text, recommended 4-60 characters.
+- channel_id/channel/profile_label: From given profile.
+- trigger_context: Explain in 3-16 characters the trigger context for this quote in this chapter.
+- semantic_role: Explain in 3-20 characters the expression function it serves, such as "alerting body response" or "emotion suppressing dialogue".
+- actor: Actor triggering the expression; leave empty if unable to determine.
+- confidence: 0-1.
+
+Chapter Text:
+{{ chapter_text }}
+
+## Quality Calibration
+- Professional Identity: You are an evidence-prioritized narrative fact extractor, skilled at extracting traceable, mergeable state information from text and upstream anchors.
+- Extraction Path: First identify explicit facts in the text, then cross-reference with shared anchors and known states, finally only preserve information consumable by subsequent consolidators.
+- Evidence Calibration: Maintain consistency when upstream fragments have confirmed the same fact; express unknown or pending confirmation with conservative field values when evidence is insufficient.
+- Actionable Path: Each piece of information serves canon, memory, state, or audit chain purposes; avoid treating tone, metaphor, or speculation as fact.
+
+## Pre-Delivery Verification
+- Whether P0/P1/P2 priority is maintained, and weak references are not allowed to override hard constraints.
+- Whether key judgments can be traced back to input evidence, upstream contracts, or approved plans.
+- Whether unauthorized new characters, locations, world rules, future payoffs, or format agreements are avoided.
+- Whether factual boundaries needed for subsequent consolidation/retrieval are preserved, and speculation is not written as established fact.

@@ -1,0 +1,55 @@
+{#- 典据角色上下文渲染 — base 模块 -#}
+{#- 从 canon_context 提取角色状态，兼容 dict 和 object 两种数据形状 -#}
+
+{#-
+  === 宏模块：典据角色状态渲染 ===
+  文件类型：宏模块（macro module）
+  作用简述：从 canon_context 提取角色状态并渲染为 markdown 格式的角色状态段落，支持 dict 和 object 两种数据形状兼容性。
+
+  定义的宏及参数：
+  1. render_canon_characters(canon_context, current_chapter=None, section_title="### 角色状态")
+     - 渲染角色列表，显示存活状态、位置、情绪
+     - 若角色超过 3 章未出场，显示 ⚠️ 警告
+
+  使用方式：
+  - 被 planning/plan_chapter.j2, writing/draft_chapter.j2, checking/continuity_eval.j2 等模板通过 {% import %} 调用
+-#}
+
+{% macro render_canon_characters(canon_context, current_chapter=None, section_title="### 角色状态") %}
+{{ section_title }}
+{%- set _chars = canon_context.characters if canon_context is mapping and canon_context.characters is defined else [] -%}
+{%- if not _chars -%}
+- 暂无已追踪的角色状态
+{%- elif _chars is mapping -%}
+{#- Dict shape: {name: {alive, location, emotional_state, ...}} -#}
+{% for name, state in _chars.items() %}
+- {{ name }}：{% if state.alive is defined and not state.alive %}已死亡{% else %}存活{% endif %}，位置={{ state.location | default('未知') }}，情绪={{ state.emotional_state | default('未知') }}{% if state.last_seen_chapter is defined and state.last_seen_chapter > 0 and current_chapter is not none and current_chapter - state.last_seen_chapter > 3 %} ⚠️ 已 {{ current_chapter - state.last_seen_chapter }} 章未出场{% endif %}
+{% endfor %}
+{%- else -%}
+{#- Object shape: [CharacterState(name, alive, physical, emotional, ...)] -#}
+{% for character in _chars %}
+{%- set _name = character.get('name', '未知') if character is mapping else character.name | default('未知') -%}
+{%- set _alive = character.get('alive', true) if character is mapping else character.alive | default(true) -%}
+{%- set _location = '' -%}
+{%- if character is mapping -%}
+{%- set _physical = character.get('physical', {}) -%}
+{%- set _location = _physical.get('location', '') if _physical else character.get('location', '') -%}
+{%- elif character.physical is defined -%}
+{%- set _location = character.physical.location | default('') -%}
+{%- elif character.location is defined -%}
+{%- set _location = character.location | default('') -%}
+{%- endif -%}
+{%- set _emotion = '' -%}
+{%- if character is mapping -%}
+{%- set _emotional = character.get('emotional', {}) -%}
+{%- set _emotion = _emotional.get('primary_emotion', '') if _emotional else character.get('emotional_state', '') -%}
+{%- elif character.emotional is defined -%}
+{%- set _emotion = character.emotional.primary_emotion | default('') -%}
+{%- elif character.emotional_state is defined -%}
+{%- set _emotion = character.emotional_state | default('') -%}
+{%- endif -%}
+{%- set _last_seen = character.get('last_seen_chapter', 0) if character is mapping else character.last_seen_chapter | default(0) -%}
+- {{ _name }}：{% if not _alive %}已死亡{% else %}存活{% endif %}，位置={{ _location | default('未知') }}，情绪={{ _emotion | default('未知') }}{% if _last_seen > 0 and current_chapter is not none and current_chapter - _last_seen > 3 %} ⚠️ 已 {{ current_chapter - _last_seen }} 章未出场{% endif %}
+{% endfor %}
+{%- endif -%}
+{% endmacro %}

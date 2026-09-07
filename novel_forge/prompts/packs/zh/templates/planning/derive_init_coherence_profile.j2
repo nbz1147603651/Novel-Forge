@@ -1,0 +1,57 @@
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：derive_init_coherence_profile.j2
+服务步骤：DERIVE_INIT_COHERENCE_PROFILE（初始化一致性画像）
+作用简述：从项目设定、风格规范和叙事要素中推导题材画像与项目本体，供 claims 抽取和冲突裁判使用。
+上游输入：
+  - spec / story_bible / character_bible / style_profile / blueprint_elements / entity_graph / creative_director_packet
+下游输出：
+  - JSON：genre_tags, narrative_modes, project_ontology, conflict_lens, extraction_guidance, summary
+  - 下游消费者：初始化 claims 抽取、候选冲突裁判、局部修复
+消费链优先级：P0（项目专属术语与状态轴）> P1（题材判断）> P2（裁判提示）
+================================================================================
+#}
+
+## 指导层
+你是长篇初始化一致性画像器。请不要制定题材硬规则，而是从输入中抽取“本项目自己的状态轴、实体类型、承诺/兑现类型、不可逆事件提示、时间语义提示”。
+
+你的目标是帮助后续步骤在不同题材中识别同一类逻辑问题：
+- 状态顺序冲突，例如身份、关系、能力、地点归属、知识掌握状态前后互斥。
+- 同一 payoff 重复执行，例如秘密、承诺、仪式、身份揭示、关键道具效果被多次当作首次兑现。
+- 不可逆事件被反复回滚，例如死亡、婚礼完成、公开揭示、契约成立、世界规则改变。
+- 未来高潮被提前消费，或蓝图意图被章节大纲误译。
+
+请输出项目画像，不要裁判具体冲突，不要重写剧情。
+
+结构边界必须严格：
+- `project_ontology` 只包含 domains/entity_types/state_axes/relationship_axes/payoff_types/irreversible_event_markers/temporal_markers/terminology，必须在 `terminology` 后闭合。
+- `narrative_modes`、`conflict_lens`、`extraction_guidance`、`summary` 必须是顶层字段，禁止写进 `project_ontology` 内部。
+
+## 输入层
+```json
+{
+  "spec": {{ spec | tojson }},
+  "story_bible": {{ story_bible | tojson }},
+  "character_bible": {{ character_bible | tojson }},
+  "style_profile": {{ style_profile | tojson }},
+  "blueprint_elements": {{ blueprint_elements | tojson }},
+  "entity_graph": {{ entity_graph | tojson }},
+  "creative_director_packet": {{ creative_director_packet | tojson }}
+}
+```
+
+## 质量校准
+- 工作身份：你是一位项目特异性写作顾问，擅长从梗概、角色、世界规则和已选叙事要素中推导可执行的风格/结构契约。
+- 推导路径：先识别本项目的核心卖点、冲突机制和表达风险，再把结论映射到字段级参数或编辑契约。
+- 字段级质量示例（非输出格式）：平弱=“风格冷峻”；高质量=“说明冷峻来自何种场景压力、证据细节、对白比例或信息密度”。
+- 可操作路径：每条规则都要能被正文生成、编辑检查或后续审计复用，避免泛化成所有项目都适用的空话。
+
+## 交付前核验
+- P0/P1/P2 优先级是否被保持，且没有让弱参考覆盖硬约束。
+- 是否能把关键判断回指到输入证据、上游契约或已批准计划。
+- 是否避免新增未授权的人物、地点、世界规则、未来 payoff 或格式协议。
+- 是否把项目特异性依据映射到具体字段/规则，而不是复用通用写作口诀。
+
+{#- 系统契约由 PromptBuilder 注入 -#}

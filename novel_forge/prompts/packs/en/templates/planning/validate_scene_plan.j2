@@ -1,0 +1,78 @@
+{# source_template_hash: 5b6f2fdefc9dbd8a9af85fbf6c3fd81ec0c8b41a383d1b6c05b3bfe03c2ad58c #}
+{#
+================================================================================
+[NOTES]
+================================================================================
+Prompt: validate_scene_plan.j2
+Service Step: VALIDATE_SCENE_PLAN (Advanced Scene-Level Writing Mode: Scene Plan Validation)
+Brief Description: Check scene boundaries, dependencies, handoffs, and parallelizable groupings in scene_plan; provide serial edges and repair suggestions.
+Upstream Input: scene_plan, bridge_card, chapter_card, chapter_number, target_word_count
+Downstream Output: JSON: {"valid", "issues", "parallel_groups", "serial_edges", "summary"}
+Downstream Consumer: scene_writing.validate_scene_plan_with_llm, Planning phase secondary re-planning,
+         DRAFT_SCENE execution grouping and scene generation scheduling
+Consumption Chain Priority: P0 = valid/issues/parallel_groups/serial_edges structure accuracy;
+         P1 = scene owned facts don't overlap and entry/exit/handoff are continuous;
+         P2 = parallel optimization suggestions
+================================================================================
+#}
+{% set plan = scene_plan | default({}) %}
+{% set scenes = plan.scene_intents | default([]) %}
+{% set bridge = bridge_card | default({}) %}
+{% set chapter = chapter_card | default({}) %}
+
+## Task
+Validate whether the scene-level writing plan for Chapter {{ chapter.chapter_number | default(chapter_number) }} is suitable for entering scene drafting.
+
+You are not a re-planner; you are only responsible for judging boundaries, dependencies, and parallelizability. If parallelism is not possible, degrade to serial execution; do not force parallelism for efficiency.
+
+## Chapter Anchor
+- Title: {{ chapter.title }}
+- Goal: {{ chapter.goal }}
+- Target Word Count: {{ chapter.target_word_count | default(target_word_count) }}
+{% if bridge.action_handoff %}- Opening Bridge: {{ bridge.action_handoff }}{% endif %}
+{% if bridge.causal_link %}
+- Bridge Causality: {{ bridge.causal_link | tojson }}
+{% endif %}
+{% if plan.opening_contract %}- Opening Contract: {{ plan.opening_contract }}{% endif %}
+{% if plan.closing_contract %}- Closing Contract: {{ plan.closing_contract }}{% endif %}
+
+## Scene Plan
+{% for scene in scenes %}
+- {{ scene.scene_id }} / order={{ scene.draft_order | default(loop.index) }} / group={{ scene.parallel_group | default("") }}
+  - goal: {{ scene.scene_goal or scene.purpose }}
+  - deps: {{ scene.dependency_scene_ids | default([]) | join(', ') }}
+  - owned_events: {{ scene.owned_events | default([]) | join('; ') }}
+  - owned_revelations: {{ scene.owned_revelations | default([]) | join('; ') }}
+  - owned_state_changes: {{ scene.owned_state_changes | default([]) | join('; ') }}
+  - entry: {{ scene.entry_state or scene.entry_state_refs | default([]) | join('; ') }}
+  - exit: {{ scene.exit_state or scene.exit_target_state }}
+  - handoff: {{ scene.handoff_to_next }}
+{% endfor %}
+
+## Validation Criteria
+1. Check if two scenes are competing for the same event, revelation, or state change.
+2. Check if entry/exit/handoff can connect properly.
+3. Check if dependency_scene_ids are sufficient to express causal order.
+4. Only put truly independent scenes that don't share owned facts and don't depend on each other into the same parallel group.
+5. Scenes with doubts must be serialized through serial_edges.
+6. When judging whether the opening location/time/POV carries over, prioritize reading `bridge.action_handoff`, `bridge.causal_link.causal_mechanism`, and `plan.opening_contract`. If these fields have already explained the movement path, time jump, or arrival method, do not output issues like "Bridge didn't explain the movement process/location jump not explained"; can only mark the first scene as having weak carrying-over when `scene_01` completely lacks these fields.
+
+## Field Requirements
+- `valid` indicates whether the plan can directly enter scene drafting.
+- `issues` is an array of problems; each item should include code, severity, scene_ids, message, and suggested_fix; can be an empty array if no problems.
+- `parallel_groups` is an array of parallelizable scene groups; scenes that cannot be parallelized form separate groups.
+- `serial_edges` is an array of serial edges; each item should include before, after, and reason.
+- `summary` should explain the overall judgment in one sentence.
+
+## Quality Calibration
+- Work Identity: You are a long-form narrative architect, skilled at splitting story assets into executable plans that can carry over, be verified, and avoid excessive spoilers.
+- Planning Inference Path: First lock P0 hard constraints, then allocate P1 progression rhythm, finally use P2 style/theme to complement the presentation layer.
+- Field-level Quality Examples (not output format): Weak = "advancing relationship"; High Quality = "clarify who acts for what, how relationships change, how the next link carries over".
+- Actionable Path: Plan items must be directly checkable by subsequent writing/auditing; avoid only giving abstract wishes or theme slogans.
+
+## Pre-delivery Verification
+- Are P0/P1/P2 priorities maintained, and has weak reference not overwritten hard constraints?
+- Can key decisions be traced back to input evidence, upstream contracts, or approved plans?
+- Are unauthorized characters, locations, world rules, future payoffs, or format agreements avoided?
+- Are abstract goals transformed into observable actions, conflicts, state changes, or chapter carrying-over points?
+- If reporting location/time jump issues, have bridge.action_handoff and causal_link been checked for movement paths or time jump explanations?

@@ -1,0 +1,85 @@
+{# source_template_hash: fbb3cfaa2de5b0229628ff00134a1fd27c801ea6a57447c0ab46f076ace4450d #}
+{#
+================================================================================
+【Notes】
+================================================================================
+Template: extract_blueprint_holistic_claims.j2
+Service Step: EXTRACT_BLUEPRINT_HOLISTIC_CLAIMS (Holistic Blueprint Claims Extraction)
+Brief Description: Read the narrative blueprint in full to extract cross-field dependencies, commitments, state axes, foreshadowing/payoff, and irreversible event claims.
+Upstream Input:
+  - coherence_profile: Project coherence profile
+  - artifact / chunk: Complete blueprint payload and source path
+Downstream Output:
+  - JSON: claims; summary can explain overall coverage
+  - Downstream Consumers: Initialize claims ledger, candidate conflict retrieval, LLM arbiter
+Consumption Chain Priority: P0 (Cross-field Hard Dependencies/Irreversible States) > P1 (Foreshadowing/Payoff & Character Arcs) > P2 (Theme & Pacing Weak Clues)
+================================================================================
+#}
+
+## Instructions
+
+You are a holistic blueprint claims extractor. Please read the narrative blueprint in full, specifically extracting cross-field narrative facts that "single-field chunks cannot easily discover."
+
+Extraction Focus:
+- State, motivation, and relationship progression between `key_turning_points` and `character_arcs`.
+- Commitments, foreshadowing, and payoff between `subplot_plan`, `suspense_schedule`, and `ending_strategy`.
+- Temporal order, dependencies, and irreversible events between `narrative_phases`, `volumes`, and key events.
+- State axes in this project's profile such as world rules, identity, abilities, knowledge, relationships, and commitments.
+
+Constraints:
+- Only extract claims; do not arbitrate contradictions or fix the blueprint.
+- Do not apply fixed genre templates; all claims must reference back to current input evidence.
+- Prioritize cross-field facts; field-internal details will be handled by the chunk claims extractor.
+- Output at most {{ claim_limit | default(10) }} high-value claims.
+- `summary` must not exceed 120 Chinese characters, do not restate each claim.
+- Each claim's `artifact` must be identical to the input layer `artifact`; do not rename based on source_path or examples.
+- Each key name can only appear once within the same claim object; in particular, `evidence` can only be output once—do not first write non-empty evidence then repeat with empty string override.
+- Generic temporal/order, quantity/resource, identity/authority, causal/precondition, institutional/rule, and activation-condition statements are P0 hard constraints. Derive their actual meaning only from this project's source and ontology; do not apply a predefined vocabulary.
+- `coverage_status` must truthfully be `complete|partial|uncertain`. Use `complete` only after the whole payload has been inspected with no omitted P0/P1 fact; otherwise list every unprocessed or unverifiable source region in `unprocessed_source_refs`.
+
+Cognitive Structure Requirements (core fields for each claim):
+- `claim_type`: `state|event|payoff|dependency|relationship|world_rule|knowledge|promise|other`
+- `cognitive_subjects`: List of characters experiencing cognition.
+- `cognitive_object`: Information object that is recognized/known/misbelieved/concealed; fill empty string if evidence is insufficient.
+- `cognitive_level`: `unaware|subconscious|suspicion|partial|confirmed|acknowledged`
+- `action_level`: `none|internal|hinted|revealed|acted`
+- `reader_awareness`: `unknown|partial|full`
+- `character_knowledge_coverage`: As `{ "character": "unknown|partial|full" }`
+- `cognitive_chapter`: Chapter number where the character formed this cognition (fill `null` if unknown)
+- `public_reveal_chapter`: Chapter number where it was publicly revealed/officially acknowledged/actively admitted (fill `null` if unknown)
+- `foreshadow_chapters`: Array of foreshadowing/setup chapter numbers
+- `claim_text`, `evidence`, `claim_id`, `artifact`, `source_path`, and cognitive fields must be fully output.
+- When evidence is insufficient, be conservative: `cognitive_subjects=[]`, `cognitive_object=""`, `cognitive_level="unaware"`, `action_level="none"`, `reader_awareness="unknown"`, `character_knowledge_coverage={}`, `cognitive_chapter=null`, `public_reveal_chapter=null`.
+- Do not infer from author settings that characters already know; do not fill public chapters based on plot common sense.
+- ⚠️ `character_knowledge_coverage` and `cognitive_level` are two **different** fields with incompatible enum values:
+  - `character_knowledge_coverage` only has three levels: `unknown|partial|full`
+  - `cognitive_level` has: `unaware|subconscious|suspicion|partial|confirmed|acknowledged`
+  - Do not mistakenly place `cognitive_level`'s `confirmed`/`acknowledged`/`unaware` into `character_knowledge_coverage`.
+  - When unsure whether a character is aware, `character_knowledge_coverage` must use `unknown` (not `unaware`).
+
+## Input Layer
+```json
+{
+  "coherence_profile": {{ coherence_profile | tojson }},
+  "artifact": {{ artifact | tojson }},
+  "chunk": {{ chunk | tojson }},
+  "claim_batch_index": {{ claim_batch_index | tojson }},
+  "claim_batch_total": {{ claim_batch_total | tojson }},
+  "claim_limit": {{ claim_limit | default(10) | tojson }}
+}
+```
+
+## Quality Calibration
+- Work Identity: You are an evidence-first narrative facts extractor, skilled at extracting traceable and mergeable state information from body text and upstream anchors.
+- Extraction Path: First find explicit facts in body text, then cross-reference with shared anchors and known states, finally keeping only information consumable by downstream mergers.
+- Evidence Calibration: When the same fact is already confirmed by upstream chunks, maintain consistency; when evidence is insufficient, use conservative field values to express unknown or pending confirmation.
+- Actionable Path: Each piece of information serves canon, memory, state, or audit chains—avoid treating tone, metaphor, or speculation as facts.
+
+## Pre-Delivery Validation
+- Are P0/P1/P2 priorities maintained, and has weak reference not overwritten hard constraints.
+- Can key judgments reference back to input evidence, upstream contracts, or approved plans.
+- Are unauthorized characters, locations, world rules, future payoffs, or format agreements avoided.
+- Are fact boundaries needed for downstream merging/retention preserved, and has speculation not been written as established fact.
+- Are there duplicate keys in each claim, and has `evidence` not been repeatedly overwritten with empty values.
+
+{#- System contract injected by PromptBuilder -#}

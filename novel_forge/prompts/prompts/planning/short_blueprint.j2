@@ -1,0 +1,143 @@
+{# ================================================================================
+【备注】
+================================================================================
+提示词：short_blueprint.j2
+服务步骤：SHORT_BLUEPRINT（短篇蓝图）
+作用简述：为短篇小说生成轻量叙事蓝图（Synopsis + AnchorElements + NarrativePhases +
+         TurningPoints + CharacterArcs + EmotionalArc + EndingStrategy），指导后续
+         节拍生成和草稿创作。
+上游输入：
+  - spec: 用户输入的故事规格（genre, tone, language, length_target, theme,
+          characters_hint, world_hint, conflict_hint, pov_hint,
+          opening_style, ending_style, extra_instructions）
+  - blueprint_element_selection: 来自 BLUEPRINT_ELEMENT_SELECT（required_elements,
+                                  extension_elements, focus_constraints）
+下游输出：
+  - JSON：{synopsis, anchor_elements, narrative_phases, turning_points,
+           character_arcs, emotional_arc, ending_strategy}
+  - 下游消费者：SPEC_TO_BEATS（节拍生成）/ BEATS_TO_DRAFT（草稿创作）
+消费链优先级：
+  P0 = spec 核心字段（genre/tone/length_target）/ 四要素锚定
+  P1 = blueprint_element_selection 约束 / turning_points 转折设计
+  P2 = emotional_arc 情感弧线合理性
+简要例子：
+  输入：spec={genre:"悬疑", tone:"紧张", length_target:5000}
+  输出：{synopsis:"...", anchor_elements:{time_frame:"一个冬夜",...}, narrative_phases:[...]}
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    指导层：任务定义 + 上下文消费
+    --------------------------------------------------------------------------- -#}
+
+请根据以下故事规格，为这篇短篇小说设计一份轻量叙事蓝图。蓝图将指导后续的节拍生成和草稿创作，确保故事结构有意识地控制情感弧线和节奏。
+
+**重要**：请格外关注"时间-地点-人物-事件"四要素的锚定。短篇小说篇幅有限，任何一个要素发生漂移都会破坏叙事一致性。
+
+## 故事规格
+- 体裁：{{ spec.genre }}｜基调：{{ spec.tone }}｜语言：{{ describe_language(spec.language) }}
+- 目标字数：{{ spec.length_target }}
+{% if spec.theme %}- 主题：{{ spec.theme }}{% endif %}
+{% if spec.characters_hint %}- 角色提示：{{ spec.characters_hint }}{% endif %}
+{% if spec.world_hint %}- 世界观：{{ spec.world_hint }}{% endif %}
+{% if spec.conflict_hint %}- 核心冲突：{{ spec.conflict_hint }}{% endif %}
+{% if spec.pov_hint %}- 叙事视角：{{ spec.pov_hint }}{% endif %}
+{% if spec.opening_style %}- 开篇策略：{{ spec.opening_style }}{% endif %}
+{% if spec.ending_style %}- 结尾走向：{{ spec.ending_style }}{% endif %}
+{% if spec.extra_instructions %}- 补充指令：{{ spec.extra_instructions }}{% endif %}
+
+{% set sel = blueprint_element_selection or {} %}
+{% set required_elements = sel.required_elements if sel.required_elements is defined else [] %}
+{% set extension_elements = sel.extension_elements if sel.extension_elements is defined else [] %}
+
+## 叙事要素选择器注入
+{% if sel.selector_summary is defined and sel.selector_summary %}- 选择结论：{{ sel.selector_summary }}{% endif %}
+{% if required_elements %}
+- 必要项（必须全部落实）：
+{% for item in required_elements %}
+  - {{ item.name }}：{{ item.description }}
+    提示词：{{ item.prompt_hint }}
+{% endfor %}
+{% endif %}
+{% if extension_elements %}
+- 扩展项（按本作机制启用）：
+{% for item in extension_elements %}
+  - {{ item.name }}（{{ item.category }}）
+    {% if item.selection_score is defined and item.selection_score %}优先级：{{ item.selection_score }}{% if item.selection_source is defined and item.selection_source %}｜来源：{{ item.selection_source }}{% endif %}
+    {% endif %}
+    选用原因：{{ item.selection_reason }}
+    提示词：{{ item.prompt_hint }}
+{% endfor %}
+{% endif %}
+{% if sel.focus_constraints is defined and sel.focus_constraints %}
+- 执行约束：{{ sel.focus_constraints | join("；") }}
+{% endif %}
+
+## 结构尺度建议
+{% if spec.length_target <= 3000 %}
+- 这是偏短的短篇：优先 3-4 个叙事阶段、1-2 个关键转折，避免支线过多导致主冲突失焦。
+{% else %}
+- 这是中长短篇：可使用 4-5 个叙事阶段、2-3 个关键转折，但仍须围绕单一核心事件推进。
+{% endif %}
+- 全篇尽量只保留 1 条主冲突和最多 1 条辅助关系/主题线，不要写成压缩版长篇。
+- 蓝图必须能直接指导节拍和正文，因此每个阶段都要有“具体事件”和“落点后果”，不要只写抽象气氛。
+
+## 蓝图需覆盖的维度
+
+### 1. 故事概要（synopsis）
+用 2-3 句话概括全篇核心冲突、发展轨迹和最终走向。
+概要中必须包含：谁在行动、遇到什么阻力、结尾落在什么情绪/关系/认知结果上。
+
+### 2. 叙事锚定要素（anchor_elements）
+**这是防止 LLM 漂移的关键**——必须在蓝图中锁定以下全局约束：
+- `time_frame`：故事发生的时间范围，必须来自本作输入或可自然推导的叙事尺度。
+- `primary_locations`：核心场景列表，使用本作自己的地点；不宜超过 3-4 个。
+- `core_characters`：主要人物列表，每人含 name + role；role 写其在本故事中的叙事功能，不套固定人设标签。
+- `central_event`：全篇围绕的核心事件或行动（一句话描述）
+
+### 3. 叙事阶段（narrative_phases）
+将全篇分为 3-5 个叙事阶段。短篇不按章节划分，而按"文本位置百分比"标注范围。
+**每个阶段必须锚定时间-地点-人物-事件四要素**，防止跨阶段发生漂移：
+- `phase_name`：阶段名，概括该阶段的叙事功能或情绪转向。
+- `position_start` / `position_end`：0-100 百分比
+- `description`：本阶段的叙事目标
+- `tension_level`：低/渐升/高/高潮/回落
+- `emotional_focus`：本阶段的情绪锚点
+- `time_setting`：本阶段发生的时间点/时段，必须与 anchor_elements.time_frame 一致。
+- `location`：本阶段的具体场景，必须来自 anchor_elements.primary_locations 或其自然延展。
+- `characters_present`：本阶段出场角色列表
+- `key_event`：本阶段的核心事件（一句话）
+
+### 4. 关键转折点（turning_points）
+标注 1-3 个关键转折，指明大约在文本的什么位置（百分比），以及转折的性质。
+转折必须是真正改变人物策略、关系或结局方向的事件，不能只是信息补充。
+
+### 5. 角色弧光（character_arcs）
+每个主要角色的变化意图——从什么状态到什么状态，关键转变发生在哪个阶段。
+
+### 6. 情感弧线设计（emotional_arc）
+用简短的文字描述全篇情感走势；情绪节点必须来自本作冲突和角色变化，不复制通用情绪链。
+情感弧线应与 narrative_phases 的 emotional_focus 一一对应，不能前后割裂。
+
+### 7. 收束策略（ending_strategy）
+全篇如何收束——开放式/闭合式/反转式/余韵式？最后的情感落点是什么？
+必须明确“最后一段要让读者带走什么感觉/判断/余震”，避免只有形式标签没有落点。
+注意：开放式结尾也必须是“完整的开放”，即主冲突已走到一个可理解的阶段结果，只留下余味，不允许停在像长篇连载一样的“下一章再说”。
+
+
+## 蓝图一致性自检
+1. narrative_phases 的 position_start/position_end 必须覆盖 0-100 且不重叠。
+2. 每个 narrative_phase 必须包含 time_setting、location、characters_present、key_event。
+3. anchor_elements 中的 core_characters 必须与 character_arcs 中的角色对应。
+
+## 质量校准
+- 工作身份：你是一位长篇叙事架构师，擅长把故事资产拆成可承接、可验证、不过度剧透的执行计划。
+- 规划推断路径：先锁定 P0 硬约束，再分配 P1 推进节奏，最后用 P2 风格/主题补足表现层。
+- 字段级质量示例（非输出格式）：平弱=“推进关系”；高质量=“写清谁因何行动、关系如何变化、下一环如何承接”。
+- 可操作路径：计划项要能被后续写作/审计直接检查，避免只给抽象愿望或主题口号。
+
+## 交付前核验
+- P0/P1/P2 优先级是否被保持，且没有让弱参考覆盖硬约束。
+- 是否能把关键判断回指到输入证据、上游契约或已批准计划。
+- 是否避免新增未授权的人物、地点、世界规则、未来 payoff 或格式协议。
+- 是否把抽象目标转化为可观察的行动、冲突、状态变化或章节承接点。

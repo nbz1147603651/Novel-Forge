@@ -1,0 +1,190 @@
+{%- from "_styles/_render_style_profile.j2" import render_style_profile_for_stage -%}
+{%- import "_base/_calculate_word_constraints.j2" as wc_macros -%}
+{%- from "_quality_standards.j2" import creative_specificity_rules -%}
+
+{#
+================================================================================
+【Notes】
+================================================================================
+Template: edit_draft.j2
+Service Step: EDIT (Short Story Draft Editing)
+Brief Description: Apply at most two targeted revisions from one consolidated diagnosis queue.
+Upstream Input:
+  - draft_text: from DRAFT (Draft Body Text)
+  - beats: from BEATS (Beat Information)
+  - blueprint: from BLUEPRINT_ELEMENT_SELECT (Blueprint Constraints)
+  - execution_plan: Execution Plan
+  - eval_feedback: from EVALUATE (Evaluation Feedback)
+  - completeness_issues: Completeness Issues
+  - prompt_leak_hits: Prompt Leakage
+  - style_profile: from StyleProfile
+Downstream Output:
+  - text: Plain Text Edited Short Story Body
+  - Downstream Consumer: ShortCreativeStep / EvaluateStep
+Consumption Chain Priority:
+  P0 = Word Count Constraints / Blueprint Alignment / Completeness / Prompt Leaks
+  P1 = Logical Causality / Character Dialogue / Beat Implementation
+  P2 = Literary Style / Sensory Diversity
+Brief Example:
+  Input: draft_text="Lin Yuan walked on the street...", beats=[{beat_type:"inciting", summary:"Discovers clue"}]
+  Output: "Morning, Lin Yuan crossed the alley, his gaze falling to the ground..." (Plain Text)
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer: Task Definition + Context Consumption
+    --------------------------------------------------------------------------- -#}
+Apply targeted revision round {{ iteration }} to the following short story draft. The round number is a budget marker, not a fixed editing theme.
+
+## Current Draft
+{{ draft_text }}
+
+{# ============================================================
+source_template_hash: 31047e264d8a03c896ff7ac2a0cac509ad8983508041f5c28299ccd70d509099
+   Reference Information (beats + blueprint + execution_plan)
+   ============================================================ #}
+
+## Reference Beats
+{% for beat in beats.beats %}
+{{ beat.sequence }}. [{{ beat.beat_type | upper }}] {{ beat.summary }} (Tension {{ beat.tension_level }}/10)
+{% endfor %}
+{% if blueprint is defined and blueprint %}
+
+## Blueprint Constraints
+- Synopsis: {{ blueprint.synopsis }}
+{% if blueprint.emotional_arc %}- Emotional Arc: {{ blueprint.emotional_arc }}{% endif %}
+{% if blueprint.ending_strategy %}- Ending Strategy: {{ blueprint.ending_strategy }}{% endif %}
+{% if blueprint.anchor_elements %}
+{% set anchor = blueprint.anchor_elements %}
+{% if anchor.time_frame %}- Time Frame: {{ anchor.time_frame }}{% endif %}
+{% if anchor.primary_locations %}- Primary Locations: {{ anchor.primary_locations | join(', ') }}{% endif %}
+{% if anchor.core_characters %}- Core Characters: {% for c in anchor.core_characters %}{{ c.name }}{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}
+{% if anchor.central_event %}- Central Event: {{ anchor.central_event }}{% endif %}
+{% endif %}
+{% if blueprint.element_selection is defined and blueprint.element_selection and blueprint.element_selection.extension_elements %}
+### Narrative Element Execution Check
+The following genre-specific narrative elements are for expression reference only. If the body already has natural landing points, you may strengthen them appropriately—avoid forcing coverage for its own sake:
+{% for elem in blueprint.element_selection.extension_elements %}
+- **{{ elem.name }}**: {{ elem.prompt_hint }}
+{% endfor %}
+{% endif %}
+{% endif %}
+{% if execution_plan is defined and execution_plan %}
+
+## Local Execution Reminders
+{% if execution_plan.opening_contract %}- Opening: {{ execution_plan.opening_contract }}{% endif %}
+{% if execution_plan.ending_contract %}- Ending: {{ execution_plan.ending_contract }}{% endif %}
+{% for item in execution_plan.beat_execution_plan | default([]) %}
+{{ item.sequence }}. Approx. {{ item.word_budget | default(0) }} words | Phase: {{ item.phase_name | default('Unnamed Phase') }}{% if item.turning_point_hint | default('') %} | Must Land Turning Point: {{ item.turning_point_hint }}{% endif %}
+{% endfor %}
+{% if execution_plan.completion_contract %}
+### Completeness Contract
+{% if execution_plan.completion_contract.core_question %}- Core Question: {{ execution_plan.completion_contract.core_question }}{% endif %}
+{% if execution_plan.completion_contract.resolution_target %}- Resolution Target: {{ execution_plan.completion_contract.resolution_target }}{% endif %}
+{% if execution_plan.completion_contract.ending_strategy %}- Ending Strategy: {{ execution_plan.completion_contract.ending_strategy }}{% endif %}
+{% if execution_plan.completion_contract.final_emotional_landing %}- Final Emotional Landing: {{ execution_plan.completion_contract.final_emotional_landing }}{% endif %}
+{% endif %}
+{% endif %}
+
+{# ============================================================
+   ★ Repair Instructions (Prioritized — Must Execute Top-Down)
+   ============================================================ #}
+
+## ★ Repair Instructions (Prioritized — Must Execute Top-Down)
+
+### 【P0】Hard Constraints (Blocking Issues — Must Fix First)
+{% if target_word_count is defined and target_word_count %}
+- **[Word Count Self-Check]** {{ wc_macros.render_word_constraint_self_check(target_word_count) }}
+{% endif %}
+{% if completeness_issues %}
+- **[Completeness]** The following completeness issues must be fixed:
+{% for item in completeness_issues %}
+  - {{ item }}
+{% endfor %}
+{% endif %}
+{% if completeness_warning %}
+- **[Completeness Warning]** {{ completeness_warning }}
+{% endif %}
+{% if repair_focus_issues %}
+- **[Targeted Quality Repair]** The following issues must be fixed with priority:
+{% for item in repair_focus_issues %}
+  - {{ item }}
+{% endfor %}
+{% endif %}
+{% if repair_warning %}
+- **[Repair Target]** {{ repair_warning }}
+{% endif %}
+{% if blueprint is defined and blueprint %}
+- **[Blueprint Alignment]** Do not deviate from the blueprint-anchored time, location, main character, and central event; if the opening or ending does not meet the execution goals of execution_plan, correct it with priority.
+{% endif %}
+{% if prompt_leak_hits %}
+- **[Prompt Cleanup]** Remove the following prompt traces:
+{% for item in prompt_leak_hits %}
+  - {{ item }}
+{% endfor %}
+{% endif %}
+
+### 【P1】Important Repairs (Must Handle After P0 is Satisfied)
+- Treat the P0 issue queue above and high-priority evaluation suggestions as the only proactive text-mutation scope.
+- Preserve any structure, relationship, POV, ending, and world rule not named by the issue queue; do not perform incidental rewrites.
+- Make the smallest sufficient change: begin at the located paragraph and widen only when causality, continuity, or intent restoration requires adjacent context.
+{% if opening_style %}- Do not deviate from the opening requirement: {{ opening_style }}.{% endif %}
+{% if ending_style %}- Do not deviate from the ending requirement: {{ ending_style }}.{% endif %}
+- Preserve the established tone ({{ tone }}); style polish may not override P0/P1 repairs.
+{% if eval_feedback %}
+**Previous Round Evaluation Feedback (Please Prioritize Fixing This Round)**
+- Evaluation Total Score: {{ "%.1f"|format(eval_feedback.overall_score | default(0)) }} / 10
+{% if eval_feedback.summary %}- Evaluation Summary: {{ eval_feedback.summary }}{% endif %}
+{% if eval_feedback.low_dimensions %}
+### Low-Scoring Dimensions (<7)
+{% for dim in eval_feedback.low_dimensions %}
+- {{ dim.dimension }}: {{ "%.1f"|format(dim.score | default(0)) }}{% if dim.comment %} ({{ dim.comment }}){% endif %}
+{% endfor %}
+{% endif %}
+{% if eval_feedback.repair_suggestions %}
+### Targeted Repair Suggestions
+{% for suggestion in eval_feedback.repair_suggestions %}
+- [{{ suggestion.dimension or "general" }}][{{ suggestion.priority or "medium" }}] {{ suggestion.issue }}{% if suggestion.location %} ({{ suggestion.location }}){% endif %}: {{ suggestion.suggestion }}
+{% endfor %}
+{% endif %}
+{% endif %}
+
+### 【P2】Suggested Improvements (Only Process When P0/P1 Are Both Satisfied)
+{% if word_count_warning %}
+- **[Word Count Reminder]** {{ word_count_warning }}
+{% endif %}
+
+{{ render_style_profile_for_stage(style_profile | default(None), stage="edit", include_banned_phrases=true) }}
+
+{# ============================================================
+   General Checks + Output Format
+   ============================================================ #}
+
+## General Checks
+- Original beat content must not be omitted.
+- Word count must remain within target range (target approximately {{ target_word_count or 'not provided' }} words).
+- Short stories must have complete beginning, progression, and closure; even if retaining ambiguity, it must not appear as "story only halfway written."
+- Check character relationship consistency: If a relationship changes from "trust/ally" to "testing/hostile," there must be a clear triggering event; otherwise, correct to a reasonable state.
+- Check scene transitions: Each scene transition should have at least one sensory anchor (e.g., specific smell, touch, sound) as transition.
+- If evaluation feedback from the previous round is provided, first fix low-scoring dimensions and high-priority repair suggestions, then do polishing enhancements.
+{{ creative_specificity_rules(title="") }}
+{% if completeness_warning %}
+- **Prioritize Completeness Fixes**: Complete this short story into a full story; do not leave it hanging in a "to be continued" state.
+- **Final Paragraph Rewrite Standard**: Must fulfill the resolution target and provide a clear emotional or event landing point.
+{% endif %}
+
+## Quality Calibration
+- Work Identity: You are a highly contract-conscious novel executive editor, skilled at transforming input constraints into narrative content with actions, choices, and consequences.
+- Creative Inference Path: First find the emotional engine and conflict pressure, then ground them in actions, dialogue, scene staging, and consequences.
+- Field-Level Quality Examples (Not Output Format): Weak = "The character is very nervous"; High Quality = "The character exposes cost, misjudgment, or emotional turn before making a concrete choice."
+- Actionable Path: Every new addition should serve the given character motivation, scene resistance, suspense advancement, or emotional landing point.
+
+## Pre-Delivery Verification
+- Are P0/P1/P2 priorities maintained, and no weak references overriding hard constraints?
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans?
+- Are unauthorized new characters, locations, world rules, future payoffs, or format agreements avoided?
+- Are abstract goals transformed into observable actions, conflicts, state changes, or chapter continuation points?
+
+{#- ---------------------------------------------------------------------------
+    Format Layer: Output Format Constraints
+    --------------------------------------------------------------------------- -#}

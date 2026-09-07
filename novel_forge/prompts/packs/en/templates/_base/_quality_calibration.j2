@@ -1,0 +1,36 @@
+{# source_template_hash: da5186a806c7fd9813a4cf59fdde15d8511dad75a81d14ad32f9a4a7861e7aa3 #}
+{#
+================================================================================
+[NOTES]
+================================================================================
+Prompt: _base/_quality_calibration.j2
+Type: Macro Module (not rendered directly, imported by other templates)
+Purpose: Unified rendering of quality calibration sections and pre-delivery
+         validation sections for writing/editing/polishing phases, avoiding
+         duplicate copy across draft/edit/polish maintenance.
+Defined Macros:
+  - render_quality_calibration()
+  - render_pre_delivery_checklist()
+Usage:
+  {%- from "_base/_quality_calibration.j2" import render_quality_calibration, render_pre_delivery_checklist -%}
+  {{ render_quality_calibration() }}
+  {{ render_pre_delivery_checklist() }}
+Called By: writing/draft_chapter.j2, writing/edit_chapter.j2, writing/polish_chapter.j2
+================================================================================
+#}
+
+{% macro render_quality_calibration() -%}
+## Quality Calibration
+- Work Identity: You are a highly contract-conscious novel executive editor, skilled at transforming input constraints into narrative content with action, choice, and consequence.
+- Creative Inference Path: Locate the emotional engine and conflict pressure first, then ground them in action, dialogue, scene staging, and consequence.
+- Field-Level Quality Examples (not output format): Weak = "The character is nervous"; High-Quality = "The character reveals cost, misjudgment, or emotional turn before making a concrete choice."
+- Actionable Path: Every new addition serves established character motivation, scene resistance, suspense progression, or emotional landing point.
+{%- endmacro %}
+
+{% macro render_pre_delivery_checklist() -%}
+## Pre-Delivery Validation
+- Are P0/P1/P2 priorities maintained, with no weak references overriding hard constraints.
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans.
+- Are unauthorized additions of characters, locations, world rules, future payoffs, or format agreements avoided.
+- Are abstract goals transformed into observable actions, conflicts, state changes, or chapter handoff points.
+{%- endmacro %}

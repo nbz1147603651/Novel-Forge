@@ -1,0 +1,111 @@
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：_base/_editorial_card.j2
+类型：宏模块（不被直接渲染，仅供其他模板 import）
+作用简述：统一渲染编辑契约卡（EditorialContract）在各写作阶段的投影。
+          draft/edit/wave/polish 共享同一数据结构，但动作标签和详细度不同。
+定义宏：
+  - render_editorial_card(editorial, mode="draft")
+    mode 取值：
+      "draft"   → DRAFT 阶段，完整展示，动作标签="起草动作"
+      "edit"    → EDIT 阶段，完整展示，动作标签="修订动作"
+      "wave"    → WAVE 阶段，精简展示（只用于过渡段参考）
+      "polish"  → POLISH 阶段，精简展示（只用于语言精修参考）
+使用方式：
+  {%- from "_base/_editorial_card.j2" import render_editorial_card -%}
+  {{ render_editorial_card(editorial, mode="draft") }}
+被调用方：writing/draft_chapter.j2, writing/edit_chapter.j2,
+          writing/wave_chapter.j2, writing/polish_chapter.j2
+================================================================================
+#}
+
+{% macro render_editorial_card(editorial, mode="draft") -%}
+{% set is_full = mode in ("draft", "edit") %}
+{% set action_label = "起草动作" if mode == "draft" else ("修订动作" if mode == "edit" else ("编织动作" if mode == "wave" else "精修动作")) %}
+{% set voice_label = "对白声纹" if mode == "draft" else ("声纹修订目标" if mode == "edit" else "声纹参考") %}
+{% set editorial_risk = editorial.risk_guidance | default({}) %}
+{% set editorial_risk_items = editorial_risk.get('items', []) if editorial_risk else [] %}
+{% set denouement_risk = editorial_risk.get('denouement', {}) if editorial_risk else {} %}
+{% set has_body_budget = editorial.body_signal_budget_per_high_emotion_scene is defined and editorial.body_signal_budget_per_high_emotion_scene is not none %}
+{% set has_editorial_content = editorial.over_denouement_budget | default(false) or has_body_budget or editorial_risk_items or denouement_risk.guidance | default('') or editorial.character_voices | default([]) or editorial.theme_policies | default([]) or editorial.symbol_policies | default([]) or editorial.scene_resistance_rules | default([]) or editorial.revelation_ladder | default([]) or editorial.editorial_element_directives | default([]) or editorial.time_bridge_policies | default([]) or (mode == "draft" and editorial.forbidden_confirmation_phrases | default([])) %}
+{% if has_editorial_content %}
+## 编辑契约卡（P1）
+{% if editorial.over_denouement_budget %}
+{% if mode == "draft" %}- 本章已超过主高潮预计余波：必须写出新行动、新冲突或新信息，不得重复圆满确认。
+{% elif mode == "edit" %}- 本章已超过主高潮预计余波：删减重复确认，保留新行动、新冲突或新信息。
+{% elif mode == "wave" %}- 余波/尾声：补过渡时不得额外添加纯确认段。
+{% else %}- 本章已超过主高潮预计余波：精修时不得新增纯确认段。
+{% endif %}
+{% endif %}
+{% if has_body_budget %}- 高情绪场景身体信号预算：每场最多 {{ editorial.body_signal_budget_per_high_emotion_scene }} 个。{% endif %}
+{% if editorial_risk_items or denouement_risk.guidance | default('') %}
+- 编辑准入风险{{ action_label }}：
+{% if denouement_risk.guidance | default('') %}
+{% if mode == "draft" %}  - 余波/尾声：{{ denouement_risk.guidance }}；不得用连续拥抱、道歉、承诺、旁白总结来替代新后果。
+{% elif mode == "edit" %}  - 余波/尾声：{{ denouement_risk.guidance }}；优先删减第二次及之后的纯确认段，改为新信息、新行动或后果落地。
+{% elif mode == "wave" %}  - 余波/尾声：{{ denouement_risk.guidance }}；补过渡时不得额外添加纯确认段。
+{% else %}  - 余波/尾声：{{ denouement_risk.guidance }}；精修时保持原事实，只微调句法和节奏。
+{% endif %}
+{% endif %}
+{% for item in editorial_risk_items %}
+  - [{{ item.severity }}] {{ item.summary }}；{{ action_label }}={{ item.action }}
+{% endfor %}
+{% endif %}
+{% if editorial.character_voices %}
+- {{ voice_label }}：
+{% for item in editorial.character_voices %}
+{% if mode == "draft" %}  - {{ item.character }}：{{ item.sentence_profile }}；解释倾向={{ item.explanation_bias }}；禁用={{ item.taboo_patterns | join('、') }}
+{% elif mode == "edit" %}  - {{ item.character }}：{{ item.sentence_profile }}；解释倾向={{ item.explanation_bias }}；情绪句法={{ item.emotion_syntax }}
+{% elif mode == "wave" %}  - {{ item.character | default('角色') }}：句式={{ item.sentence_profile | default('') }}；情绪句法={{ item.emotion_syntax | default('') }}；解释倾向={{ item.explanation_bias | default('') }}
+{% if item.signature_moves | default([]) %}  标志动作/句法：{{ item.signature_moves | join('；') }}{% endif %}
+{% if item.sample_lines | default([]) %}  声纹样例（只作节奏参考，禁止原句复用）：{{ item.sample_lines[:2] | join(' / ') }}{% endif %}
+{% if item.taboo_patterns | default([]) %}  禁用口吻：{{ item.taboo_patterns | join('、') }}{% endif %}
+{% else %}  - {{ item.character }}：{{ item.sentence_profile }}；解释倾向={{ item.explanation_bias }}
+{% endif %}
+{% endfor %}
+{% endif %}
+{% if editorial.theme_policies %}- 主题呈现：{{ editorial.theme_policies | join('；') }}{% endif %}
+{% if editorial.symbol_policies %}
+{% if mode == "draft" %}- 象征物策略（按解释预算执行，不额外补含义说明）：
+{% for item in editorial.symbol_policies %}
+  - {{ item.symbol }}：{{ item.narrative_function }}；解释策略={{ item.explanation_policy }}；{{ item.escalation_rule }}
+{% endfor %}
+{% elif mode == "edit" %}- 象征物处理：
+{% for item in editorial.symbol_policies %}
+  - {{ item.symbol }}：解释策略={{ item.explanation_policy }}；最多明说 {{ item.max_explicit_explanations }} 次；{{ item.escalation_rule }}
+{% endfor %}
+{% else %}- 象征物策略：
+{% for item in editorial.symbol_policies %}
+  - {{ item.symbol }}：{{ item.explanation_policy }}；{{ item.escalation_rule }}
+{% endfor %}
+{% endif %}
+{% endif %}
+{% if editorial.scene_resistance_rules %}
+{% if mode == "draft" %}- 场景阻力必须落到空间、流程、人群、距离、遮挡、物件或时间窗口：
+{% for item in editorial.scene_resistance_rules %}
+  - {{ item.scene_type }}：{{ item.required_resistance }}（{{ item.examples | join('、') }}）
+{% endfor %}
+{% elif mode == "edit" %}- 场景阻力：{{ editorial.scene_resistance_rules | map(attribute='required_resistance') | join('；') }}
+{% else %}- 场景阻力规则：
+{% for item in editorial.scene_resistance_rules %}
+  - {{ item.scene_type | default('场景') }}：{{ item.required_resistance | default('') }}{% if item.examples | default([]) %}（{{ item.examples | join('、') }}）{% endif %}
+{% endfor %}
+{% endif %}
+{% endif %}
+{% if editorial.revelation_ladder %}
+{% if mode == "draft" %}- 揭示阶梯：{% for item in editorial.revelation_ladder %}{{ item.thread }}第{{ item.stage_order }}级={{ item.stage }}{% if item.target_chapter %}/目标第{{ item.target_chapter }}章{% endif %}/后果={{ item.required_action_consequence }}{% if not loop.last %}；{% endif %}{% endfor %}
+{% else %}- 揭示阶梯：{% for item in editorial.revelation_ladder %}{{ item.thread }}第{{ item.stage_order }}级={{ item.stage }}{% if not loop.last %}；{% endif %}{% endfor %}
+{% endif %}
+{% endif %}
+{% if editorial.editorial_element_directives %}
+- 叙述要素编辑指令：
+{% for item in editorial.editorial_element_directives %}
+  - {{ item.element_id }}：{{ item.requirement }}；完成标准={{ item.success_criteria }}
+{% endfor %}
+{% endif %}
+{% if editorial.time_bridge_policies %}- 时间桥规则：{{ editorial.time_bridge_policies | join('；') }}{% endif %}
+{% if mode == "draft" and editorial.forbidden_confirmation_phrases %}- 确认型台词禁/限复用：{{ editorial.forbidden_confirmation_phrases | join('；') }}{% endif %}
+{% endif %}
+{%- endmacro %}

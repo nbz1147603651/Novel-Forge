@@ -1,0 +1,114 @@
+{# ================================================================================
+【备注】
+================================================================================
+提示词：short_creative_summary.j2
+服务步骤：SHORT_CREATIVE_SUMMARY（短篇创作摘要）
+作用简述：对短篇小说终稿进行创作分析，从结构、人物、主题三个维度提取深层洞察，
+         评估蓝图/节拍落地情况，输出创作报告。
+上游输入：
+  - genre: 体裁
+  - tone: 基调
+  - theme: 主题
+  - length_target: 目标字数
+  - blueprint: 来自 SHORT_BLUEPRINT（synopsis, emotional_arc, ending_strategy,
+                turning_points 等蓝图设计意图）
+  - beats: 来自 SPEC_TO_BEATS（节拍序列）
+  - final_text: 短篇小说终稿正文
+下游输出：
+  - JSON：{characters, narrative_analysis, thematic_analysis, creative_highlights,
+           improvement_suggestions, beat_fulfillment}
+  - 下游消费者：Memory 系统存档 / 用户阅读
+消费链优先级：
+  P0 = beat_fulfillment 节拍落地检查
+  P1 = creative_highlights 亮点识别 / improvement_suggestions 改进建议
+  P2 = thematic_analysis 主题分析
+简要例子：
+  输入：final_text="...", blueprint={synopsis:"...", beats:[...]}
+  输出：{characters:[...], narrative_analysis:{...}, beat_fulfillment:[...]}
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    指导层：任务定义 + 上下文消费
+    --------------------------------------------------------------------------- -#}
+
+请对以下短篇小说终稿做创作分析，从结构、人物、主题三个维度提取深层洞察。
+
+## 故事信息
+- 体裁：{{ genre }}
+- 基调：{{ tone }}
+{% if theme %}- 主题：{{ theme }}{% endif %}
+{% if length_target %}- 目标字数：{{ length_target }}{% endif %}
+{% if blueprint %}
+
+## 蓝图设计意图
+- 梗概：{{ blueprint.synopsis }}
+{% if blueprint.emotional_arc %}- 情感弧线：{{ blueprint.emotional_arc }}{% endif %}
+{% if blueprint.ending_strategy %}- 结尾策略：{{ blueprint.ending_strategy }}{% endif %}
+{% if blueprint.turning_points %}
+- 关键转折：{% for tp in blueprint.turning_points %}{{ tp.description }}（{{ tp.position_percent }}%）{% if not loop.last %}；{% endif %}{% endfor %}
+{% endif %}
+{% endif %}
+
+## 节拍结构（创作意图）
+{% for beat in beats %}
+{{ beat.sequence }}. [{{ beat.beat_type | upper }}] {{ beat.summary }}（张力{{ beat.tension_level }}/10）
+   角色：{{ beat.characters_involved | join('、') }}{% if beat.setting %} | 场景：{{ beat.setting }}{% endif %}
+{% endfor %}
+
+## 终稿正文
+{{ final_text }}
+
+---
+
+## 分析要求
+
+### 1. 角色分析（characters）
+对正文中每个有实质行动的角色，提取：
+- `name`：角色名
+- `role`：主角 / 配角 / 功能性角色
+- `arc_summary`：角色弧光概述（该角色从 A 状态到 B 状态的变化，1-2 句）
+- `key_traits`：通过行为/对话体现的性格特质（2-4 个词）
+- `relationships`：与其他角色的关系（如：`[{"target": "小白", "type": "对手", "note": "从误解到和解"}]`）
+
+### 2. 叙事结构分析（narrative_analysis）
+- `pacing_assessment`：节奏评价（紧凑/松散/张弛有度，1-2 句）
+- `tension_curve`：实际张力曲线与节拍意图的匹配度（high / medium / low），并说明原因
+- `structure_type`：实际结构类型（如"三幕式"、"环形叙事"、"倒叙"、"意识流"等）
+- `turning_points`：关键转折点列表，每项含 `description` 和 `effectiveness`（高/中/低）
+- `opening_hook`：开篇钩子的有效性评价（1 句）
+- `ending_impact`：结尾收束力评价（1 句）
+
+### 3. 主题分析（thematic_analysis）
+- `core_theme`：故事的核心主题（1 句话）
+- `theme_delivery`：主题是通过情节/对话/意象哪种方式传达的
+- `symbolic_elements`：正文中的象征性元素（如果有）
+- `emotional_resonance`：整体情感共鸣点（1-2 句）
+
+### 4. 创作亮点与建议
+- `creative_highlights`：3-5 条具体的写作亮点（指出对应情节/句段功能，不要长篇引用原文）
+- `improvement_suggestions`：2-3 条改进建议（具体且可操作，优先指出蓝图/节拍未完全兑现的地方）
+
+### 5. 节拍落地检查（beat_fulfillment）
+对每个节拍，判断是否在正文中有效落地：
+- `sequence`：节拍序号
+- `fulfilled`：true / false
+- `note`：简要说明（如何落地 / 为何未落地）
+
+
+## 分析自检
+1. 角色分析必须来自正文中的实质行动，不为只被提及的人物补全弧光。
+2. 叙事结构分析必须对照蓝图与节拍意图，不只写泛泛评价。
+3. 节拍落地检查必须逐条覆盖输入节拍。
+
+## 质量校准
+- 工作身份：你是一位擅长故事节奏与情感驱动的创意策划师，能把输入规格转化为可执行的叙事材料。
+- 创意推断路径：先找情感引擎与冲突压力，再落到动作、对白、场面调度和后果。
+- 字段级质量示例（非输出格式）：平弱=“角色很紧张”；高质量=“角色在具体选择前暴露代价、误判或情绪转折”。
+- 可操作路径：每个新增内容都服务于已给人物动机、场景阻力、悬念推进或情绪落点。
+
+## 交付前核验
+- P0/P1/P2 优先级是否被保持，且没有让弱参考覆盖硬约束。
+- 是否能把关键判断回指到输入证据、上游契约或已批准计划。
+- 是否避免新增未授权的人物、地点、世界规则、未来 payoff 或格式协议。
+- 是否把抽象目标转化为可观察的行动、冲突、状态变化或章节承接点。

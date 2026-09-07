@@ -1,0 +1,496 @@
+version: 2
+scope: phase-1-react-tauri-ui
+source_of_truth:
+  desktop_root: novel_forge/desktop
+  registration: novel_forge/desktop/page_registrations.py
+  baseline_directory: tests/desktop/baselines
+  default_theme: narrative_ember
+  themes: [narrative_ember, ink_jade, ink_amethyst, stillwater, twilight_ink]
+  viewports:
+    default: [1440, 900]
+    minimum: [1180, 760]
+    wide: [1728, 1117]
+  fixture_policy: fixed-engine-client-views
+  dynamic_masks: [elapsed-time, token-count, timestamp, random-id, animation-frame]
+
+status_legend:
+  inventory: source-and-trigger-confirmed
+  foundation: React interaction exists, but source parity is not yet accepted
+  partial: only a subset of required source states is implemented
+  pending: no React equivalent yet
+  accepted: same-fixture visual comparison has met the threshold
+
+surfaces:
+  # P0 application shell and the six registered first-level pages.
+  - id: app-shell
+    priority: P0
+    source: novel_forge/desktop/window/core.py
+    react: clients/nimo-desktop/src/App.tsx
+    trigger: application-launch
+    states: [default, compact, side-rail-collapsed, restore-ui-session]
+    fixture: workspace-populated
+    status: foundation
+
+  - id: dashboard
+    priority: P0
+    source: novel_forge/desktop/pages/standalone/dashboard_page.py
+    react: clients/nimo-desktop/src/App.tsx#Dashboard
+    trigger: side-rail > 案头
+    states: [workspace-populated, empty, job-running, job-paused, job-failed]
+    fixture: workspace-with-short-and-long-projects
+    baseline: tests/desktop/baselines/dashboard.png
+    status: foundation
+
+  - id: projects
+    priority: P0
+    source: novel_forge/desktop/pages/standalone/projects_page.py
+    react: clients/nimo-desktop/src/components/ProjectsReader.tsx#ProjectsReader
+    trigger: side-rail > 卷帙
+    states: [workspace-populated, empty, filtered, project-selected]
+    fixture: workspace-with-short-and-long-projects
+    baseline: tests/desktop/baselines/projects.png
+    status: foundation
+
+  - id: workflow
+    priority: P0
+    source: novel_forge/desktop/pages/workflow/page.py
+    react: clients/nimo-desktop/src/App.tsx#WorkflowPage
+    trigger: side-rail > 机杼
+    states: [short-form, short-imported, short-preview, short-launch-intent, long-form, running, stopped, validation-error, empty-history]
+    fixture: long-init-running
+    baseline: tests/desktop/baselines/workflow.png
+    status: foundation
+
+  - id: settings
+    priority: P0
+    source: novel_forge/desktop/pages/settings/page.py
+    react: clients/nimo-desktop/src/components/SettingsPage.tsx + clients/nimo-desktop/src/components/settings-page-loader.ts
+    trigger: side-rail > 火候
+    states: [cold-shell, default, theme-preview, validation-error, saved, model-routing]
+    fixture: single-provider-settings
+    baseline: tests/desktop/baselines/settings.png
+    status: foundation
+
+  - id: chapter-studio
+    priority: P0
+    source: novel_forge/desktop/pages/chapter_studio/page.py
+    react: clients/nimo-desktop/src/App.tsx#ChapterStudioPage
+    trigger: side-rail > 章台
+    states: [no-project, prepared, running, checkpoint, completed]
+    fixture: long-project-at-chapter-five
+    baseline: tests/desktop/baselines/chapter_studio.png
+    status: foundation
+
+  - id: voice-studio
+    priority: P0
+    source: novel_forge/desktop/pages/voice_studio/page.py
+    react: clients/nimo-desktop/src/App.tsx#VoiceStudioPage
+    trigger: side-rail > 声腔
+    states: [empty, configured, guidance-draft, candidate-preview, candidate-accepted, playback, post-processing]
+    fixture: configured-voice-project
+    status: foundation
+
+  # Shared overlays and readers reached from more than one primary page.
+  - id: task-focus-dialog
+    priority: P1
+    source: novel_forge/desktop/components/task_focus/dialog.py
+    react: clients/nimo-desktop/src/components/TaskObservationDialog.tsx
+    trigger: 案头/机杼/章台/声腔 > 任务关注 > 展开详情
+    states: [connecting, running, paused, failed, completed, reasoning-collapsed]
+    fixture: streaming-long-init-task
+    status: foundation
+
+  - id: floating-stream-window
+    priority: P1
+    source: novel_forge/desktop/components/task_focus/stream_window.py
+    react: clients/nimo-desktop/src/components/FloatingStreamDialog.tsx
+    trigger: 任务关注 > 浮动流窗口
+    states: [streaming, reasoning-collapsed, reasoning-expanded, calls, raw-events, completed]
+    fixture: streaming-long-init-task
+    status: foundation
+
+  - id: document-renderer
+    priority: P1
+    source: novel_forge/desktop/pages/document_renderer
+    react: clients/nimo-desktop/src/components/ContentRenderer.tsx
+    trigger: 卷帙 > 文档 / 机杼 > 阶段产物
+    states: [markdown, json, plain-text, malformed-json, empty]
+    fixture: long-project-reader
+    status: foundation
+
+  - id: project-document-reader
+    priority: P1
+    source: novel_forge/desktop/pages/standalone/projects_page.py
+    react: clients/nimo-desktop/src/components/ProjectsReader.tsx#ProjectDocument
+    trigger: 卷帙 > 项目 > 分类 > 文档
+    states: [chapter, report, empty, raw-json]
+    fixture: long-project-reader
+    status: foundation
+
+  # 案头 / 卷帙 operations.
+  - id: project-directory-dialog
+    priority: P1
+    source: novel_forge/desktop/pages/standalone/projects_page.py
+    react: clients/nimo-desktop/src/App.tsx#ProjectDetail
+    trigger: 项目详情 > 打开目录
+    states: [default]
+    fixture: selected-long-project
+    status: foundation
+
+  - id: project-rebuild-vectors-dialog
+    priority: P1
+    source: novel_forge/desktop/pages/standalone/dashboard_page.py#_request_rebuild_vectors_for_selected
+    react: clients/nimo-desktop/src/components/RebuildVectorsDialog.tsx
+    trigger: 项目详情 > 重建向量
+    states: [confirmation, queued]
+    fixture: selected-long-project
+    status: foundation
+
+  - id: project-delete-dialog
+    priority: P1
+    source: novel_forge/desktop/pages/standalone/projects_page.py
+    react: clients/nimo-desktop/src/App.tsx#ProjectDetail
+    trigger: 项目详情 > 删除项目
+    states: [confirmation, removed, cancellation]
+    fixture: selected-long-project
+    status: foundation
+
+  # 机杼 primary-page overlays and form dialogs.
+  - id: workflow-error-log-dialog
+    priority: P1
+    source: novel_forge/desktop/pages/workflow/widgets.py#TaskFlowErrorLogDialog
+    react: clients/nimo-desktop/src/components/WorkflowErrorLogDialog.tsx
+    trigger: 机杼 > 错误日志
+    states: [empty, unresolved, marked-resolved]
+    fixture: workflow-with-format-error
+    status: foundation
+
+  - id: workflow-artifact-dialog
+    priority: P1
+    source: novel_forge/desktop/pages/workflow/artifacts.py#StepArtifactDialog
+    react: clients/nimo-desktop/src/App.tsx#WorkflowPage
+    trigger: 机杼 > 任务阶段
+    states: [artifact, malformed-artifact, empty]
+    fixture: long-init-running
+    status: foundation
+
+  - id: workflow-cancel-dialog
+    priority: P1
+    source: novel_forge/desktop/pages/workflow/jobs.py#CancelJobDialog
+    react: clients/nimo-desktop/src/components/WorkflowCancelDialog.tsx
+    trigger: 机杼 > 停止任务
+    states: [confirmation, preserve-checkpoint, cancelled]
+    fixture: long-init-running
+    status: foundation
+
+  - id: workflow-field-editor-dialog
+    priority: P1
+    source: novel_forge/desktop/pages/workflow/forms.py#_WorkflowFieldEditDialog
+    react: clients/nimo-desktop/src/components/workflow/long-init/FieldEditDialog.tsx#FieldEditDialog
+    trigger: 机杼 > 立项表单 > 编辑字段
+    states: [text, select, validation-error, saved]
+    fixture: long-init-form
+    status: foundation
+
+  - id: workflow-ai-generate-dialog
+    priority: P1
+    source: novel_forge/desktop/pages/workflow/presets.py#_AiGenerateDialog
+    react: clients/nimo-desktop/src/components/WorkflowAiAssistant.tsx#WorkflowAiAssistant
+    trigger: 机杼 > 长篇初始化 > AI 生成
+    states: [configuration, generating, completed, failed]
+    fixture: long-init-form
+    status: foundation
+
+  - id: workflow-ai-hint-dialog
+    priority: P1
+    source: novel_forge/desktop/pages/workflow/presets.py#_AiHintDialog
+    react: clients/nimo-desktop/src/components/WorkflowAiAssistant.tsx#WorkflowAiAssistant
+    trigger: 机杼 > 长篇初始化 > AI 生成
+    states: [default, applied]
+    fixture: long-init-form
+    status: foundation
+
+  - id: workflow-ai-polish-dialog
+    priority: P1
+    source: novel_forge/desktop/pages/workflow/presets.py#_AiPolishDialog
+    react: clients/nimo-desktop/src/components/WorkflowAiAssistant.tsx#WorkflowAiAssistant
+    trigger: 机杼 > 长篇初始化 > AI 润色
+    states: [configuration, generating, completed, failed]
+    fixture: long-init-form
+    status: foundation
+
+  - id: workflow-history-dialog
+    priority: P1
+    source: novel_forge/desktop/pages/workflow/presets.py#_HistoryDialog
+    react: clients/nimo-desktop/src/components/LongInitFormPanel.tsx#LongInitFormPanel
+    trigger: 机杼 > 长篇初始化 > 创作札记
+    states: [populated, empty, restore]
+    fixture: long-init-form
+    status: foundation
+
+  - id: workflow-diff-dialog
+    priority: P1
+    source: novel_forge/desktop/pages/workflow/presets.py#_DiffDialog
+    react: clients/nimo-desktop/src/components/WorkflowAiAssistant.tsx#WorkflowAiAssistant
+    trigger: 机杼 > 长篇初始化 > AI 生成或润色预览
+    states: [default, changed, empty]
+    fixture: long-init-form
+    status: foundation
+
+  # 火候 model and configuration surfaces.
+  - id: settings-connectivity-status
+    priority: P1
+    source: novel_forge/desktop/pages/settings/components.py#_ModelStatusCard + novel_forge/desktop/pages/settings/model_mgmt.py#_test_all_connections
+    react: clients/nimo-desktop/src/components/ModelConnectionStatus.tsx + clients/nimo-desktop/src/lib/connectivity-session.ts
+    trigger: 火候 > 检测全部通路
+    states: [idle, queued, checking, success, failure, unavailable]
+    fixture: single-provider-settings
+    status: foundation
+
+  - id: model-registry
+    priority: P1
+    source: novel_forge/desktop/pages/settings/components.py#_ModelDialog
+    react: clients/nimo-desktop/src/components/ModelRoutingWorkbench.tsx
+    trigger: 火候 > 模型管理
+    states: [profile-list, selected-profile, unavailable-profile, add, edit, delete]
+    fixture: multi-provider-settings
+    status: foundation
+
+  - id: routing-matrix
+    priority: P1
+    source: novel_forge/desktop/pages/settings/page.py + novel_forge/desktop/pages/settings/components.py
+    react: clients/nimo-desktop/src/components/ModelRoutingWorkbench.tsx
+    trigger: 火候 > 流程路由
+    states: [default-model, inherited-primary-route, route-group, route-subgroup, primary-route, fallback-route, fallback-order, fallback-capability, thinking, multi-turn, task-temperature, bulk-assign, bulk-fallback-chain, collapsed-session-restore]
+    fixture: multi-provider-settings
+    status: foundation
+
+  - id: settings-creative-parameters-dialog
+    priority: P1
+    source: novel_forge/desktop/pages/settings/page.py
+    react: clients/nimo-desktop/src/components/CreativeTemperatureSection.tsx
+    trigger: 火候 > 创作火候
+    states: [collapsed, expanded, custom-scope, validation-error, saved]
+    fixture: single-provider-settings
+    status: foundation
+
+  # 章台 controls and dialogs.
+  - id: chapter-checkpoint-dialog
+    priority: P1
+    source: novel_forge/desktop/components/checkpoint_dialog.py#CheckpointDialog
+    react: clients/nimo-desktop/src/components/ChapterStudioDialogs.tsx#ChapterCheckpointDialog
+    trigger: 章台 > 待确认节点
+    states: [open, option-selected, notes, resolving, dismissed]
+    fixture: chapter-plan-checkpoint
+    status: foundation
+
+  - id: chapter-export-dialog
+    priority: P1
+    source: novel_forge/desktop/pages/chapter_studio/dialogs.py#ExportDialog
+    react: clients/nimo-desktop/src/components/ChapterStudioDialogs.tsx#ChapterExportDialog + clients/nimo-desktop/src/lib/chapter-export-session.ts
+    trigger: 章台 > 导出
+    states: [configuration, custom-range, path-selection-intent, accepted-local-request]
+    fixture: long-project-with-completed-chapters
+    baseline: tests/desktop/baselines/chapter_export_dialog.png
+    status: foundation
+
+  - id: chapter-version-diff-dialog
+    priority: P1
+    source: novel_forge/desktop/pages/chapter_studio/dialogs.py#VersionDiffDialog + novel_forge/desktop/pages/document_renderer/story_artifacts/version_diff.py#render_version_diff
+    react: clients/nimo-desktop/src/components/ChapterStudioDialogs.tsx#ChapterVersionDiffDialog + clients/nimo-desktop/src/components/ChapterVersionDiffArtifact.tsx
+    trigger: 章台 > 版本对比
+    states: [versions-unavailable, selection, same-version-noop, result-tab]
+    fixture: chapter-four-with-two-draft-versions
+    baselines: [tests/desktop/baselines/version_diff_dialog.png, tests/desktop/baselines/version_diff_artifact.png]
+    status: foundation
+
+  - id: chapter-book-audit-dialog
+    priority: P1
+    source: novel_forge/desktop/pages/chapter_studio/dialogs.py#BookAuditDialog
+    react: clients/nimo-desktop/src/components/ChapterStudioDialogs.tsx#ChapterBookAuditDialog + clients/nimo-desktop/src/lib/chapter-book-audit-session.ts
+    trigger: 章台 > 全书审计
+    states: [simple-configuration, custom-range, minimum-chapter-warning, advanced-configuration, accepted-local-request]
+    fixture: long-project-with-completed-chapters
+    baseline: tests/desktop/baselines/chapter_book_audit_dialog.png
+    status: foundation
+
+  - id: chapter-clean-dialog
+    priority: P1
+    source: novel_forge/desktop/pages/chapter_studio/dialogs.py#CleanChaptersDialog
+    react: clients/nimo-desktop/src/components/ChapterOperationsDialogs.tsx#ChapterCleanDialog + clients/nimo-desktop/src/lib/chapter-clean-session.ts
+    trigger: 章台 > 清章
+    states: [configuration, cutoff-edited, cutoff-normalized, accepted-local-request]
+    fixture: long-project-with-completed-chapters
+    baseline: tests/desktop/baselines/chapter_clean_dialog.png
+    status: foundation
+
+  - id: chapter-project-switch-dialog
+    priority: P1
+    source: novel_forge/desktop/pages/chapter_studio/dialogs.py#ProjectSwitchConfirmDialog
+    react: clients/nimo-desktop/src/components/ChapterOperationsDialogs.tsx#ChapterProjectSwitchDialog
+    trigger: 章台 > 切换项目
+    states: [active-task-confirmation, cancelled, accepted-local-intent]
+    fixture: chapter-running-project-switch
+    baseline: tests/desktop/baselines/chapter_project_switch_dialog.png
+    status: foundation
+
+  - id: chapter-error-log-dialog
+    priority: P1
+    source: novel_forge/desktop/pages/chapter_studio/jobs.py#TaskFlowErrorLogDialog
+    react: clients/nimo-desktop/src/components/WorkflowErrorLogDialog.tsx
+    trigger: 章台 > 任务流错误日志
+    states: [unresolved, marked-resolved, reopened-resolved]
+    fixture: chapter-prepared-error-log
+    baseline: tests/desktop/baselines/chapter_error_log_dialog.png
+    status: foundation
+
+  # Additional writing workbenches launched from the project/chapter context.
+  - id: narrative-blueprint-overview
+    priority: P1
+    source: novel_forge/desktop/pages/document_renderer/narrative_blueprint.py
+    react: clients/nimo-desktop/src/components/NarrativeVisualization.tsx#NarrativeTimelineRenderer
+    trigger: 章台 > 叙事工具 > 叙事总览
+    states: [populated, phase-selected, milestone-selected, lane-event-selected, weave-link-selected, empty]
+    fixture: long-project-with-narrative-blueprint
+    status: foundation
+
+  - id: character-profile
+    priority: P1
+    source: novel_forge/desktop/pages/standalone/character_profile_page.py
+    react: clients/nimo-desktop/src/components/NarrativeToolsWorkbench.tsx#CharacterWorkbench
+    trigger: 章台 > 叙事工具 > 角色档案
+    states: [selected, inspector-visible, inspector-hidden, search, status-filter, edit-draft, local-saved, discarded, empty]
+    fixture: long-project-with-characters
+    status: foundation
+
+  - id: relationship-network
+    priority: P1
+    source: novel_forge/desktop/pages/standalone/relationship_network_page.py
+    react: clients/nimo-desktop/src/components/NarrativeVisualization.tsx#RelationshipGraphRenderer
+    trigger: 章台 > 叙事工具 > 关系网络
+    states: [graph, table, type-filter, focused-character, selected-edge, inspector, empty]
+    fixture: long-project-with-characters
+    status: foundation
+
+  - id: outline-editor
+    priority: P1
+    source: novel_forge/desktop/pages/standalone/outline_editor.py#InteractiveOutlineWidget
+    react: clients/nimo-desktop/src/components/NarrativeToolsWorkbench.tsx
+    trigger: 章台 > 叙事工具 > 大纲编辑
+    states: [populated, extend-request, empty]
+    fixture: long-project-with-outline
+    status: foundation
+
+  - id: subplot-manager
+    priority: P1
+    source: novel_forge/desktop/pages/standalone/subplot_manager.py#SubplotManagerPanel
+    react: clients/nimo-desktop/src/components/NarrativeToolsWorkbench.tsx
+    trigger: 章台 > 叙事工具 > 支线管理
+    states: [default, expanded, create-request, edit-request, empty]
+    fixture: long-project-with-subplots
+    baseline: tests/desktop/baselines/subplot_manager.png
+    status: foundation
+
+  - id: final-revision
+    priority: P1
+    source: novel_forge/desktop/pages/standalone/final_revision.py#FinalRevisionWidget
+    react: clients/nimo-desktop/src/components/ProjectReaderWorkbenches.tsx#ChapterProseRevision
+    trigger: 卷帙 > 章节 > 正文 > 入砚修
+    states: [read, revision, selection-dialog, fixed-candidate, save-preview, impact-scope, unsaved-exit, saved-local]
+    fixture: project-reader-long-chapter-four-final-revision
+    baseline: tests/desktop/baselines/final_revision_save_preview.png
+    status: foundation
+
+  - id: project-reader-unsaved-changes-dialog
+    priority: P1
+    source: novel_forge/desktop/pages/standalone/projects_page.py#_confirm_embedded_editors_can_close + novel_forge/desktop/pages/standalone/final_revision.py + novel_forge/desktop/pages/standalone/outline_editor.py + novel_forge/desktop/pages/standalone/character_bible_editor.py
+    react: clients/nimo-desktop/src/components/ProjectsReader.tsx#ProjectsReader + clients/nimo-desktop/src/components/SourceMessageDialog.tsx
+    trigger: 卷帙 > 选择其他项目（终稿砚修 / 大纲润色预览 / 角色编辑未保存）
+    states: [final-revision-dirty, outline-preview-dirty, character-draft-dirty, ordered-guard, save-local, discard-local, cancel]
+    fixture: project-reader-long-chapter-four-final-revision
+    baseline: tests/desktop/baselines/reader_unsaved_final_revision_dialog.png
+    status: foundation
+
+  - id: humanize-library
+    priority: P1
+    source: novel_forge/desktop/pages/standalone/humanize_library_dashboard.py#HumanizeLibraryDashboardPage
+    react: clients/nimo-desktop/src/components/NarrativeToolsWorkbench.tsx
+    trigger: 章台 > 叙事工具 > 拟人化库
+    states: [populated, filters, search, enabled, disabled, empty, create-dialog, edit-dialog, hit-examples, duplicate-pairs, merge-target, merge-confirm, delete-confirm, import-session, export-preview, refreshed]
+    fixture: long-project-with-humanize-library
+    baseline: tests/desktop/baselines/humanize_library.png
+    status: foundation
+
+  # 声腔 overlays.
+  - id: voice-rebuild-confirm-dialog
+    priority: P1
+    source: novel_forge/desktop/pages/voice_studio/page.py#RebuildConfirmDialog
+    react: clients/nimo-desktop/src/components/VoiceRebuildDialog.tsx
+    trigger: 声腔 > 重建配音
+    states: [confirmation, preserve-overrides, cancelled]
+    fixture: configured-voice-project
+    status: foundation
+
+  - id: voice-script-segment-editor-dialog
+    priority: P1
+    source: novel_forge/desktop/pages/voice_studio/page.py#ScriptSegmentEditorDialog
+    react: clients/nimo-desktop/src/components/VoiceScriptEditorDialog.tsx
+    trigger: 声腔 > 脚本 > 编辑
+    states: [default, segment-selected, local-draft, validation-error, local-saved]
+    fixture: configured-voice-project
+    status: foundation
+
+  - id: voice-clone-dialog
+    priority: P1
+    source: novel_forge/desktop/pages/voice_studio/page.py#_on_clone_voice
+    react: clients/nimo-desktop/src/components/VoiceCloneDialog.tsx
+    trigger: 声腔 > 配音角色 > 上传克隆
+    states: [local-file, provider-file-id, authorization, running, completed, failed, local-applied]
+    fixture: sanitized-provider-file-id-prompt (capture) + configured-voice-project (interaction)
+    status: source-fixture
+
+  - id: voice-design-dialog
+    priority: P1
+    source: novel_forge/desktop/pages/voice_studio/page.py#_on_design_voice
+    react: clients/nimo-desktop/src/components/VoiceDesignDialog.tsx
+    trigger: 声腔 > 配音角色 > AI 设计
+    states: [configuration, running, completed, failed, local-applied]
+    fixture: configured-voice-project
+    status: foundation
+
+  - id: voice-guidance-dialog
+    priority: P1
+    source: novel_forge/desktop/pages/voice_studio/page.py#ScriptSegmentEditorDialog(performance_only=True)
+    react: clients/nimo-desktop/src/components/VoiceScriptEditorDialog.tsx
+    trigger: 声腔 > 配音室 > 编辑指导
+    states: [selected-segment, local-draft, local-saved, candidate-invalidated, candidate-preview, candidate-discarded, candidate-accepted, source-script-preserved]
+    fixture: configured-voice-project
+    status: foundation
+
+  - id: voice-assemble-dialog
+    priority: P1
+    source: novel_forge/desktop/pages/voice_studio/page.py
+    react: clients/nimo-desktop/src/components/VoiceDeliveryDialog.tsx
+    trigger: 声腔 > 后处理 > 装配章节音频
+    states: [configuration, running, completed, failed]
+    fixture: configured-voice-project
+    status: foundation
+
+  - id: voice-export-dialog
+    priority: P1
+    source: novel_forge/desktop/pages/voice_studio/page.py
+    react: clients/nimo-desktop/src/components/VoiceDeliveryDialog.tsx
+    trigger: 声腔 > 后处理 > 导出音频
+    states: [configuration, running, completed, failed]
+    fixture: configured-voice-project
+    status: foundation
+
+acceptance:
+  default-theme-static-max-diff-ratio: 0.0075
+  component-max-diff-ratio: 0.0025
+  required-before-accepted:
+    - source-capture
+    - same-fixture-and-viewport
+    - dynamic-mask-review
+    - core-interaction-check
+    - target-platform-tauri-capture

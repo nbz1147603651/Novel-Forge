@@ -1,0 +1,159 @@
+{
+  "provider_id": "minimax",
+  "profile_version": "1.0",
+  "emotion_compensation": {
+    "tender": {
+      "projected_to": "calm",
+      "speed_delta": -0.05,
+      "vol_delta": -0.08,
+      "inject_tags": ["(breath)"],
+      "note": "温柔降级为平静，用减速降量+气息补偿"
+    },
+    "whisper": {
+      "projected_to": "calm",
+      "speed_delta": -0.10,
+      "vol_delta": -0.15,
+      "inject_tags": ["(breath)", "(exhale)"],
+      "note": "耳语降级为平静，大幅降速降量+气息模拟"
+    },
+    "nostalgic": {
+      "projected_to": "sad",
+      "speed_delta": -0.03,
+      "vol_delta": -0.03,
+      "inject_tags": ["(sighs)"],
+      "note": "怀旧降级为悲伤，微调减速+叹息补偿"
+    },
+    "determined": {
+      "projected_to": "angry",
+      "speed_delta": -0.05,
+      "vol_delta": -0.08,
+      "inject_tags": [],
+      "note": "坚定≠愤怒，降低攻击性参数"
+    },
+    "mocking": {
+      "projected_to": "happy",
+      "speed_delta": 0.02,
+      "vol_delta": 0.0,
+      "inject_tags": ["(chuckle)"],
+      "note": "嘲讽降级为愉悦，加轻笑补偿戏谑感"
+    },
+    "contempt": {
+      "projected_to": "disgusted",
+      "speed_delta": -0.03,
+      "vol_delta": 0.03,
+      "inject_tags": ["(snorts)"],
+      "note": "轻蔑降级为厌恶，加哼声补偿"
+    },
+    "anxious": {
+      "projected_to": "fearful",
+      "speed_delta": 0.03,
+      "vol_delta": -0.03,
+      "inject_tags": [],
+      "note": "焦虑降级为恐惧，微加速模拟不安"
+    },
+    "playful": {
+      "projected_to": "happy",
+      "speed_delta": 0.03,
+      "vol_delta": 0.0,
+      "inject_tags": ["(chuckle)"],
+      "note": "俏皮降级为愉悦，加轻笑补偿活泼感"
+    }
+  },
+  "tone_hint_rules": [
+    {
+      "patterns": ["讽刺", "嘲讽", "戏谑"],
+      "action": { "inject_prefix_tag": "(chuckle)", "speed_delta": 0.02, "vol_delta": 0.0 }
+    },
+    {
+      "patterns": ["恳求", "哀求", "祈求"],
+      "action": { "inject_prefix_tag": "(breath)", "speed_delta": -0.03, "vol_delta": -0.05 }
+    },
+    {
+      "patterns": ["命令", "呵斥", "怒喝"],
+      "action": { "inject_prefix_tag": "", "speed_delta": 0.03, "vol_delta": 0.08 }
+    },
+    {
+      "patterns": ["试探", "犹豫", "迟疑"],
+      "action": { "inject_prefix_tag": "(emm)", "speed_delta": -0.04, "vol_delta": 0.0 }
+    },
+    {
+      "patterns": ["温柔", "轻柔", "呢喃"],
+      "action": { "inject_prefix_tag": "(breath)", "speed_delta": -0.04, "vol_delta": -0.08 }
+    },
+    {
+      "patterns": ["威胁", "恐吓"],
+      "action": { "inject_prefix_tag": "", "speed_delta": -0.02, "vol_delta": 0.05 }
+    },
+    {
+      "patterns": ["悲伤", "哀伤", "低沉"],
+      "action": { "inject_prefix_tag": "(sighs)", "speed_delta": -0.03, "vol_delta": -0.04 }
+    },
+    {
+      "patterns": ["紧张", "急促"],
+      "action": { "inject_prefix_tag": "(breath)", "speed_delta": 0.04, "vol_delta": 0.02 }
+    }
+  ],
+  "vocal_direction_bridge": {
+    "enabled": true,
+    "guards": {
+      "skip_when_short_utterance": true,
+      "skip_when_extreme_short": true,
+      "skip_when_voice_identity_lock": true
+    },
+    "clamp": {
+      "max_speed_delta": 0.05,
+      "max_vol_delta": 0.05
+    },
+    "dimension_rules": {
+      "energy": {
+        "high_threshold": 0.7,
+        "high_action": { "speed_delta": 0.03, "vol_delta": 0.04, "inject_tag": "" },
+        "low_threshold": 0.3,
+        "low_action": { "speed_delta": -0.02, "vol_delta": -0.03, "inject_tag": "" }
+      },
+      "tension": {
+        "high_threshold": 0.7,
+        "high_action": { "speed_delta": 0.02, "vol_delta": 0.02, "inject_tag": "" }
+      },
+      "intimacy": {
+        "high_threshold": 0.7,
+        "high_action": { "speed_delta": -0.02, "vol_delta": -0.04, "inject_tag": "" }
+      },
+      "breathiness": {
+        "high_threshold": 0.6,
+        "high_action": { "speed_delta": 0.0, "vol_delta": 0.0, "inject_tag": "(breath)" }
+      },
+      "articulation": {
+        "low_threshold": 0.3,
+        "low_action": { "speed_delta": -0.02, "vol_delta": 0.0, "inject_tag": "" }
+      }
+    }
+  },
+  "expression_scale": {
+    "extreme_short": 0.0,
+    "short_base": 0.10,
+    "short_intensity_factor": 0.20,
+    "normal_base": 0.15,
+    "normal_intensity_factor": 0.35
+  },
+  "sub_emotion_modulation": {
+    "energy_deltas": {
+      "angry": 0.12,
+      "fearful": 0.08,
+      "surprised": 0.10,
+      "happy": 0.06,
+      "determined": 0.09,
+      "tender": -0.05,
+      "nostalgic": -0.04,
+      "anxious": 0.10
+    },
+    "tension_deltas": {
+      "angry": 0.10,
+      "fearful": 0.12,
+      "contempt": 0.06,
+      "determined": 0.08,
+      "anxious": 0.10,
+      "tender": -0.06
+    }
+  }
+}

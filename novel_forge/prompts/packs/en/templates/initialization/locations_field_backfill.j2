@@ -1,0 +1,71 @@
+{# source_template_hash: 03a3795dc99dd9b87be72d9e381049c2275fec6f0cfea81deb31e862006c9033 #}
+{#
+================================================================================
+【Remarks】
+================================================================================
+Prompt: locations_field_backfill.j2
+Service Step: LOCATIONS_FIELD_BACKFILL (Targeted field-level location backfill)
+Purpose: After story-bible initialization, backfill missing cross-media core
+         fields in locations; only fill the missing items, never re-run the
+         whole initialization and never modify existing fields.
+Upstream Input:
+  - title/era/geography/tone: base context already locked in the StoryBible
+  - locations: currently generated location list (existing fields as reference)
+  - missing_report: per-location missing-field report (name + missing fields)
+Downstream Output:
+  - JSON (PARTIAL_OBJECT): {"locations":[{"name":..., "location_id":...,
+    <missing fields only>...}]}
+  - Downstream consumers:
+    * INIT_STORY_BIBLE persistence merge logic: backfills by name/location_id
+    * TTS sound design: consumes ambient_sound as ambient-sound seeds
+    * Film projection: consumes spatial_layout/materials/practical_lights
+Consumption-chain priority:
+  P0 = output only the missing fields listed in missing_report; never change
+       or repeat existing fields
+  P1 = backfilled content must stay consistent with existing location fields
+       and with era/geography/tone
+  P2 = ambient-sound and lighting descriptions stay audible, layered, motivated
+Brief example:
+  Input: missing_report=[{"name":"Old Pier Warehouse","missing":["ambient_sound","practical_lights"]}]
+  Output: {"locations":[{"name":"Old Pier Warehouse","ambient_sound":["tide lapping the shore","iron door rattling"],"practical_lights":["maintenance hanging lamp"]}]}
+================================================================================
+#}
+{#- ---------------------------------------------------------------------------
+    Guidance layer: task and input
+    --------------------------------------------------------------------------- -#}
+
+Story-bible initialization is complete, but the following locations are missing
+cross-media core fields. Backfill only the missing fields with a targeted pass.
+
+## Locked world context
+{% if title %}- Working title: {{ title }}{% endif %}
+{% if era %}- Era: {{ era }}{% endif %}
+{% if geography %}- Geographic stage: {{ geography }}{% endif %}
+{% if tone %}- Narrative tone: {{ tone }}{% endif %}
+
+## Current location list
+{{ locations | tojson(ensure_ascii=False) }}
+
+## Missing-field report (backfill item by item)
+{{ missing_report | tojson(ensure_ascii=False) }}
+
+## Fields
+- `locations[].name` / `locations[].location_id`: matching keys; must stay identical to the input values.
+- Output only the missing fields listed in `missing_report`, which may include: `spatial_layout`, `materials`, `practical_lights`, `ambient_sound`, `continuity_rules`, `dramatic_function`.
+- No unescaped double quotes inside strings; never add fields outside the schema.
+
+{#- ---------------------------------------------------------------------------
+    Constraint layer: quality and boundaries
+    --------------------------------------------------------------------------- -#}
+
+## Backfill rules
+- **Only fill what is missing**: for each location output only `name`, `location_id`, and the fields listed in the missing report; never repeat or rewrite existing fields.
+- **Consistency**: backfilled content must be self-consistent with the location's existing fields (layout, materials, function) and the world context; do not introduce new places, characters, or world rules.
+- `spatial_layout`: doors, movement paths, ceiling heights, and key areas; must support blocking and camera axes.
+- `materials`: stable materials and surface textures, 2-4 short items.
+- `practical_lights`: motivated in-scene light sources; no sourceless general lighting.
+- `ambient_sound`: audible, layered, reusable real sound sources for voice and mixing inheritance.
+- `continuity_rules`: rules keeping movement paths, light direction, props, and sound fields consistent across chapters and shots.
+- `dramatic_function`: the conflict or emotional function this space carries, in one paragraph.
+- **JSON stability**: no unescaped double quotes inside strings; do not output Markdown, comments, or ellipses.
+- Do not add fields outside the schema; when inference fails, prefer a conservative default consistent with the tone over leaving a field empty.

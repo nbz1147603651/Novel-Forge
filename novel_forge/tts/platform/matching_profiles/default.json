@@ -1,0 +1,21 @@
+{
+  "provider_id": "default",
+  "profile_version": "1.0",
+  "display_name": "通用TTS平台",
+  "scoring_weights": {
+    "base": 0.15,
+    "language": 0.05,
+    "gender": 0.30,
+    "age": 0.20,
+    "expressive": 0.25,
+    "role": 0.10,
+    "semantic_blend": 0.35
+  },
+  "expressive_group_overrides": {},
+  "adjudication_guidance": {
+    "platform_context": "",
+    "voice_metadata_hint": "候选音色可能包含 personality、voice_description、tags 等元数据。",
+    "selection_criteria": "综合比较角色年龄感、声线质地、吐字节奏、身份地位与团队辨识度。",
+    "caution_notes": []
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "provider_id": "volcengine_ark",
+  "profile_version": "1.0",
+  "display_name": "火山方舟 · Seedance/Seedream",
+  "char_budget": {
+    "prompt_zh": 500,
+    "negative_zh": 150
+  },
+  "structure": {
+    "guidance": "方舟中文提示词不超过 500 字：先写核心主体与动作，再写镜头与光线，风格词压缩到一句以内；超出预算时按句子边界确定性截断。"
+  },
+  "camera_vocabulary": {
+    "slow_push": "缓慢推近",
+    "pull_out": "缓慢拉远",
+    "tracking": "稳定跟拍",
+    "orbit": "环绕运镜",
+    "crane": "升降运镜"
+  },
+  "negative_policy": {
+    "required_terms": ["画面模糊", "肢体畸形", "多余手指"],
+    "guidance": "Seedance 负面内容在提示词内以“避免…”句式表达；受信演员资产（asset://）不得出现在负面描述中。"
+  },
+  "capability_switches": {
+    "multi_shot": false,
+    "native_audio": true,
+    "multi_image_reference": true,
+    "camera_command": false,
+    "trusted_actor_asset": true
+  },
+  "platform_prompt_guidance": "方舟专属：多模态参考走 references（图片/视频/音频）；真人演员素材只能使用受信演员资产（asset://）路径；声画原生输出时提示词需写清音效与对白情绪。",
+  "special_rules": [
+    "中文提示词硬上限 500 字，超限按句子边界截断",
+    "真人脸依赖必须走受信演员资产或虚拟人像替代路径",
+    "首尾帧模式需在提示词中描述两端画面差异"
+  ]
+}

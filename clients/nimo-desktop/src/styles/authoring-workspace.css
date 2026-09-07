@@ -1,0 +1,34 @@
+.authoring-workspace { position: relative; isolation: isolate; display: grid; grid-template-columns: minmax(0, 1fr); min-height: 0; height: 100%; }
+.authoring-workspace.is-expanded { grid-template-columns: minmax(0, 1fr) minmax(300px, 360px); gap: var(--nf-space-3); }
+.authoring-content { position: relative; isolation: isolate; z-index: 0; min-width: 0; min-height: 0; height: 100%; }
+.authoring-content > .reader-page { margin: 0; height: 100%; min-width: 0; }
+.authoring-content .reader-tabs { min-width: 0; max-width: 100%; overflow-x: auto; }
+.authoring-workspace:not(.is-expanded) .reader-header { padding-inline-end: 120px; }
+.authoring-toggle { position: absolute; right: var(--nf-space-4); top: var(--nf-space-2); z-index: 2; }
+.authoring-workspace.is-expanded .authoring-toggle { position: absolute; }
+.authoring-sidebar { position: relative; z-index: 1; min-width: 0; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 48px var(--nf-space-4) var(--nf-space-4); background: var(--nf-bg-surface-elevated, #fffaf4); border: 1px solid color-mix(in srgb, var(--nf-border-default) 24%, transparent); border-radius: var(--nf-radius-card, 12px); font-size: var(--nf-type-body); line-height: var(--nf-type-leading-body); }
+.authoring-sidebar h2, .authoring-sidebar h3 { font-size: var(--nf-type-section); margin: var(--nf-space-4) 0 var(--nf-space-2); }
+.authoring-sidebar p { margin: var(--nf-space-2) 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.authoring-sidebar small { display: block; overflow-wrap: anywhere; }
+.authoring-sidebar label { display: grid; gap: var(--nf-space-1); margin-block: var(--nf-space-2); }
+.authoring-sidebar input, .authoring-sidebar select, .authoring-sidebar textarea { max-width: 100%; min-width: 0; font: inherit; }
+.authoring-sidebar input:not([type="checkbox"]), .authoring-sidebar select, .authoring-sidebar textarea { padding: 7px 10px; border: 1px solid color-mix(in srgb, var(--nf-border-default) 32%, transparent); border-radius: 7px; color: var(--nf-text-body); background: var(--nf-bg-input, #fffaf4); }
+.authoring-sidebar input[type="checkbox"] { accent-color: var(--nf-accent-primary); }
+.authoring-sidebar textarea { width: 100%; resize: vertical; }
+.authoring-actions { display: flex; flex-wrap: wrap; gap: var(--nf-space-2); margin-block: var(--nf-space-3); }
+.authoring-semantic-status { margin-block: var(--nf-space-3); padding: var(--nf-space-3); border: 1px solid color-mix(in srgb, var(--nf-border-default) 24%, transparent); border-radius: var(--nf-radius-card, 12px); background: color-mix(in srgb, var(--nf-bg-input) 48%, var(--nf-bg-surface)); }
+.authoring-semantic-status h3 { margin-top: 0; }
+.authoring-semantic-status .button { margin-top: var(--nf-space-2); }
+.authoring-checkbox { display: flex !important; align-items: flex-start; gap: var(--nf-space-2); }
+.authoring-checkbox input { flex: 0 0 auto; margin-top: 4px; }
+.authoring-proposal, .authoring-messages article { border-block-end: 1px solid color-mix(in srgb, var(--nf-border-default) 24%, transparent); padding-block: var(--nf-space-3); }
+.authoring-diff { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--nf-space-3); }
+.authoring-sidebar .authoring-diff { grid-template-columns: minmax(0, 1fr); }
+.authoring-diff pre, .authoring-sidebar pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 320px; overflow: auto; font-family: var(--nf-type-family-prose); font-size: var(--nf-type-body); }
+.authoring-sidebar-title { display: flex; align-items: center; justify-content: space-between; gap: var(--nf-space-2); }
+.authoring-drawer-close { display: none; }
+.overlay-backdrop.authoring-drawer-backdrop { display: flex; justify-content: flex-end; align-items: stretch; padding: 12px; }
+.authoring-drawer-backdrop .authoring-sidebar-drawer { width: min(400px, calc(100vw - 24px)); max-width: calc(100vw - 24px); height: calc(100dvh - 24px); max-height: calc(100dvh - 24px); min-height: 0; padding: 0; overflow: hidden; }
+.authoring-sidebar-drawer > .authoring-sidebar { height: 100%; padding: var(--nf-space-4); }
+.authoring-sidebar-drawer .authoring-drawer-close { display: inline-flex; flex: 0 0 auto; }
+@media (max-width: 1050px) { .authoring-workspace.is-expanded { grid-template-columns: minmax(0, 1fr); } .authoring-workspace.is-expanded .authoring-toggle { visibility: hidden; } .authoring-diff { grid-template-columns: minmax(0, 1fr); } }

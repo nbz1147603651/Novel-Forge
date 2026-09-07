@@ -1,0 +1,63 @@
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：adjudicate_entity_references.j2
+服务步骤：ADJUDICATE_ENTITY_REFERENCES（实体指称裁决）
+作用简述：根据受限 Zvec 证据对原始实体称呼作 LLM 裁决，允许歧义、新实体与证据不足。
+上游输入：
+  - mentions：初始化或状态层抽取出的原始称呼及候选 ID
+  - evidence_pack：P0 约束与 supporting evidence 分层证据包
+下游输出：
+  - JSON：每个 mention 的 resolved/ambiguous/new_entity/insufficient_evidence 裁决
+  - 下游消费者：初始化一致性 Claims、叙事状态与后续人工/LLM 复核
+消费链优先级：P0（不可覆盖约束）> P1（来源证据）> P2（裁决理由）
+================================================================================
+#}
+
+## 任务
+
+你是叙事实体指代裁判。请根据原始提及、其上下文和召回的证据卡裁决身份；向量检索只提供候选，绝不等于结论。
+
+每个 mention 必须输出一条 decision，且只能选择以下四种 verdict：
+
+- `resolved`：证据足以把提及映射到候选中的一个既有 `entity_id`。
+- `ambiguous`：多个候选均合理，或证据无法区分。
+- `new_entity`：证据表明它不是任何已给候选，应作为新增实体候选。
+- `insufficient_evidence`：当前证据不足，不能作身份判断。
+
+硬约束：
+
+- 不得因为候选排在前面或语义相似就强行选择它；可以拒绝所有候选。
+- `resolved` 时，`selected_entity_id` 必须来自该 mention 给出的 `candidate_entity_ids`，并写出该候选卡中的规范名。
+- 非 `resolved` 时，`selected_entity_id` 与 `selected_canonical_name` 必须是空字符串。
+- `candidate_entity_ids` 必须逐字回显输入候选集合；不要创建新的 ID。
+- 只引用输入 evidence_cards 的 `source_ref` 作为 `evidence_refs`；每条裁决都必须给出简短 rationale。
+- 如身份变更、关系、不可逆状态或多个候选高度接近，请设置 `requires_independent_review=true`。
+- P0 约束不可被 supporting evidence 覆盖；发现矛盾时输出 ambiguous 或 insufficient_evidence，不自行改写 P0。
+
+结果直出 JSON，不要输出解释、Markdown 或思维过程。
+
+## 输入
+
+```json
+{
+  "purpose": {{ purpose | tojson }},
+  "mentions": {{ mentions | tojson }},
+  "evidence_pack": {{ evidence_pack | tojson }}
+}
+```
+
+{% if adjudication_validation_error | default('') %}
+## 上一版被本地契约拒绝
+- 原因：{{ adjudication_validation_error }}
+- 本轮必须为输入中每个 mention 逐一返回且只返回一条 decision，并逐字回显各自的 candidate_entity_ids。
+{% endif %}
+
+## 交付前核验
+
+- 是否为每个 mention 输出且仅输出一条 decision？
+- 是否保留了原始证据边界，而非把推测写成事实？
+- 是否允许“不确定”与“新实体”，而没有被候选集强迫选择？
+
+{#- 系统契约由 PromptBuilder 注入 -#}

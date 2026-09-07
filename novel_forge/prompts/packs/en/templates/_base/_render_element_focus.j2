@@ -1,0 +1,165 @@
+{# source_template_hash: ecff0446a694ae86b86d5f9aedf7cb01b077118abf2200d4d731d7a826e4f216 #}
+{#- Narrative Element Focus Rendering Macro — base Module -#}
+{#- Extract repeated _focus_ns.cards lookup + rendering logic from plan_chapter / draft_chapter / edit_chapter -#}
+
+{#-
+  === Macro Module: Narrative Element Focus Rendering ===
+  File Type: Macro Module
+  Brief Description: Extract and render this chapter's key narrative element constraints from element_selection, supporting required/extension split, focus_ids filtering, and two rendering modes: planning version and general version.
+
+  Defined Macros and Parameters:
+  1. build_focus_cards(focus_ids: list, extension_elements: list) → namespace(cards=[...])
+     - Filter element cards hit from extension_elements based on focus_ids
+  2. render_element_focus(element_selection, element_focus=None, dynamic_element_focus=None, element_execution_requirements=None, focus_heading=...)
+     - General version rendering, applicable to draft_chapter / edit_chapter
+  3. render_element_focus_plan(element_selection, chapter_outline, dynamic_element_focus=None) → namespace(cards=[...])
+     - Planning version rendering, applicable to plan_chapter, including required-vs-extension split
+
+  Usage:
+  - Called by templates such as planning/plan_chapter.j2, writing/draft_chapter.j2, writing/edit_chapter.j2 through {% import %} or {% from %}
+-#}
+
+{#-
+  Find and build _focus_ns.cards: Filter element cards hit from extension_elements based on focus_ids.
+
+  Parameters:
+    - focus_ids: List of element_id for this chapter's key extension elements (e.g., element_focus or dynamic_element_focus)
+    - extension_elements: Extension elements list (element_selection.extension_elements)
+
+  Returns: namespace(cards=[...]), cards is the list of hit element cards
+-#}
+{% macro build_focus_cards(focus_ids, extension_elements) %}
+{%- set _focus_ns = namespace(cards=[]) -%}
+{%- if focus_ids and extension_elements -%}
+{%- for _fid in focus_ids -%}
+{%- for elem in extension_elements -%}
+{%- if elem.element_id == _fid -%}
+{%- set _focus_ns.cards = _focus_ns.cards + [elem] -%}
+{%- endif -%}
+{%- endfor -%}
+{%- endfor -%}
+{%- endif -%}
+{{ _focus_ns }}
+{% endmacro %}
+
+{#-
+  Render narrative element focus constraints (General Version).
+
+  Applicable to scenarios with only extension focus such as draft_chapter / edit_chapter.
+
+  Parameters:
+    - element_selection: Element selection object (must contain extension_elements)
+    - element_focus: List of key element IDs for this chapter (optional)
+    - dynamic_element_focus: List of dynamically recommended element IDs (optional, fallback when element_focus is empty)
+    - element_execution_requirements: List of execution requirements (optional)
+    - focus_heading: Key element heading (default "## Narrative Element Focus Constraints")
+    - focus_description: Key element description text (default "The following chapter-focus narrative elements must be clearly embodied in the prose:")
+    - execution_label: Execution requirement label (default "- Chapter execution requirements:")
+-#}
+{% macro render_element_focus(
+    element_selection,
+    element_focus=None,
+    dynamic_element_focus=None,
+    element_execution_requirements=None,
+    focus_heading="## Narrative Element Focus Constraints",
+    focus_description="The following key narrative elements for this chapter must be clearly reflected in the main text:",
+    execution_label="- Chapter Implementation Requirements:"
+) %}
+{%- if element_selection is defined and element_selection and element_selection.extension_elements is defined and element_selection.extension_elements -%}
+{%- set _ext_elems = element_selection.extension_elements -%}
+{%- set _focus_ids = element_focus if element_focus is defined and element_focus else [] -%}
+{%- if (not _focus_ids) and dynamic_element_focus is defined and dynamic_element_focus -%}
+{%- set _focus_ids = dynamic_element_focus -%}
+{%- endif -%}
+{%- set _focus_ns = namespace(cards=[]) -%}
+{%- if _focus_ids -%}
+{%- for _fid in _focus_ids -%}
+{%- for elem in _ext_elems -%}
+{%- if elem.element_id == _fid -%}
+{%- set _focus_ns.cards = _focus_ns.cards + [elem] -%}
+{%- endif -%}
+{%- endfor -%}
+{%- endfor -%}
+{%- endif -%}
+{%- if _focus_ns.cards -%}
+{{ focus_heading }}
+{{ focus_description }}
+{%- for elem in _focus_ns.cards %}
+- **{{ elem.name }}**{% if elem.selection_score is defined and elem.selection_score %} (Priority {{ elem.selection_score }}){% endif %}: {{ elem.prompt_hint }}
+{%- endfor %}
+- These element names and prompts are for behind-the-scenes design only and must not appear directly in the main text as headings, labels, notes, or bold explanations.
+- It is prohibited to directly write planning terms such as "XX implementation scenarios," "disguise pressure levels," or "exposure risk signals"; they must be translated into natural actions, dialogue, conflicts, and sensory details.
+{%- if element_execution_requirements is defined and element_execution_requirements %}
+{{ execution_label }}
+{%- for item in element_execution_requirements %}
+  - {{ item }}
+{%- endfor %}
+{%- endif %}
+{%- endif %}
+{%- endif %}
+{% endmacro %}
+
+{#-
+  Render narrative element focus constraints (Planning Version).
+
+  Applicable to plan_chapter, including required-vs-extension split, focus_constraints, and execution implementation guidance.
+
+  Parameters:
+    - element_selection: Element selection object (must contain required_elements, extension_elements, focus_constraints)
+    - chapter_outline: Outline object (containing element_focus)
+    - dynamic_element_focus: List of dynamically recommended element IDs (optional, fallback when outline has no focus)
+    - element_execution_requirements: List of execution requirements (optional, not used in planning version, kept for signature consistency)
+-#}
+{% macro render_element_focus_plan(
+    element_selection,
+    chapter_outline,
+    dynamic_element_focus=None
+) %}
+{%- if element_selection is defined and element_selection -%}
+{%- set _req_elems = element_selection.required_elements if element_selection.required_elements is defined else [] -%}
+{%- set _ext_elems = element_selection.extension_elements if element_selection.extension_elements is defined else [] -%}
+{%- set _focus_ids = chapter_outline.element_focus if chapter_outline is defined and chapter_outline.element_focus is defined and chapter_outline.element_focus else [] -%}
+{%- if (not _focus_ids) and dynamic_element_focus is defined and dynamic_element_focus -%}
+{%- set _focus_ids = dynamic_element_focus -%}
+{%- endif -%}
+{%- set _focus_ns = namespace(cards=[]) -%}
+{%- if _focus_ids and _ext_elems -%}
+{%- for _fid in _focus_ids -%}
+{%- for item in _ext_elems -%}
+{%- if item.element_id == _fid -%}
+{%- set _focus_ns.cards = _focus_ns.cards + [item] -%}
+{%- endif -%}
+{%- endfor -%}
+{%- endfor -%}
+{%- endif -%}
+## Narrative Element Constraints (★ Must be incorporated into scene design during planning)
+{%- if _req_elems %}
+### Required Narrative Elements (Must be reflected in every chapter)
+{%- for item in _req_elems %}
+- **{{ item.name }}**: {{ item.prompt_hint }}
+{%- endfor %}
+{%- endif %}
+{%- if _focus_ns.cards %}
+### This Chapter's Key Extension Elements (Priority to implement in scene design)
+{%- for item in _focus_ns.cards %}
+- **{{ item.name }}** ({{ item.category }}{% if item.selection_score is defined and item.selection_score %} | Priority {{ item.selection_score }}{% endif %}): {{ item.prompt_hint }}
+{%- endfor %}
+- Planning Note: These element names are only for scene design and must not be directly repeated as labels such as "implementation scenarios," "disguise pressure levels," or "exposure risk signals" in summary, required_outcome, or the main text.
+{%- if (_ext_elems | length) > (_focus_ns.cards | length) %}
+### Remaining Extension Elements (Global fallback, not required to be fully covered in this chapter)
+{%- for item in _ext_elems %}
+{%- if item.element_id not in _focus_ids %}
+- **{{ item.name }}**{% if item.selection_score is defined and item.selection_score %} (Priority {{ item.selection_score }}){% endif %}: May be weakly reflected or used only as foreshadowing
+{%- endif %}
+{%- endfor %}
+{%- endif %}
+{%- elif _ext_elems %}
+### Thematic Extension Elements (Global candidates, not mandatory to expand in this chapter)
+- No key extension elements are specified for this chapter; extension elements serve only as a global candidate pool and are not required to be fully covered in this chapter.
+{%- endif %}
+{%- if element_selection.focus_constraints is defined and element_selection.focus_constraints %}
+- Execution Constraints: {{ element_selection.focus_constraints | join('; ') }}
+{%- endif %}
+- Execution Implementation: If this chapter has key extension elements, each element must be bound to at least 1 scene_intent, and specific actions, conflicts, or consequences must be written in `summary` / `required_outcome` — abstract labels alone are not allowed.
+{%- endif %}
+{% endmacro %}

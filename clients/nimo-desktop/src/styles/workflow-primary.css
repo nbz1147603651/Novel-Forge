@@ -1,0 +1,1026 @@
+/* Source-aligned hierarchy for the primary workflow surface. */
+.workflow-page {
+  display: grid;
+  gap: 18px;
+  margin-left: -4px;
+  padding: 14px 0 28px;
+}
+
+/* Phase F: HeroPanel 200ms fade-in (mirrors PySide6 HeroPanel.fade_in) */
+.workflow-composer-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 2px 0 12px;
+  animation: workflow-hero-fade-in 200ms ease-out;
+}
+
+@keyframes workflow-hero-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.workflow-composer-hero h2,
+.workflow-active-projects h2,
+.workflow-short-composer h2 {
+  margin: 5px 0 4px;
+  color: var(--nf-text-heading);
+  font-family: "Songti SC", "STSong", "NSimSun", Georgia, serif;
+  font-size: var(--nf-font-page-lg);
+  font-weight: 600;
+  letter-spacing: .02em;
+  line-height: 1.25;
+}
+
+.workflow-composer-hero p,
+.workflow-active-projects header p,
+.workflow-short-composer > header p {
+  margin: 0;
+  color: var(--nf-text-secondary);
+  font-size: var(--nf-font-section);
+  line-height: 1.55;
+}
+
+.workflow-composer-hero .section-kicker {
+  font-size: var(--nf-font-section);
+}
+
+.workflow-composer-hero h2 {
+  font-size: var(--nf-font-page-lg);
+}
+
+.workflow-composer-hero-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.workflow-active-projects > header {
+  display: grid;
+  gap: 4px;
+}
+
+.workflow-active-projects h2 {
+  margin-top: 0;
+  font-size: var(--nf-font-page-lg);
+}
+
+.workflow-active-project {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 56px;
+  margin-top: 10px;
+  padding: 9px 14px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 19%, transparent);
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--nf-bg-surface) 74%, transparent);
+}
+
+.workflow-active-project > div {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 11px;
+}
+
+.workflow-active-project strong {
+  color: var(--nf-text-heading);
+  font-size: var(--nf-font-section);
+}
+
+.workflow-active-project span,
+.workflow-active-project b {
+  padding: 4px 8px;
+  border-radius: 9px;
+  color: var(--nf-text-secondary);
+  background: var(--nf-bg-control);
+  font-size: var(--nf-font-body);
+}
+
+.workflow-active-project b {
+  color: var(--nf-accent-primary-pressed);
+  background: color-mix(in srgb, var(--nf-accent-primary) 12%, var(--nf-bg-surface));
+}
+
+.workflow-active-project small,
+.workflow-project-empty {
+  color: var(--nf-text-muted-soft);
+  font-size: var(--nf-font-body);
+}
+
+.workflow-project-empty { margin: 12px 0 0; }
+
+.workflow-mode-switcher {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 10px;
+  margin-inline: 10px;
+}
+
+.workflow-mode-switcher button {
+  display: grid;
+  justify-items: start;
+  gap: 1px;
+  min-height: 66px;
+  padding: 9px 12px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 22%, transparent);
+  border-radius: 9px;
+  color: var(--nf-text-secondary);
+  background: color-mix(in srgb, var(--nf-bg-surface) 74%, transparent);
+  text-align: left;
+  transition: border-color 120ms cubic-bezier(.22, .61, .36, 1), background 120ms cubic-bezier(.22, .61, .36, 1), transform 120ms cubic-bezier(.22, .61, .36, 1);
+}
+
+.workflow-mode-switcher button:hover { transform: translateY(-1px); }
+.workflow-mode-switcher button.is-active { border-color: color-mix(in srgb, var(--nf-accent-primary) 62%, transparent); background: color-mix(in srgb, var(--nf-accent-primary) 9%, var(--nf-bg-surface)); }
+.workflow-mode-switcher strong { color: var(--nf-text-heading); font-family: "Songti SC", "STSong", Georgia, serif; font-size: var(--nf-font-page); font-weight: 600; }
+.workflow-mode-switcher span { color: var(--nf-text-muted-soft); font-size: var(--nf-font-subsection); }
+
+.workflow-short-composer {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-soft) 26%, transparent);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--nf-bg-surface) 84%, var(--nf-bg-workspace-mid));
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--nf-shadow) 6%, transparent);
+  margin-inline: 10px;
+}
+
+.workflow-short-composer h2 { margin: 0; font-size: var(--nf-font-page-lg); }
+
+/* fieldset wrapper for _set_inputs_enabled parity: no visual chrome */
+.workflow-short-form-fields {
+  display: contents;
+  border: none;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+.workflow-short-toolbar, .workflow-short-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.workflow-short-toolbar select,
+.workflow-short-toolbar button,
+.workflow-short-actions button {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 27%, transparent);
+  border-radius: 9px;
+  color: var(--nf-text-secondary);
+  background: var(--nf-bg-input);
+  font: inherit;
+  font-size: var(--nf-font-subsection);
+  font-weight: 600;
+}
+
+.workflow-short-toolbar select { min-width: 218px; color: var(--nf-text-body); font-weight: 400; }
+.workflow-short-actions button { color: var(--nf-accent-primary-pressed); background: color-mix(in srgb, var(--nf-accent-primary) 7%, var(--nf-bg-surface)); }
+.workflow-short-actions button.is-primary { border-color: color-mix(in srgb, var(--nf-accent-primary) 55%, transparent); }
+.workflow-short-toolbar button:hover, .workflow-short-actions button:hover { border-color: color-mix(in srgb, var(--nf-accent-primary) 55%, transparent); }
+
+.workflow-short-notice { margin: 0; color: var(--nf-text-muted-soft); font-size: var(--nf-font-body); line-height: 1.5; }
+.workflow-short-fields { display: grid; gap: 8px; }
+.workflow-short-fields h3 { margin: 0; color: var(--nf-text-heading); font-size: var(--nf-font-section-lg); }
+.workflow-short-fields > header { display: grid; gap: 2px; }
+.workflow-short-fields > header p { margin: 0; color: var(--nf-text-muted-soft); font-size: var(--nf-font-body); }
+.workflow-short-fields > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.workflow-short-fields button { display: grid; align-content: start; gap: 5px; min-height: 98px; padding: 10px 11px; border: 1px solid color-mix(in srgb, var(--nf-border-default) 18%, transparent); border-radius: 10px; color: var(--nf-text-secondary); background: color-mix(in srgb, var(--nf-bg-input) 58%, var(--nf-bg-surface)); text-align: left; }
+.workflow-short-fields button:hover { border-color: color-mix(in srgb, var(--nf-accent-primary) 48%, transparent); background: color-mix(in srgb, var(--nf-accent-primary) 7%, var(--nf-bg-surface)); }
+.workflow-short-fields span { color: var(--nf-text-secondary); font-size: var(--nf-font-ui); font-weight: 700; }
+.workflow-short-fields strong { display: -webkit-box; overflow: hidden; color: var(--nf-text-heading); font-size: var(--nf-font-body); line-height: 1.5; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.workflow-short-fields small { color: var(--nf-text-muted-soft); font-size: var(--nf-font-body); }
+.workflow-short-editor { display: grid; gap: 8px; color: var(--nf-text-secondary); font-size: var(--nf-font-subsection); font-weight: 700; }
+.workflow-short-editor textarea { min-height: 200px; padding: 12px; border: 1px solid color-mix(in srgb, var(--nf-border-default) 28%, transparent); border-radius: 10px; outline: none; color: var(--nf-text-body); background: var(--nf-bg-input); font: inherit; line-height: 1.6; resize: vertical; }
+.workflow-short-editor textarea:focus { border-color: var(--nf-accent-primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--nf-accent-primary) 12%, transparent); }
+
+/* ShortForm mirrors the PySide6 field contract while keeping dense desktop
+   geometry.  Values live in an ephemeral session, never in local storage. */
+.workflow-short-parameters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 10px; padding: 10px; border: 1px solid color-mix(in srgb, var(--nf-border-default) 15%, transparent); border-radius: 12px; background: color-mix(in srgb, var(--nf-bg-input-soft) 62%, var(--nf-bg-surface)); }
+.workflow-short-parameters label, .workflow-short-title-language-editor label, .workflow-short-dialog-field { display: grid; gap: 4px; min-width: 0; color: var(--nf-text-secondary); font-size: var(--nf-font-ui); font-weight: 700; }
+.workflow-short-parameters input, .workflow-short-parameters select, .workflow-short-title-language-editor input, .workflow-short-title-language-editor select, .workflow-short-dialog-field input, .workflow-field-editor-pane input { box-sizing: border-box; width: 100%; min-height: 32px; padding: 0 9px; border: 1px solid color-mix(in srgb, var(--nf-border-default) 24%, transparent); border-radius: 8px; outline: 0; color: var(--nf-text-body); background: var(--nf-bg-input); font: inherit; font-size: var(--nf-font-ui); font-weight: 400; }
+.workflow-short-parameters input:focus, .workflow-short-parameters select:focus, .workflow-short-title-language-editor input:focus, .workflow-short-title-language-editor select:focus, .workflow-short-dialog-field input:focus, .workflow-field-editor-pane input:focus { border-color: var(--nf-accent-primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--nf-accent-primary) 11%, transparent); }
+.workflow-short-parameter-hint { margin: -2px 0 0; color: var(--nf-text-muted-soft); font-size: var(--nf-font-ui); line-height: 1.45; }
+.workflow-short-param-suffix { display: flex; align-items: center; gap: 4px; }
+.workflow-short-param-suffix input { flex: 1; min-width: 0; }
+.workflow-short-suffix { color: var(--nf-text-muted-soft); font-size: var(--nf-font-ui); white-space: nowrap; }
+.workflow-short-submit-row { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 2px; }
+.workflow-short-submit-row .button { min-height: var(--nf-control-height); font-size: var(--nf-font-ui); }
+
+.workflow-short-overlay { display: grid; max-height: var(--nf-dialog-viewport-height); overflow: hidden; border: 1px solid color-mix(in srgb, var(--nf-border-default) 22%, transparent); border-radius: 14px; background: var(--nf-bg-surface); box-shadow: 0 18px 48px color-mix(in srgb, var(--nf-shadow) 19%, transparent); animation: dialog-rise-in 180ms cubic-bezier(.22, .61, .36, 1); }
+.workflow-short-overlay.is-field-editor { width: min(var(--nf-dialog-editor-width), calc(100vw - var(--nf-dialog-gutter) - var(--nf-dialog-gutter))); height: min(var(--nf-dialog-editor-height), var(--nf-dialog-viewport-height)); grid-template-rows: auto minmax(0, 1fr) auto; }
+.workflow-short-overlay.is-preview { width: min(var(--nf-dialog-standard-width), calc(100vw - var(--nf-dialog-gutter) - var(--nf-dialog-gutter))); grid-template-rows: auto minmax(0, 1fr) auto; }
+.workflow-short-overlay .workflow-source-dialog-intro { display: grid; gap: 8px; padding: 26px 30px 18px; border-bottom: 1px solid color-mix(in srgb, var(--nf-border-default) 14%, transparent); }
+.workflow-short-overlay .workflow-source-dialog-intro h2 { margin: 0; color: var(--nf-text-heading); font-size: var(--nf-font-page); }
+.workflow-short-overlay .workflow-source-dialog-intro p { margin: 0; color: var(--nf-text-secondary); font-size: var(--nf-font-subsection); line-height: 1.6; }
+.workflow-short-title-language-editor { display: grid; align-content: start; gap: 10px; }
+.workflow-short-preview-list { display: grid; align-content: start; gap: 7px; padding: 14px 22px; overflow: auto; }
+.workflow-short-preview-list label { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 9px; align-items: start; padding: 9px 10px; border: 1px solid color-mix(in srgb, var(--nf-border-default) 16%, transparent); border-radius: 9px; background: color-mix(in srgb, var(--nf-bg-input-soft) 76%, var(--nf-bg-surface)); }
+.workflow-short-preview-list input { width: 15px; height: 15px; margin: 2px 0 0; accent-color: var(--nf-accent-primary); }
+.workflow-short-preview-list span { display: grid; gap: 3px; min-width: 0; }
+.workflow-short-preview-list strong { color: var(--nf-text-heading); font-size: var(--nf-font-ui); }
+.workflow-short-preview-list small { color: var(--nf-text-secondary); font-size: var(--nf-font-ui); line-height: 1.5; }
+.workflow-short-import-summary, .workflow-short-history, .workflow-short-launch-preview { display: grid; gap: 9px; }
+.workflow-short-import-summary strong, .workflow-short-history strong { color: var(--nf-text-heading); font-size: var(--nf-font-body); }
+.workflow-short-import-summary span, .workflow-short-history span { color: var(--nf-text-muted-soft); font-size: var(--nf-font-ui); }
+.workflow-short-import-summary .button { justify-self: start; min-height: 30px; font-size: var(--nf-font-ui); }
+.workflow-short-history article { display: grid; gap: 3px; padding: 9px 10px; border: 1px solid color-mix(in srgb, var(--nf-border-default) 15%, transparent); border-radius: 9px; background: var(--nf-bg-input-soft); }
+.workflow-short-history p { margin: 0; color: var(--nf-text-muted-soft); font-size: var(--nf-font-ui); line-height: 1.5; }
+.workflow-short-launch-preview p { margin: 0; color: var(--nf-text-secondary); font-size: var(--nf-font-ui); line-height: 1.5; }
+.workflow-short-launch-preview pre { max-height: 270px; margin: 0; padding: 10px; overflow: auto; border: 1px solid color-mix(in srgb, var(--nf-border-default) 17%, transparent); border-radius: 9px; color: var(--nf-text-body); background: var(--nf-bg-input-soft); font: var(--nf-font-ui)/1.6 var(--nf-font-code-family); white-space: pre-wrap; }
+
+.workflow-page > .workflow-stream { margin-top: 4px; }
+
+/* ── Step Indicator Row ─────────────────────────────────────────── */
+
+.step-indicator-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0;
+  padding: 14px 12px 10px;
+  margin-top: 8px;
+  overflow-x: auto;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--nf-bg-control) 35%, var(--nf-bg-surface));
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 12%, transparent);
+}
+
+.step-indicator-item {
+  display: flex;
+  align-items: flex-start;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.step-indicator-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* ── Dot base ─────────────────────────────────────────────────────── */
+.step-dot {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--nf-border-default) 50%, transparent);
+  background: var(--nf-bg-surface);
+  padding: 0;
+  cursor: default;
+  transition: transform 180ms cubic-bezier(.22, .61, .36, 1),
+              opacity 180ms cubic-bezier(.22, .61, .36, 1);
+}
+
+.step-dot.is-pending {
+  border-color: color-mix(in srgb, var(--nf-border-default) 45%, transparent);
+  background: var(--nf-bg-surface);
+}
+
+.step-dot.is-active {
+  border-color: var(--nf-accent-primary);
+  background: color-mix(in srgb, var(--nf-accent-primary) 15%, var(--nf-bg-surface));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--nf-accent-primary) 18%, transparent);
+}
+
+.step-dot.is-done {
+  border-color: var(--nf-accent-primary);
+  background: var(--nf-accent-primary);
+  color: #fff;
+}
+
+.step-dot.is-done.is-clickable,
+.step-dot.is-rolled_back.is-clickable {
+  cursor: pointer;
+}
+
+.step-dot.is-done.is-clickable:hover,
+.step-dot.is-rolled_back.is-clickable:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--nf-accent-primary) 22%, transparent);
+}
+
+.step-dot.is-failed {
+  border-color: var(--nf-status-danger, #d32f2f);
+  background: var(--nf-status-danger, #d32f2f);
+  color: #fff;
+}
+
+.step-dot.is-skipped {
+  border-style: dashed;
+  color: var(--nf-text-muted);
+  background: color-mix(in srgb, var(--nf-bg-panel) 72%, var(--nf-bg-surface));
+}
+
+.step-dot.is-blocked {
+  border-color: var(--nf-status-warning);
+  color: var(--nf-status-warning);
+  background: color-mix(in srgb, var(--nf-status-warning) 10%, var(--nf-bg-surface));
+}
+
+.step-dot.is-rolled_back {
+  border-color: var(--nf-status-info, #4a6d92);
+  color: var(--nf-status-info, #4a6d92);
+  background: color-mix(in srgb, var(--nf-status-info, #4a6d92) 10%, var(--nf-bg-surface));
+}
+
+.step-dot:disabled {
+  cursor: default;
+}
+
+/* ── Checkmark SVG inside done dots ───────────────────────────────── */
+.step-dot-check {
+  width: 10px;
+  height: 10px;
+  color: #fff;
+}
+
+/* ── Pulse ring inside active dots ────────────────────────────────── */
+.step-dot-pulse {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid var(--nf-accent-primary);
+  opacity: 0;
+  animation: stepPulseRing 1.8s cubic-bezier(.4, 0, .2, 1) infinite;
+}
+
+@keyframes stepPulseRing {
+  0% { transform: scale(0.8); opacity: 0.6; }
+  70% { transform: scale(1.4); opacity: 0; }
+  100% { transform: scale(1.4); opacity: 0; }
+}
+
+/* ── Labels with state-aware color ────────────────────────────────── */
+.step-label {
+  font-size: var(--nf-type-caption, 11px);
+  color: var(--nf-text-muted-soft);
+  text-align: center;
+  max-width: 88px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.3;
+}
+
+.step-label.is-done {
+  color: var(--nf-accent-primary);
+  font-weight: 600;
+}
+
+.step-label.is-active {
+  color: var(--nf-accent-primary);
+  font-weight: 600;
+}
+
+.step-label.is-failed {
+  color: var(--nf-status-danger, #d32f2f);
+  font-weight: 600;
+}
+
+.step-label.is-skipped {
+  color: var(--nf-text-muted);
+}
+
+.step-label.is-blocked {
+  color: var(--nf-status-warning);
+  font-weight: 600;
+}
+
+.step-label.is-rolled_back {
+  color: var(--nf-status-info, #4a6d92);
+  font-weight: 600;
+}
+
+/* ── Compact mode (≥9 steps) ──────────────────────────────────────── */
+.step-indicator-row.is-compact .step-label {
+  max-width: 68px;
+  font-size: 10px;
+}
+
+.step-indicator-row.is-compact .step-dot {
+  width: 14px;
+  height: 14px;
+}
+
+.step-indicator-row.is-compact .step-dot-check {
+  width: 8px;
+  height: 8px;
+}
+
+/* ── Connectors ───────────────────────────────────────────────────── */
+.step-connector {
+  flex: 1;
+  height: 2px;
+  background: color-mix(in srgb, var(--nf-border-default) 30%, transparent);
+  margin: 8px 2px 0;
+  min-width: 8px;
+  border-radius: 1px;
+}
+
+.step-connector.is-done {
+  background: var(--nf-accent-primary);
+}
+
+.step-connector.is-active {
+  background: linear-gradient(
+    90deg,
+    var(--nf-accent-primary) 0%,
+    color-mix(in srgb, var(--nf-accent-primary) 40%, transparent) 100%
+  );
+}
+
+/* ── Responsive ───────────────────────────────────────────────────── */
+@media (max-width: 700px) {
+  .step-indicator-row {
+    padding: 8px 4px;
+  }
+  .step-label {
+    max-width: 56px;
+    font-size: 9px;
+  }
+}
+
+/* Step artifact dialog */
+.step-artifact-dialog .step-artifact-empty {
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-body);
+  padding: 24px;
+  text-align: center;
+}
+
+.step-artifact-list {
+  display: grid;
+  gap: 8px;
+  max-height: 480px;
+  overflow-y: auto;
+}
+
+.step-artifact-item {
+  border: 1px solid var(--nf-border-default);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.step-artifact-item summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--nf-text-heading);
+  font-size: var(--nf-font-body);
+}
+
+.step-artifact-item summary small {
+  color: var(--nf-text-muted);
+  font-weight: 400;
+  margin-left: 8px;
+  font-size: var(--nf-font-caption);
+}
+
+.step-artifact-content {
+  margin-top: 8px;
+  padding: 12px;
+  background: var(--nf-bg-input);
+  border-radius: 6px;
+  font-family: var(--nf-font-mono, "SF Mono", "Menlo", monospace);
+  font-size: var(--nf-font-caption);
+  line-height: 1.5;
+  max-height: 320px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* ArtifactViewer tabs - 复用 PySide6 QTabWidget 视觉 */
+.artifact-viewer-tabs { display: grid; gap: 0; }
+.artifact-tab-bar { display: flex; gap: 2px; border-bottom: 1px solid var(--nf-border-default); padding: 0 4px; }
+.artifact-tab-bar button { padding: 8px 14px; font-size: 12px; font-weight: 600; border: none; background: transparent; color: var(--nf-text-muted); cursor: pointer; border-bottom: 2px solid transparent; transition: color 160ms ease, border-color 160ms ease; }
+.artifact-tab-bar button.is-active { color: var(--nf-text-heading); border-bottom-color: var(--nf-accent-primary); }
+.artifact-tab-bar button:hover:not(.is-active) { color: var(--nf-text-body); background: color-mix(in srgb, var(--nf-bg-control) 50%, transparent); border-radius: 4px 4px 0 0; }
+.artifact-tab-content { padding-top: 8px; max-height: 480px; overflow-y: auto; }
+.artifact-viewer-empty { padding: 24px; text-align: center; color: var(--nf-text-muted); font-size: var(--nf-font-body); }
+.artifact-candidate-list { list-style: none; padding: 0; margin: 12px auto 0; text-align: left; max-width: 480px; }
+.artifact-candidate-list li { padding: 4px 0; font-size: var(--nf-font-caption); display: flex; gap: 8px; align-items: baseline; }
+.artifact-candidate-list code { color: var(--nf-text-muted-soft); font-family: var(--nf-font-mono, "SF Mono", monospace); font-size: var(--nf-font-micro); }
+
+@media (max-width: 980px) {
+  .workflow-composer-hero { display: grid; }
+  .workflow-composer-hero-actions { padding-top: 0; }
+}
+
+@media (max-width: 700px) {
+  .workflow-page { padding-inline: 0; }
+  .workflow-mode-switcher, .workflow-short-fields > div { grid-template-columns: 1fr; }
+  .workflow-active-project { align-items: flex-start; flex-direction: column; }
+  .workflow-active-project > div { align-items: flex-start; flex-wrap: wrap; }
+}
+
+/* ── Blueprint Element Preference Panel ────────────────────────── */
+
+.blueprint-section {
+  margin-top: 4px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 18%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--nf-bg-surface) 60%, transparent);
+  overflow: hidden;
+  transition: border-color 180ms cubic-bezier(.22, .61, .36, 1);
+}
+
+.blueprint-section.is-expanded {
+  border-color: color-mix(in srgb, var(--nf-accent-primary) 32%, transparent);
+}
+
+.blueprint-section-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  background: transparent;
+  color: var(--nf-text-heading);
+  font: inherit;
+  font-size: var(--nf-font-section);
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.blueprint-section-toggle:hover {
+  background: color-mix(in srgb, var(--nf-accent-primary) 5%, transparent);
+}
+
+.blueprint-section-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  font-size: var(--nf-font-subsection);
+  color: var(--nf-text-muted-soft);
+  transition: transform 180ms cubic-bezier(.22, .61, .36, 1);
+}
+
+.blueprint-section.is-expanded .blueprint-section-arrow {
+  transform: rotate(90deg);
+}
+
+.blueprint-section-body {
+  padding: 0 16px 16px;
+  animation: blueprintSlideIn 180ms cubic-bezier(.22, .61, .36, 1);
+}
+
+@keyframes blueprintSlideIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Panel container */
+.blueprint-pref-panel {
+  display: grid;
+  gap: 10px;
+}
+
+.blueprint-pref-hint {
+  margin: 0;
+  color: var(--nf-text-muted-soft);
+  font-size: var(--nf-font-ui);
+  line-height: 1.5;
+}
+
+/* Top controls row */
+.blueprint-pref-top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.blueprint-pref-combo {
+  min-width: 170px;
+  max-width: 300px;
+  min-height: var(--nf-control-height);
+  padding: 0 10px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 24%, transparent);
+  border-radius: 8px;
+  color: var(--nf-text-body);
+  background: var(--nf-bg-input);
+  font: inherit;
+  font-size: var(--nf-font-ui);
+}
+
+.blueprint-pref-btn {
+  min-height: 30px;
+  min-width: 96px;
+  padding: 0 12px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 27%, transparent);
+  border-radius: 8px;
+  color: var(--nf-text-secondary);
+  background: var(--nf-bg-control);
+  font: inherit;
+  font-size: var(--nf-font-ui);
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.blueprint-pref-btn:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--nf-accent-primary) 48%, transparent);
+  background: color-mix(in srgb, var(--nf-accent-primary) 8%, var(--nf-bg-surface));
+}
+
+.blueprint-pref-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.blueprint-pref-btn-reset {
+  color: var(--nf-text-muted-soft);
+}
+
+/* Genre suggestion */
+.blueprint-pref-suggestion {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--nf-accent-primary) 6%, var(--nf-bg-surface));
+  color: var(--nf-text-secondary);
+  font-size: var(--nf-font-ui);
+  line-height: 1.5;
+}
+
+/* Filter toggles */
+.blueprint-pref-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.blueprint-pref-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--nf-text-secondary);
+  font-size: var(--nf-font-ui);
+  cursor: pointer;
+}
+
+.blueprint-pref-toggle input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--nf-accent-primary);
+}
+
+/* Scrollable element list */
+.blueprint-pref-scroll {
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 4px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 14%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--nf-bg-input-soft) 50%, var(--nf-bg-surface));
+}
+
+.blueprint-pref-category {
+  display: grid;
+  gap: 4px;
+}
+
+.blueprint-pref-category + .blueprint-pref-category {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid color-mix(in srgb, var(--nf-border-default) 10%, transparent);
+}
+
+.blueprint-pref-category-label {
+  margin: 0;
+  padding: 4px 8px;
+  color: var(--nf-text-muted-soft);
+  font-size: var(--nf-font-body);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Element row */
+.blueprint-pref-row {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 12%, transparent);
+  border-radius: 8px;
+  background: var(--nf-bg-surface);
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.blueprint-pref-row:hover {
+  border-color: color-mix(in srgb, var(--nf-accent-primary) 28%, transparent);
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--nf-shadow) 8%, transparent);
+}
+
+.blueprint-pref-row-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.blueprint-pref-row-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.blueprint-pref-row-name {
+  color: var(--nf-text-heading);
+  font-size: var(--nf-font-ui);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.blueprint-pref-row-badge {
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--nf-accent-primary) 10%, var(--nf-bg-control));
+  color: var(--nf-accent-primary-pressed);
+  font-size: var(--nf-font-ui);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.blueprint-pref-row-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.blueprint-pref-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--nf-text-secondary);
+  font-size: var(--nf-font-body);
+  cursor: pointer;
+}
+
+.blueprint-pref-check input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--nf-accent-primary);
+}
+
+.blueprint-pref-weight-label {
+  color: var(--nf-text-muted-soft);
+  font-size: var(--nf-font-ui);
+}
+
+.blueprint-pref-slider {
+  width: 100px;
+  height: 4px;
+  accent-color: var(--nf-accent-primary);
+}
+
+.blueprint-pref-weight-value {
+  min-width: 24px;
+  text-align: right;
+  color: var(--nf-text-body);
+  font-size: var(--nf-font-body);
+  font-variant-numeric: tabular-nums;
+}
+
+.blueprint-pref-row-desc {
+  margin: 0;
+  color: var(--nf-text-muted-soft);
+  font-size: var(--nf-font-body);
+  line-height: 1.4;
+}
+
+/* Responsive adjustments */
+@media (max-width: 700px) {
+  .blueprint-pref-top {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .blueprint-pref-combo {
+    max-width: none;
+  }
+  .blueprint-pref-row-main {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .blueprint-pref-row-controls {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+  .blueprint-pref-slider {
+    flex: 1;
+    min-width: 80px;
+  }
+}
+
+/* ============================================================
+ * Workflow visual parity — animations and transitions
+ * ============================================================ */
+
+/* Run cards keep layout stable; progress and the active node carry motion. */
+.workflow-page .workflow-run-card {
+  transition: transform 180ms ease, opacity 180ms ease;
+}
+
+.workflow-page .workflow-run-card:hover {
+  border-color: color-mix(in srgb, var(--nf-accent-primary) 30%, transparent);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--nf-shadow) 10%, transparent);
+}
+
+/* Running progress bar shimmer */
+.workflow-page .workflow-progress-line span {
+  transition: width 300ms cubic-bezier(.22, .61, .36, 1);
+}
+
+/* Focus panel subtle entrance */
+.workflow-page .workflow-focus {
+  animation: focus-slide-in 250ms cubic-bezier(.22, .61, .36, 1) both;
+}
+
+@keyframes focus-slide-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Workflow empty state fade */
+.workflow-page .workflow-empty {
+  animation: empty-fade-in 300ms ease both;
+}
+
+@keyframes empty-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workflow-page .workflow-run-card { transition: none; }
+  .workflow-page .workflow-run-card:hover { box-shadow: none; }
+  .workflow-page .workflow-focus { animation: none; }
+  .workflow-page .workflow-empty { animation: none; }
+}
+
+/* ============================================================
+ * Outline Polish Panel (大纲润色)
+ * ============================================================ */
+.outline-polish-body {
+  display: grid;
+  gap: 14px;
+}
+
+.outline-polish-field {
+  display: grid;
+  gap: 6px;
+}
+
+.outline-polish-field span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.outline-polish-field strong {
+  font-size: var(--nf-font-label);
+}
+
+.outline-polish-field small {
+  font-size: var(--nf-font-ui);
+  color: var(--nf-text-tertiary);
+}
+
+.outline-polish-field textarea,
+.outline-polish-field input,
+.outline-polish-field select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--nf-border-default);
+  border-radius: 8px;
+  background: var(--nf-bg-control);
+  color: var(--nf-text-primary);
+  font-size: var(--nf-font-label);
+  resize: vertical;
+}
+
+.outline-polish-preview.is-error {
+  border-color: color-mix(in srgb, var(--nf-status-danger, #b9492e) 45%, var(--nf-border-default));
+}
+
+.outline-polish-preview.is-error p {
+  color: var(--nf-status-danger, #b9492e);
+}
+
+.outline-polish-range input {
+  max-width: 240px;
+}
+
+.outline-polish-focus {
+  border: 1px solid var(--nf-border-subtle);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.outline-polish-focus legend {
+  font-size: var(--nf-font-body);
+  font-weight: 600;
+  padding: 0 6px;
+}
+
+.outline-polish-focus-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+.outline-polish-focus-grid label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--nf-font-body);
+  cursor: pointer;
+}
+
+.outline-polish-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.outline-polish-suggestions {
+  border: 1px solid color-mix(in srgb, var(--nf-accent-primary) 30%, transparent);
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: color-mix(in srgb, var(--nf-accent-primary) 4%, var(--nf-bg-surface));
+}
+
+.outline-polish-suggestions legend {
+  font-size: var(--nf-font-body);
+  font-weight: 600;
+  padding: 0 6px;
+  color: var(--nf-accent-primary);
+}
+
+.outline-polish-suggestion-list {
+  display: grid;
+  gap: 8px;
+}
+
+.outline-polish-suggestion-list label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: var(--nf-font-body);
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.outline-polish-preview {
+  padding: 12px 14px;
+  border: 1px solid var(--nf-border-subtle);
+  border-radius: 10px;
+  background: var(--nf-bg-control);
+}
+
+.outline-polish-preview strong {
+  display: block;
+  font-size: var(--nf-font-body);
+  margin-bottom: 8px;
+}
+
+.outline-polish-preview pre {
+  margin: 0;
+  font-size: var(--nf-font-body);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.outline-polish-error {
+  color: var(--nf-status-danger, #f87171);
+  font-size: var(--nf-font-body);
+}

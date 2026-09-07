@@ -1,0 +1,135 @@
+{# ================================================================================
+source_template_hash: eca3b9e5f509f52d9e50419b2c06a062a8ad3792605465a2443eaa8e65a3259e
+[NOTES]
+================================================================================
+Prompt: spec_to_beats.j2
+Service Step: BEATS (Beat Generation)
+Function Summary: Generate a structured list of story beats based on the Spec and
+         Blueprint. Each beat contains sequence, beat_type, summary, tension_level,
+         characters_involved, setting, and emotional_note.
+Upstream Input:
+  - spec: User-provided story specification (genre, theme, tone, length_target, language,
+          characters_hint, world_hint, conflict_hint, pov_hint,
+          opening_style, ending_style, extra_instructions)
+  - blueprint: From SHORT_BLUEPRINT or PLAN_OUTLINE (synopsis, anchor_elements,
+               narrative_phases, turning_points, character_arcs,
+               emotional_arc, ending_strategy, element_selection)
+Downstream Output:
+  - JSON: {beats: [{sequence, beat_type, summary, tension_level,
+             characters_involved, setting, emotional_note}],
+           total_estimated_words, structure_note}
+  - Downstream Consumer: BEATS_TO_DRAFT (Draft Composition)
+Consumption Chain Priority:
+  P0 = spec core fields / beat_type opening/resolution constraints
+  P1 = blueprint.narrative_phases coverage / turning_points execution
+  P2 = emotional_arc alignment
+Brief Example:
+  Input: spec={genre:"Mystery", length_target:5000}, blueprint={synopsis:"...", phases:[...]}
+  Output: {beats:[{sequence:1, beat_type:"opening", summary:"...", tension_level:3}], ...}
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer: Task Definition + Context Consumption
+    --------------------------------------------------------------------------- -#}
+
+Based on the following story specification, generate a structured list of story beats.
+
+## Story Specification
+- Genre: {{ spec.genre }} | Theme: {{ spec.theme }} | Tone: {{ spec.tone }}
+- Target Word Count: {{ spec.length_target }} | Language: {{ describe_language(spec.language) }}
+{% if spec.characters_hint | default('') %}- Characters: {{ spec.characters_hint }}{% endif %}
+{% if spec.world_hint | default('') %}- World View: {{ spec.world_hint }}{% endif %}
+{% if spec.conflict_hint | default('') %}- Core Conflict: {{ spec.conflict_hint }}{% endif %}
+{% if spec.pov_hint | default('') %}- Narrative POV: {{ spec.pov_hint }}{% endif %}
+{% if spec.opening_style | default('') %}- Opening Strategy: {{ spec.opening_style }}{% endif %}
+{% if spec.ending_style | default('') %}- Ending Direction: {{ spec.ending_style }}{% endif %}
+{% if spec.extra_instructions | default('') %}- Additional: {{ spec.extra_instructions }}{% endif %}
+{% if blueprint is defined and blueprint and blueprint.synopsis | default('') %}
+
+## Narrative Blueprint Reference
+The following blueprint is the structural plan for the entire story. Please **strictly follow** the blueprint's structural intent when generating beats.
+
+### Synopsis
+{{ blueprint.synopsis }}
+{% if blueprint.anchor_elements is defined and blueprint.anchor_elements %}
+{% set anchor = blueprint.anchor_elements %}
+
+### Narrative Anchors (Strict Compliance Required)
+{% if anchor.time_frame | default('') %}- Time Frame: {{ anchor.time_frame }}{% endif %}
+{% if anchor.primary_locations | default([]) %}- Core Locations: {{ anchor.primary_locations | join(', ') }}{% endif %}
+{% if anchor.core_characters | default([]) %}- Main Characters: {% for c in anchor.core_characters %}{{ c.name }} ({{ c.role }}){% if not loop.last %}, {% endif %}{% endfor %}{% endif %}
+{% if anchor.central_event | default('') %}- Central Event: {{ anchor.central_event }}{% endif %}
+
+Each beat's setting and characters_involved must come from the above anchor scope. Do not create new scenes or characters out of thin air.
+{% endif %}
+{% if blueprint.narrative_phases | default([]) %}
+
+### Narrative Phases
+{% for phase in blueprint.narrative_phases %}- **{{ phase.phase_name }}** (Position {{ phase.position_start }}%-{{ phase.position_end }}%): {{ phase.description }} | Tension={{ phase.tension_level }} | Emotion={{ phase.emotional_focus }}
+{%- if phase.time_setting %} Time {{ phase.time_setting }}{% endif %}{%- if phase.location %} Location {{ phase.location }}{% endif %}{%- if phase.characters_present %} Characters {{ phase.characters_present | join(', ') }}{% endif %}{%- if phase.key_event %} Event {{ phase.key_event }}{% endif %}
+{% endfor %}{% endif %}
+{% if blueprint.turning_points | default([]) %}
+
+### Key Turning Points
+{% for tp in blueprint.turning_points %}- Position {{ tp.position_percent }}%: {{ tp.description }} (Impact: {{ tp.impact }})
+{% endfor %}{% endif %}
+{% if blueprint.character_arcs | default([]) %}
+
+### Character Arcs
+{% for arc in blueprint.character_arcs %}- **{{ arc.character }}**: {{ arc.arc_summary }} (Key Moment: {{ arc.key_moment }})
+{% endfor %}{% endif %}
+{% if blueprint.emotional_arc | default('') %}
+
+### Emotional Trajectory
+{{ blueprint.emotional_arc }}
+{% endif %}
+{% if blueprint.ending_strategy | default('') %}
+
+### Ending Strategy
+{{ blueprint.ending_strategy }}
+{% endif %}
+{% if blueprint.element_selection is defined and blueprint.element_selection and blueprint.element_selection.extension_elements %}
+
+### Narrative Element Structure Reference
+The following are genre expression references activated for this story. Beat design should naturally adapt based on length and conflict needs:
+{% for elem in blueprint.element_selection.extension_elements %}
+- **{{ elem.name }}**: {{ elem.prompt_hint }}
+{% endfor %}
+{% endif %}
+{% endif %}
+
+## Structural Constraints
+- The first beat must be of type "opening" (establish scene, introduce characters or hook)
+- The last beat must be of type "resolution" (provide ending, emotional closure)
+- Middle beats must include at least one "climax" (climax point)
+- beat_type options: opening / rising / climax / falling / resolution
+- All beats must cover narrative_phases from blueprint in sequence. Do not skip phases, merge phases, or prematurely cash in the ending.
+- Each beat's summary must clearly state: current action, conflict/change, and the consequence left at the end of this beat.
+- If blueprint provides turning_points, the beats near corresponding positions must carry the turning point itself, not just foreshadow it.
+- Resolution beats must fulfill blueprint.ending_strategy. Do not provide merely summary-style closure.
+- Resolution beats must bring the story to a "stand-alone complete state": core conflict receives astage-level answer, character emotions have a landing point. Do not write open-ended conclusions or cliffhangers.
+
+## Beat Field Requirements
+- Each item in `beats` must contain: sequence, beat_type, summary, tension_level, characters_involved, setting, emotional_note.
+- `beat_type` must use: opening / rising / climax / falling / resolution.
+- `total_estimated_words` uses the target word count estimate; `structure_note` summarizes overall structural strategy.
+
+Requirements:
+1. Number of beats ≈ target word count / 1000 × 2 (flexible adjustment, minimum 4, maximum 16)
+2. Tension curve should rise and fall, with increase before climax
+3. Each beat should advance the plot, avoid empty descriptions
+4. setting and characters_involved must continuously obey blueprint anchors. Do not expand to unapproved main scenes/main characters from outside the blueprint.
+5. The last beat's summary must specifically state "how to conclude." Do not write abstract descriptions like "leave suspense" (create suspense) or "story ends" (story ends)
+
+## Quality Calibration
+- Work Identity: You are a highly contractual novel executive editor, skilled at transforming input constraints into narrative content with action, choices, and consequences.
+- Creative Inference Path: First locate the emotional engine and conflict pressure, then land on action, dialogue, scene staging, and consequences.
+- Field-level Quality Example (not output format): Weak = "Character is very nervous"; High Quality = "Character reveals cost, misjudgment, or emotional turning point before making a specific choice."
+- Actionable Path: Each new content should serve existing character motivations, scene obstacles, suspense advancement, or emotional landing points.
+
+## Pre-delivery Verification
+- Are P0/P1/P2 priorities maintained without letting weak references override hard constraints?
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans?
+- Are unauthorized new characters, locations, world rules, future payoffs, or format agreements avoided?
+- Are abstract goals transformed into observable actions, conflicts, state changes, or chapter transition points?

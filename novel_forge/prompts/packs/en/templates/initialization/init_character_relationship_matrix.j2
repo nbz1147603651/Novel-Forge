@@ -1,0 +1,136 @@
+{# source_template_hash: debbad738e5aa0df16072b5ced9e9de58c9439a135b39b7e885f174c890f80c7 #}
+{#
+================================================================================
+【Notes】
+================================================================================
+Prompt: init_character_relationship_matrix.j2
+Service Step: INIT_CHARACTER_RELATIONSHIP_MATRIX (Character Bible Fragment: Relationship Network)
+Brief Description: Generate relationship matrix between characters based on the same roster to prevent profile fragments from being isolated from each other.
+Upstream Input: premise/story_bible/character_roster/character_profiles/character_arcs/relationship_seed_matrix/relationship_candidate_evidence
+Downstream Output: JSON: {"relationship_matrix": [{"character_a","character_b","relation_type","description","confidence"}]}
+Downstream Consumer: INIT_CHARACTER_BIBLE Local Merger
+Consumption Chain Priority: P0 = write-only relationships within roster; P1 = relationships containing conflict/interest/emotional tension; P2 = deduplication
+================================================================================
+#}
+{%- from "_base/_shared_evidence_anchor.j2" import render_shared_evidence_anchor -%}
+
+{#- Guidance Layer -#}
+Only generate the relationship matrix between characters. Do not write relationships involving props, organizations, or concepts; do not add new characters.
+
+## Pipeline Boundary
+This template only outputs typed relationship matrix, not the complete CharacterBible, nor does it supplement character profiles.
+{% set phase = relationship_generation_phase | default("final") %}
+{% if phase == "seed" %}
+Current Phase: Relationship Seed Matrix. You are only responsible for extracting clearly narrative-effective relationships from complete character profiles for character arc reference; this result will not be directly projected to CharacterBible.
+{% elif phase == "repair" %}
+Current Phase: Focused Relationship-Integrity Repair. Return only evidence-backed edges directly involving the target characters; do not rewrite the previous full matrix. Endpoints must copy the fixed roster exactly and must not reuse rejected spellings from the repair reasons.
+{% else %}
+Current Phase: Final Relationship Matrix. You consume profiles, arcs, relationship seeds, and candidate evidence, and must output the authoritative character relationship graph jointly used by subsequent CharacterSystem, CharacterBible, Canon, and blueprint.
+{% endif %}
+{% if character_generation_mode == "split_v2" %}
+Current Pipeline: split_v2. You consume the local merge result of roster and profile_batch; must adhere to the fixed roster, and relationships will be projected back to CharacterBible by the local merger.
+{% elif character_generation_mode %}
+Current Pipeline: {{ character_generation_mode }}. This value is only used for cache isolation and pipeline description; do not write it to relationship fields.
+{% endif %}
+
+## Canonical Entity Rules
+- `character_a` / `character_b` can only use roster canonical names; the relationship matrix is not a registration entry for old names, aliases, organizations, or props.
+- If old names, misnames, past-life names, or titles truly affect relationships, they can only appear as short evidence in `description`, not as relationship endpoints.
+- `identity_link` only describes identity connections between two roster entities; aliases of the same entity should not be output as two separate character relationships.
+- Downstream CharacterSystem will project this fragment into relationship edges; therefore each edge must be locally consumable by chapter prompts and cannot contain character bulk.
+
+## Fixed Character Roster (highest priority; endpoints must copy these names verbatim)
+{{ character_roster | tojson(indent=2) }}
+
+{% if target_character_roster | default([]) %}
+## Target Characters (each must receive at least one evidence-backed edge)
+{{ target_character_roster | tojson(indent=2) }}
+{% endif %}
+
+{{ render_shared_evidence_anchor(shared_evidence_anchor) }}
+
+## Story Premise
+{{ premise }}
+
+## Worldview Anchors
+{{ story_bible | tojson(indent=2) if story_bible is mapping else story_bible }}
+
+{% if character_profiles %}
+## Generated Profile Summary
+{{ character_profiles | tojson(indent=2) }}
+{% endif %}
+
+{% if character_arcs | default([]) %}
+## Merged Character Arcs
+{{ character_arcs | tojson(indent=2) }}
+{% endif %}
+
+{% if relationship_seed_matrix | default([]) %}
+## Relationship Seed Matrix
+{{ relationship_seed_matrix | tojson(indent=2) }}
+{% endif %}
+
+{% if relationship_candidate_evidence | default([]) %}
+## Local Candidate Evidence
+The following entries indicate that a character profile field mentions another roster character. They are not mandatory relationships, but the final matrix must review this evidence and retain relationships that will truly affect motivation, emotion, conflict, faction, subplot, or main text interactions.
+{{ relationship_candidate_evidence | tojson(indent=2) }}
+{% endif %}
+
+{% if previous_relationship_matrix | default([]) %}
+## Previous Version Relationship Matrix
+{{ previous_relationship_matrix | tojson(indent=2) }}
+{% endif %}
+
+{% if relationship_retry_reasons | default([]) %}
+## This Revision's Reasons
+{{ relationship_retry_reasons | tojson(indent=2) }}
+{% endif %}
+
+## Field Content Constraints
+- Each relationship object only permits `character_a`, `character_b`, `relation_type`, `identity_link_type`, `description`, `confidence`.
+- Field names must use the English `snake_case` keys listed above; all judgments should be written into `description`.
+
+## Requirements
+- Both `character_a` and `character_b` must come from the fixed character roster.
+- `character_a` / `character_b` must verbatim use the canonical names from the fixed character roster. Old names, aliases, past-life names, misnames, or stage names can only be written in `description`, not in these two fields.
+- If the generated profile summary contains approximate names, old draft names, or misnames inconsistent with the fixed roster, this step must unify them back to the fixed roster canonical names; unless it is a user-specified formal alias, do not continue writing drifted names into `description`.
+- If names in the fixed character roster include parenthetical qualifications (such as modern/past/memory), `character_a` / `character_b` must copy the parenthetical qualifications verbatim and cannot be omitted to unqualified names.
+- The relationship matrix is a selection of "narratively effective relationships," not a complete pairwise character combination table. Do not fill in all possible pairwise relationships.
+- Only output relationships that will generate interaction, conflict, information transfer, emotional change, action collaboration, obstruction, or long-term tension in the main text.
+- If two people merely "have heard of each other / know indirectly / have no direct relationship / may connect in the future / are in the same community but won't interact," please omit this pair of relationships directly and prohibit writing them as `relationship`.
+- For memory layers, deceased, or background-only characters, only output relationships when they will continuously drive character arcs, trauma, commitments, legacy, or key memory scenes; otherwise omit.
+- Output each pair of relationships only once. Prioritize protagonist relationships, antagonist/pressure source relationships, and supporting character relationships that will cause twists; prioritize quality over quantity for weak social relationships and purely ecological relationships.
+- `relation_type` must be selected from the following English enumerations; do not output Chinese types or create custom types:
+  - `romantic_tension`: CP, ambiguous, emotional pull, partner trajectory
+  - `family`: kinship, grandparent-grandchild, parent-child, siblings, family obligations
+  - `mentor_student`: teacher-student, master-apprentice, mentor-mentee, senior-junior
+  - `professional`: colleagues, partners in the same field, doctor-patient, medical treatment, scientific collaboration, professional division
+  - `alliance`: explicit alliance, shared goals, mutual support
+  - `rivalry`: competition, rivalry, value tension but not antagonism
+  - `antagonism`: hostility, harm, betrayal, obstruction, main opposition
+  - `community`: neighbors, groups, public perception, social ecological relationships
+  - `identity_link`: same soul, reincarnation, mistaken identity, alias, past-life/current-life identity mapping; do not use for normal social relationships, lovers/CP/fated partners
+  - `relationship`: neutral relationship when none of the above fit
+- `identity_link_type` should only be filled when `relation_type` is `identity_link`, and can take `reincarnation_of`, `mistaken_as`, `alias_of`, `related_to`; leave as empty string for other relationships.
+- Only when `character_a` and `character_b` themselves are the same soul/reincarnation/alias/mistaken identity objects can `identity_link` be used. If describing "two people loved in a past life, reunited in this life, fated CP," the relationship type should be `romantic_tension`, with past-life information written into `description`.
+- `description` should describe social relationships, emotional tendencies, and potential conflicts, but do not let third-party plot terms pollute `relation_type`.
+- `description` cannot use "no direct relationship," "know indirectly," or "may develop connection" as the relationship body itself; such entries should be omitted.
+- If a supporting/antagonist character will drive the main plot, subplot, or evidence chain, they should be connected to at least one of: direct interaction targets, superiors/subordinates, allies, adversaries, or emotional objects; do not let key active characters exist only in profiles but be completely isolated in the relationship matrix.
+- The final phase must review character arcs and candidate evidence: if a pair of characters has already formed debt, protection, exploitation, old acquaintance, alliance, adversary, kinship, mentorship, professional collaboration, or emotional involvement in backstory/arc/notes, they should be explicitly output as a relationship edge.
+- `description` must simultaneously clarify: social/identity relationship, emotional tendency, narrative function, or potential conflict. Do not just write "know each other" or "are related."
+- Relationship selection should serve the overall self-consistency of the previous version CharacterSystem/Bible: prioritize edges that can explain character motivation, faction stratification, main conflict progression, reversal evidence chains, or emotional line changes; do not add weak connections just to make the graph fuller.
+- `confidence` outputs a decimal between 0 and 1; use 0.7 when uncertain.
+
+## Quality Calibration
+- Work Identity: You are a long-form narrative architect, skilled at splitting story assets intohandoff, verifiable, and not overly spoiler-heavy execution plans.
+- Planning Inference Path: First lock in P0 hard constraints, then allocate P1 progression rhythm, finally use P2 style/theme to complement the presentation layer.
+- Field-Level Quality Examples (not output format): Weak = "advancing relationship"; High Quality = "clarify who acts for what, how the relationship changes, how the next link connects."
+- Actionable Path: Plan items must be directly checkable by subsequent writing/auditing; avoid giving only abstract wishes or thematic slogans.
+
+## Pre-Delivery Verification
+- Are P0/P1/P2 priorities maintained, and no weak references overriding hard constraints?
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans?
+- Are unauthorized characters, locations, world rules, future payoffs, or format agreements avoided?
+- Are abstract goals transformed into observable actions, conflicts, state changes, or chapter continuity points?
+
+{#- Format Layer -#}

@@ -1,0 +1,107 @@
+{#
+================================================================================
+【备注】
+================================================================================
+共享宏：_artifact_source_contract.j2
+作用简述：渲染 ChapterSourceSlice 的轻量源头契约，统一长篇章节阶段的
+          source artifact 消费边界。该宏只描述输入消费规则，不定义输出格式。
+================================================================================
+#}
+{%- from "_base/_cognitive_constraints.j2" import render_cognitive_constraints -%}
+
+{%- macro render_artifact_source_contract(source, title="## Source Artifact 契约（P0）", mode="chapter") -%}
+{% set source = source | default({}) %}
+{{ title }}
+{% if source %}
+- source_artifact_id：{{ source.source_artifact_id | default('') }}
+{% if source.source_hashes | default({}) %}
+- source_hashes：{% for key, value in source.source_hashes.items() %}{{ key }}={{ value }}{% if not loop.last %}；{% endif %}{% endfor %}
+{% endif %}
+- 权威边界：`cards.source` 是本章唯一初始化权威投影；其他 `stage_cards` 只可作为本步骤局部辅助，不能反向覆盖 source。
+- 实体边界：角色、地点、物件、组织和概念必须来自 canonical entity refs；正文渲染前才解析显示名，不得自造旧名、未登记别名或同义实体。
+
+{% set chapter_contract = source.chapter_contract | default({}) %}
+{% if chapter_contract and mode in ["review", "extract"] %}
+### chapter_contract
+{% if chapter_contract.chapter_number is defined %}- 章节：{{ chapter_contract.chapter_number }}{% endif %}
+{% if chapter_contract.title | default('') %}- 标题：{{ chapter_contract.title }}{% endif %}
+{% if chapter_contract.entry_state_requirements | default([]) %}- 入口状态：{{ chapter_contract.entry_state_requirements | join('；') }}{% endif %}
+{% if chapter_contract.required_events | default([]) %}- 必达事件：{{ chapter_contract.required_events | join('；') }}{% endif %}
+{% if chapter_contract.required_progressions | default([]) %}- 必达推进：{{ chapter_contract.required_progressions | join('；') }}{% endif %}
+{% if chapter_contract.allowed_progressions | default([]) %}- 允许铺垫：{{ chapter_contract.allowed_progressions | join('；') }}{% endif %}
+{% if chapter_contract.forbidden_changes | default([]) %}- 禁止变化：{{ chapter_contract.forbidden_changes | join('；') }}{% endif %}
+{% if chapter_contract.forbidden_progressions | default([]) %}- 禁止提前推进：{{ chapter_contract.forbidden_progressions | join('；') }}{% endif %}
+{% if chapter_contract.future_leak_risks | default([]) %}- future_leak_risks：{{ chapter_contract.future_leak_risks | join('；') }}{% endif %}
+{% if chapter_contract.cognitive_constraints | default([]) %}
+- 认知边界（完整角色覆盖）：
+{{ render_cognitive_constraints(chapter_contract.cognitive_constraints) }}
+{% endif %}
+{% if chapter_contract.exit_state_targets | default([]) %}- 出口目标：{{ chapter_contract.exit_state_targets | join('；') }}{% endif %}
+{% if chapter_contract.completion_criteria | default([]) %}- 完成标准：{{ chapter_contract.completion_criteria | join('；') }}{% endif %}
+{% elif chapter_contract and mode in ["repair", "polish"] and chapter_contract.cognitive_constraints | default([]) %}
+### cognitive_constraints（只读保真边界）
+{{ render_cognitive_constraints(chapter_contract.cognitive_constraints) }}
+{% endif %}
+
+{% set relevant_entities = source.relevant_entities | default([]) %}
+{% if relevant_entities %}
+### relevant_entities
+{% for entity in relevant_entities %}
+- {{ entity.entity_id | default(entity.id | default('')) }}｜{{ entity.entity_type | default(entity.type | default('')) }}｜{{ entity.canonical_name | default(entity.name | default('')) }}{% if mode in ["review", "extract"] and entity.aliases | default([]) %}；aliases={{ entity.aliases | join('、') }}{% endif %}
+{% endfor %}
+{% endif %}
+
+{% set boundaries = source.forbidden_reveal_boundaries | default([]) %}
+### forbidden_reveal_boundaries
+{% if boundaries %}
+{% for item in boundaries %}
+- {{ item }}
+{% endfor %}
+{% else %}
+- []（无显式边界也不得自行提前确认未来事实）
+{% endif %}
+
+{% set world_rule_card = source.world_rule_card | default({}) %}
+{% if world_rule_card %}
+### world_rule_card（P0）
+- 规则账本版本：{{ world_rule_card.rule_book_version | default('') }}；source_hash={{ world_rule_card.source_hash | default('') }}。
+- 下列规则是本章唯一可执行的世界规则投影；不得自行补充、改写或用剧情便利绕过代价。
+{% for item in world_rule_card.always_on | default([]) %}
+- [始终生效/{{ item.rule.rule_id | default('') }}] {{ item.rule.content | default('') }}{% if item.rule.forbidden_behavior | default([]) %}；禁止={{ item.rule.forbidden_behavior | join('；') }}{% endif %}{% if item.rule.cost_or_consequence | default([]) %}；代价/后果={{ item.rule.cost_or_consequence | join('；') }}{% endif %}
+{% endfor %}
+{% for item in world_rule_card.relevant_rules | default([]) %}
+- [本章相关/{{ item.rule.rule_id | default('') }}] {{ item.rule.content | default('') }}；入选原因={{ item.selection_reason | default('') }}{% if item.rule.trigger_conditions | default([]) %}；触发={{ item.rule.trigger_conditions | join('；') }}{% endif %}{% if item.rule.forbidden_behavior | default([]) %}；禁止={{ item.rule.forbidden_behavior | join('；') }}{% endif %}{% if item.rule.cost_or_consequence | default([]) %}；代价/后果={{ item.rule.cost_or_consequence | join('；') }}{% endif %}
+{% endfor %}
+{% if world_rule_card.omitted_rule_ids | default([]) %}
+- 未入选规则 ID：{{ world_rule_card.omitted_rule_ids | join('、') }}。它们未授权本章新增相关事实；若正文需要触及，必须回到源头重新筛选。
+{% endif %}
+{% endif %}
+
+{% if mode in ["draft", "scene", "wave", "polish"] %}
+{% set story_foundation = source.story_foundation | default({}) %}
+{% set style_voice = source.style_voice | default({}) %}
+{% if story_foundation or style_voice %}
+### 局部写作投影
+{% if world_rule_card %}- 世界规则只以本提示前述 `world_rule_card` 为准；禁止读取或猜测未入选规则。{% endif %}
+{% if story_foundation.address_rules | default([]) %}- 称谓规则：{{ story_foundation.address_rules | join('；') }}{% endif %}
+{% if style_voice.style_profile | default({}) %}- 风格投影：只用于语言、句法、对白 register，不新增剧情事实。{% endif %}
+{% if style_voice.character_voices | default([]) %}- 角色声纹投影：只用于当前章相关角色的表达方式，不读取完整人物档案。{% endif %}
+{% endif %}
+{% endif %}
+
+{% if mode == "repair" %}
+### ticket/window 修复边界
+- 只修当前 ticket、证据 quote、文本窗口和验收条件覆盖的问题；不得自由重写整章。
+- 不读取宏观创作规划来新增事件、角色认知、身份确认、未来 payoff 或场景顺序。
+- 若缺少 ticket/window 证据，保持正文原样并按最小改动原则处理可定位问题。
+{% elif mode == "polish" %}
+### polish 边界
+- 只润色已修正文、表达密度和风格投影；不能新增剧情事实、角色认知、事件 ledger、关系结论或未来揭示。
+{% elif mode == "extract" %}
+### extraction 边界
+- 计划、章节契约、中间稿和 source 投影都不是已发生事实；canon/memory 只能写入最终正文证据支持的事实。
+{% endif %}
+{% else %}
+- 缺少 `cards.source`：本步骤没有初始化权威投影，应由上游 gate 阻断；不要凭空补全 story_bible、character_bible 或 narrative_contract。
+{% endif %}
+{%- endmacro %}

@@ -1,0 +1,164 @@
+{#- 叙事要素聚焦渲染宏 — base 模块 -#}
+{#- 提取 plan_chapter / draft_chapter / edit_chapter 中重复的 _focus_ns.cards 查找 + 渲染逻辑 -#}
+
+{#-
+  === 宏模块：叙事要素聚焦渲染 ===
+  文件类型：宏模块（macro module）
+  作用简述：从 element_selection 中提取并渲染本章重点叙事要素约束，支持 required/extension 拆分、focus_ids 筛选、规划版/通用版两种渲染模式。
+
+  定义的宏及参数：
+  1. build_focus_cards(focus_ids: list, extension_elements: list) → namespace(cards=[...])
+     - 根据 focus_ids 从 extension_elements 中筛选命中的要素卡片
+  2. render_element_focus(element_selection, element_focus=None, dynamic_element_focus=None, element_execution_requirements=None, focus_heading=...)
+     - 通用版渲染，适用于 draft_chapter / edit_chapter
+  3. render_element_focus_plan(element_selection, chapter_outline, dynamic_element_focus=None) → namespace(cards=[...])
+     - 规划版渲染，适用于 plan_chapter，包含 required-vs-extension 拆分
+
+  使用方式：
+  - 被 planning/plan_chapter.j2, writing/draft_chapter.j2, writing/edit_chapter.j2 等模板通过 {% import %} 或 {% from %} 调用
+-#}
+
+{#-
+  查找并构建 _focus_ns.cards：从 extension_elements 中筛选出 focus_ids 命中的要素卡片。
+
+  参数：
+    - focus_ids: 本章重点扩展要素的 element_id 列表（如 element_focus 或 dynamic_element_focus）
+    - extension_elements: 扩展要素列表（element_selection.extension_elements）
+
+  返回：namespace(cards=[...])，cards 为命中的要素卡片列表
+-#}
+{% macro build_focus_cards(focus_ids, extension_elements) %}
+{%- set _focus_ns = namespace(cards=[]) -%}
+{%- if focus_ids and extension_elements -%}
+{%- for _fid in focus_ids -%}
+{%- for elem in extension_elements -%}
+{%- if elem.element_id == _fid -%}
+{%- set _focus_ns.cards = _focus_ns.cards + [elem] -%}
+{%- endif -%}
+{%- endfor -%}
+{%- endfor -%}
+{%- endif -%}
+{{ _focus_ns }}
+{% endmacro %}
+
+{#-
+  渲染叙事要素聚焦约束（通用版）。
+
+  适用于 draft_chapter / edit_chapter 等仅有 extension focus 的场景。
+
+  参数：
+    - element_selection: 要素选择对象（须含 extension_elements）
+    - element_focus: 本章重点要素 ID 列表（可选）
+    - dynamic_element_focus: 动态推荐要素 ID 列表（可选，element_focus 为空时回退）
+    - element_execution_requirements: 执行要求列表（可选）
+    - focus_heading: 重点要素标题（默认 "## 叙事要素重点约束"）
+    - focus_description: 重点要素描述文案（默认 "以下本章重点叙事要素必须在正文中明确体现："）
+    - execution_label: 执行要求标签（默认 "- 本章落地要求："）
+-#}
+{% macro render_element_focus(
+    element_selection,
+    element_focus=None,
+    dynamic_element_focus=None,
+    element_execution_requirements=None,
+    focus_heading="## 叙事要素重点约束",
+    focus_description="以下本章重点叙事要素必须在正文中明确体现：",
+    execution_label="- 本章落地要求："
+) %}
+{%- if element_selection is defined and element_selection and element_selection.extension_elements is defined and element_selection.extension_elements -%}
+{%- set _ext_elems = element_selection.extension_elements -%}
+{%- set _focus_ids = element_focus if element_focus is defined and element_focus else [] -%}
+{%- if (not _focus_ids) and dynamic_element_focus is defined and dynamic_element_focus -%}
+{%- set _focus_ids = dynamic_element_focus -%}
+{%- endif -%}
+{%- set _focus_ns = namespace(cards=[]) -%}
+{%- if _focus_ids -%}
+{%- for _fid in _focus_ids -%}
+{%- for elem in _ext_elems -%}
+{%- if elem.element_id == _fid -%}
+{%- set _focus_ns.cards = _focus_ns.cards + [elem] -%}
+{%- endif -%}
+{%- endfor -%}
+{%- endfor -%}
+{%- endif -%}
+{%- if _focus_ns.cards -%}
+{{ focus_heading }}
+{{ focus_description }}
+{%- for elem in _focus_ns.cards %}
+- **{{ elem.name }}**{% if elem.selection_score is defined and elem.selection_score %}（优先级 {{ elem.selection_score }}）{% endif %}：{{ elem.prompt_hint }}
+{%- endfor %}
+- 这些要素名称与提示仅供幕后设计，不得在正文中以标题、标签、注释或加粗说明直接出现。
+- 禁止直接写出“XX落地场景”“伪装压力等级”“暴露风险信号”等策划词，必须转译成自然的动作、对白、冲突和感官细节。
+{%- if element_execution_requirements is defined and element_execution_requirements %}
+{{ execution_label }}
+{%- for item in element_execution_requirements %}
+  - {{ item }}
+{%- endfor %}
+{%- endif %}
+{%- endif %}
+{%- endif %}
+{% endmacro %}
+
+{#-
+  渲染叙事要素聚焦约束（规划版）。
+
+  适用于 plan_chapter，包含 required-vs-extension 拆分、focus_constraints、执行落地指引。
+
+  参数：
+    - element_selection: 要素选择对象（须含 required_elements, extension_elements, focus_constraints）
+    - chapter_outline: 大纲对象（含 element_focus）
+    - dynamic_element_focus: 动态推荐要素 ID 列表（可选，大纲无 focus 时回退）
+    - element_execution_requirements: 执行要求列表（可选，规划版不使用，保留签名一致性）
+-#}
+{% macro render_element_focus_plan(
+    element_selection,
+    chapter_outline,
+    dynamic_element_focus=None
+) %}
+{%- if element_selection is defined and element_selection -%}
+{%- set _req_elems = element_selection.required_elements if element_selection.required_elements is defined else [] -%}
+{%- set _ext_elems = element_selection.extension_elements if element_selection.extension_elements is defined else [] -%}
+{%- set _focus_ids = chapter_outline.element_focus if chapter_outline is defined and chapter_outline.element_focus is defined and chapter_outline.element_focus else [] -%}
+{%- if (not _focus_ids) and dynamic_element_focus is defined and dynamic_element_focus -%}
+{%- set _focus_ids = dynamic_element_focus -%}
+{%- endif -%}
+{%- set _focus_ns = namespace(cards=[]) -%}
+{%- if _focus_ids and _ext_elems -%}
+{%- for _fid in _focus_ids -%}
+{%- for item in _ext_elems -%}
+{%- if item.element_id == _fid -%}
+{%- set _focus_ns.cards = _focus_ns.cards + [item] -%}
+{%- endif -%}
+{%- endfor -%}
+{%- endfor -%}
+{%- endif -%}
+## 叙事要素约束（★ 规划时须纳入场景设计）
+{%- if _req_elems %}
+### 必要叙事要素（每章均须体现）
+{%- for item in _req_elems %}
+- **{{ item.name }}**：{{ item.prompt_hint }}
+{%- endfor %}
+{%- endif %}
+{%- if _focus_ns.cards %}
+### 本章重点扩展要素（优先落实到 scene 设计）
+{%- for item in _focus_ns.cards %}
+- **{{ item.name }}**（{{ item.category }}{% if item.selection_score is defined and item.selection_score %}｜优先级 {{ item.selection_score }}{% endif %}）：{{ item.prompt_hint }}
+{%- endfor %}
+- 规划备注：这些要素名称只用于 scene 设计，不得在 summary、required_outcome 或正文里原样复述为“落地场景”“伪装压力等级”“暴露风险信号”等标签。
+{%- if (_ext_elems | length) > (_focus_ns.cards | length) %}
+### 其余扩展要素（全局兜底，不要求本章全部覆盖）
+{%- for item in _ext_elems %}
+{%- if item.element_id not in _focus_ids %}
+- **{{ item.name }}**{% if item.selection_score is defined and item.selection_score %}（优先级 {{ item.selection_score }}）{% endif %}：可弱体现或仅做伏笔铺垫
+{%- endif %}
+{%- endfor %}
+{%- endif %}
+{%- elif _ext_elems %}
+### 题材扩展要素（全局候选，本章不强制展开）
+- 本章未指定重点扩展要素；扩展要素仅作为全局候选池，不要求在本章全部覆盖。
+{%- endif %}
+{%- if element_selection.focus_constraints is defined and element_selection.focus_constraints %}
+- 执行约束：{{ element_selection.focus_constraints | join('；') }}
+{%- endif %}
+- 执行落地：若本章存在重点扩展要素，则**每个要素至少绑定 1 个 scene_intents**，并在 `summary` / `required_outcome` 中写出具体动作、冲突或后果，不得只写抽象标签。
+{%- endif %}
+{% endmacro %}

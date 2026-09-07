@@ -1,0 +1,20 @@
+{
+  "provider_id": "minimax",
+  "profile_version": "1.0",
+  "display_name": "MiniMax Speech",
+  "scoring_weights": {
+    "expressive": 0.25,
+    "role": 0.05
+  },
+  "expressive_group_overrides": {},
+  "adjudication_guidance": {
+    "platform_context": "MiniMax 的系统音色通过 API 动态获取，voice_name 本身即为角色定位描述（如'青涩青年音色'、'霸道青年音色'、'沉稳高管'、'不羁青年'）。personality 字段为从名称和描述推断的性格标签。",
+    "voice_metadata_hint": "MiniMax 音色的 voice_name 和 personality 是最可靠的身份依据。description 数组中的标签反映音色适用场景。MiniMax Speech 02 支持内联情绪标签（如 (laughs)、(sighs)），情绪表达力强。",
+    "selection_criteria": "优先匹配 voice_name 所描述的角色类型与小说角色定位的一致性；其次比较 personality 推断标签；MiniMax 情绪表达力强，不必苛求静态情绪匹配。",
+    "caution_notes": [
+      "MiniMax 同一基础音色有 beta（jingpin）变体，优先选择 beta 版本（音质更好）",
+      "MiniMax 支持 Voice Design 定制音色，当系统音色匹配度不足时建议走设计流程",
+      "MiniMax 音色名称中的英文部分（如 Chinese (Mandarin)_Reliable_Executive）是语义化 ID，反映角色定位"
+    ]
+  }
+}

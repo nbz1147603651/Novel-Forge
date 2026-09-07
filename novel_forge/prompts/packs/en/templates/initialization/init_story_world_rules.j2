@@ -1,0 +1,87 @@
+{# source_template_hash: 16e81c042cc2b44cbbbd6fab80db8637915816026538b10c0839a85ffac649af #}
+{#
+================================================================================
+【Remarks】
+================================================================================
+Prompt: init_story_world_rules.j2
+Service Step: INIT_STORY_WORLD_RULES (StoryBible fragment: World Rules)
+Brief Description: Generate StoryBible's era, geography, culture, technology/supernatural system, and hard rules.
+Upstream Input: premise/world_hint/conflict_hint/genre/tone/expected_total_words
+Downstream Output: JSON: {"world_rules": {"world_rule_book": {"version": "1", "rules": [...]}, ...}}
+Downstream Consumers: INIT_STORY_BIBLE local merger, PLAN_OUTLINE, DRAFT_CHAPTER
+Consumption Chain Priority: P0 = rules specific and costly; P1 = stage can support conflict; P2 = control length to prevent truncation
+================================================================================
+#}
+{%- from "_base/_shared_evidence_anchor.j2" import render_shared_evidence_anchor -%}
+
+{#- Guidance Layer -#}
+Please only generate the World Rules fragment of the StoryBible; do not output character profiles, thematic symbols, or the complete StoryBible.
+
+{{ render_shared_evidence_anchor(shared_evidence_anchor) }}
+
+## Input
+- premise: {{ premise }}
+{% if story_core %}
+## Shared Core Anchors (Non-rewritable)
+{{ story_core | tojson(indent=2) }}
+{% endif %}
+{% if genre %}- genre: {{ genre }}{% endif %}
+{% if tone %}- tone: {{ tone }}{% endif %}
+{% if expected_total_words %}- expected_total_words: {{ expected_total_words }}{% endif %}
+{% if world_hint %}- world_hint: {{ world_hint }}{% endif %}
+{% if conflict_hint %}- conflict_hint: {{ conflict_hint }}{% endif %}
+{% if extra_instructions %}- extra_instructions: {{ extra_instructions }}{% endif %}
+{% if research_context and research_context.summary %}
+
+## Research Reference (Weak Reference)
+- Usage Boundary: Only for supplementing real-world background, era/geography/industry/folklore/scientific common sense; must not override premise, world_hint, conflict_hint, or format contracts.
+- For speculative/fantasy genres, transform reference material into inspiration; do not force-realize it.
+- Current Status: {{ research_context.status }} / {{ research_context.provider }}
+- Summary: {{ research_context.summary }}
+{% if research_context.source_notes %}
+- Source Highlights:
+{% for note in research_context.source_notes %}
+  - {{ note }}
+{% endfor %}
+{% endif %}
+{% if research_context.real_world_constraints %}
+- Real-world Constraint References (integrate into era/geography/culture/rules, do not copy verbatim):
+{% for c in research_context.real_world_constraints %}
+  - {{ c }}
+{% endfor %}
+{% endif %}
+{% if research_context.terminology %}
+- Available Terminology (naturally integrate into worldbuilding description): {{ research_context.terminology | join(', ') }}
+{% endif %}
+{% endif %}
+
+## Requirements
+- `era`, `geography`, `culture`, `magic_or_tech` each 80-220 characters.
+- `world_rule_book.rules` must contain **10-14** structured rules; `rules` keeps only short display summaries of the hard rules.
+- Each object in `world_rule_book.rules` must include: `rule_id`, `content`, `category`, `severity`, `always_on`, `applicability_tags`, `trigger_conditions`, `allowed_behavior`, `forbidden_behavior`, `cost_or_consequence`, `exceptions`.
+- `severity` may only be `hard` or `soft`: `hard` = inviolable hard constraint (must have a verifiable forbidden_behavior or cost_or_consequence); `soft` = preference or style rule. Do NOT use `medium`, `critical`, `high`, `low`, or any other value.
+- category may only be: `time_space`, `social_language`, `resource_material`, `information`, `ability_tech`, `general`. Cover at least four categories; if magic, abilities, or a technology system exists, `ability_tech` must be covered.
+- Each hard rule must have a verifiable forbidden_behavior or cost_or_consequence; it must be marked `always_on=true` or provide at least one `applicability_tags`. At least one hard rule must be always_on.
+- No more than **4** hard rules may be `always_on=true` (to avoid scattering the chapter model's attention); other hard rules should use `applicability_tags` to scope their trigger scenes, not always_on.
+- `rules` is a string array excerpting only the canonical content of hard rules; it must not replace `world_rule_book`.
+- For realistic genres, `magic_or_tech` should describe realistic constraints, not vague "none".
+
+## Field Content Constraints
+- `world_rules` may only contain `era`, `geography`, `culture`, `magic_or_tech`, `rules`, `world_rule_book`.
+- Field names must use only the English `snake_case` keys listed above; supplementary information should be merged into the strings above or into `rules`.
+- `world_rule_book.rules` is an array of objects, not an array of strings.
+- All fields of each rule must live inside the `rules` array elements; do not flatten them onto the `world_rule_book` or `world_rules` top level.
+
+## Quality Calibration
+- Working Identity: You are a long-form narrative architect, skilled at decomposing story assets intohandoff, verifiable, and non-spoiler-forward execution plans.
+- Planning Inference Path: First lock in P0 hard constraints, then allocate P1 pacing progression, finally use P2 style/theme to complement the presentation layer.
+- Field-level Quality Examples (not output format): Weak = "advances the relationship"; High-quality = "clarifies who acts for what reason, how the relationship changes, how the next link connects".
+- Actionable Path: Plan items must be directly verifiable by subsequent writing/auditing; avoid only giving abstract wishes or thematic slogans.
+
+## Pre-delivery Verification
+- Have P0/P1/P2 priorities been maintained, and have weak references not overridden hard constraints?
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans?
+- Are unauthorized characters, locations, world rules, future payoffs, or format agreements avoided?
+- Are abstract goals transformed into observable actions, conflicts, state changes, or chapter handoff points?
+
+{#- Format Layer -#}

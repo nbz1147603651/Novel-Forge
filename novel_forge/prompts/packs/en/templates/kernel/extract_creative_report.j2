@@ -1,0 +1,52 @@
+{# source_template_hash: dfb357162284b5accf08eb5b11c624c0ec34b91700c887287c59f21664acd596 #}
+{#
+================================================================================
+【Notes】
+================================================================================
+Template: extract_creative_report.j2
+Service Step: EXTRACT_CREATIVE_REPORT (Canon Fragment: Creative Report)
+Brief Description: Only extract new characters, locations, objects, highlights, and next chapter suggestions to reduce Canon main JSON pressure.
+Upstream Input: chapter_number/chapter_text/summary_exit/known_characters
+Downstream Output: JSON: {"creative_report": {...}}
+Downstream Consumer: EXTRACT_CANON Local Merger, Auto-Archiver, Memory
+Consumer Chain Priority: P0 = New character no false positives; P1 = Highlights and continuity suggestions available; P2 = No state delta writes
+================================================================================
+#}
+{#- Guidance Layer -#}
+Only extract creative_report. Do not output fields like canon_delta, chapter_exit_state, relationship_deltas.
+
+{% if shared_evidence_anchor %}
+## Shared Evidence Anchor
+{{ shared_evidence_anchor | tojson(indent=2) }}
+Use this as the shared basis for this slice; dimension-specific information can only supplement, not override anchor facts.
+{% endif %}
+
+## Chapter Anchor
+- Chapter {{ chapter_number }}
+{% if summary_exit %}{{ summary_exit | tojson(indent=2) }}{% endif %}
+
+## Known Characters
+{% for name in known_characters %}- {{ name }}{% endfor %}
+
+## Main Text
+{{ chapter_text }}
+
+## Requirements
+- Do not place known characters in `new_characters`.
+- Do not archive professions, groups, organizations, objects, knowledge, or event tags.
+- Characters with only official/functional titles but no formal names should only be recorded conservatively as candidate facts; do not set `should_add_to_bible` to true.
+- `must_carry_forward` should only contain narrative facts, not meta-instructions.
+
+## Quality Calibration
+- Professional Identity: You are an evidence-prioritized narrative fact extractor, skilled at extracting traceable, mergeable state information from main text and upstream anchors.
+- Extraction Path: First identify explicit facts in the main text, then cross-reference with shared anchors and known state, finally retaining only information consumable by downstream mergers.
+- Evidence Calibration: Maintain consistency when upstream fragments have already confirmed the same fact; use conservative field values to express unknown or pending when evidence is insufficient.
+- Actionable Path: Each piece of information should serve canon, memory, state, or audit chains; avoid treating tone, metaphor, or speculation as facts.
+
+## Pre-delivery Validation
+- Are P0/P1/P2 priorities maintained without allowing weak references to override hard constraints?
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans?
+- Are unauthorized characters, locations, world rules, future payoffs, or format agreements avoided?
+- Are factual boundaries needed for downstream merging/retrieval preserved, without writing speculation as established facts?
+
+{#- Format Layer -#}

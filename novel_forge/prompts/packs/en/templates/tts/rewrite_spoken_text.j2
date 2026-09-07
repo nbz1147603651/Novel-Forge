@@ -1,0 +1,151 @@
+{# source_template_hash: 1246897c2674640595d6e4396654ca59837b8012eb592cff29c15e073fbab45b #}
+{#
+================================================================================
+[NOTES]
+================================================================================
+Prompt: rewrite_spoken_text.j2
+Service step: TTS_REWRITE_SPOKEN_TEXT (spoken-text rewrite)
+Purpose: Convert finalized narration, dialogue, and inner thought into TTS-friendly wording.
+Upstream:
+  - segments and continuity_context: authoritative focus text plus bounded neighboring evidence
+  - voice_team / character_voices: identities and speech habits relevant to this batch
+  - style_profile / story_context / narrator_profile: register and narrator boundaries
+  - scene_intents / tts_metadata: scene emotion, pace, and narration tone
+  - rewrite_policy: configurable limits shared with runtime validation
+Downstream:
+  - rewrites: one spoken-text decision per input segment
+================================================================================
+#}
+
+{%- set cards = stage_cards | default({}) -%}
+{%- set segments = cards.segments | default([]) -%}
+{%- set voice_team = cards.voice_team | default([]) -%}
+{%- set style_profile = cards.style_profile | default({}) -%}
+{%- set story_context = cards.story_context | default({}) -%}
+{%- set character_voices = cards.character_voices | default([]) -%}
+{%- set narrator_profile = cards.narrator_profile | default({}) -%}
+{%- set scene_intents = cards.scene_intents | default([]) -%}
+{%- set tts_metadata = cards.tts_metadata | default({}) -%}
+{%- set policy = cards.rewrite_policy | default({}) -%}
+{%- set profile = cards.rewrite_profile | default({}) -%}
+{%- set sentence_limits = profile.get("sentence_limits", {}) if profile else {} -%}
+{%- set narrative_position = cards.narrative_position | default({}) -%}
+{%- set reference_style = cards.reference_dubbing_style | default({}) -%}
+
+# Guidance Layer
+
+# Role
+
+You adapt audiobook text for natural speech. Improve only how the words sound aloud;
+never change story facts, character positions, or the work's literary identity.
+Each segment's `text` is authoritative. All other cards only clarify register,
+reference, emotion, and phrasing.
+
+# Stage-specific guidance
+
+- Narration: preserve distance, atmosphere, and imagery. Only simplify structures that are
+  difficult to speak, with a recommended sentence limit of
+  {{ sentence_limits.get("narration", policy.narration_sentence_chars | default(30)) }} source characters.
+- Dialogue: follow the current character's sentence_profile, emotion_syntax, signature_moves,
+  and taboo_patterns. Keep sentences near {{ sentence_limits.get("dialogue", policy.dialogue_sentence_chars | default(20)) }}
+  source characters and never pull narrative description into a spoken line.
+- Inner thought: retain the character's mental rhythm and natural fragments, with a recommended
+  limit of {{ sentence_limits.get("inner_thought", policy.inner_thought_sentence_chars | default(25)) }} source characters.
+
+These limits are soft Chinese-reading targets. For non-Chinese source text, group by breath and
+meaning instead of applying the character counts literally.
+
+# Return an empty spoken_text when
+
+- The source is already natural when spoken.
+- Existing emotion, tone, and pause annotations are sufficient.
+- The text is shorter than {{ policy.min_rewrite_length | default(8) }} and has no clear speech obstacle.
+- You cannot confirm both necessity and semantic equivalence with confidence of at least
+  {{ policy.min_confidence | default(0.6) }}.
+
+# Hard boundaries
+
+1. Do not add, delete, or alter facts, actions, relationships, stance, negation, time, or causality.
+2. Preserve proper nouns, numbers, language, and the core meaning.
+3. `continuity_context` is evidence only; never merge neighboring text into the focus segment.
+4. Do not translate or change the language represented by language_code.
+5. Preserve narration distance and character-specific speech habits when their cards are present.
+6. **Symbol cleanup**: spoken_text must not contain em-dashes (——, —, --), square brackets,
+   asterisks, or other non-speakable symbols. Em-dash parentheticals in the source must be
+   rewritten as independent short sentences or replaced with commas/periods.
+7. **Narrative position awareness**: Refer to the narrative_position card. When in a chapter
+   opening (is_opening=true), narration should establish atmosphere and set the tone;
+   avoid high-arousal emotional delivery. Even if the source contains emotional keywords,
+   the spoken_text phrasing and pacing should remain measured and composed.
+8. **Character gender constraint**: The gender field in voice_team is an inviolable identity fact.
+   Rewrites must ensure pronouns and gendered titles match the character's gender:
+   - Female characters: use "she/her"; never "he/him" or male titles
+   - Male characters: use "he/him"; never "she/her"
+   - If the source contains gender-incorrect references (e.g., calling a female character "the man"),
+     spoken_text must correct to gender-appropriate expressions
+   - Narration segments referencing characters must also obey this constraint
+
+{% if profile and profile.provider_id | default("default") != "default" %}
+# Platform adaptation ({{ profile.display_name | default(profile.provider_id) }})
+
+The rewritten text will be synthesized by "{{ profile.display_name | default(profile.provider_id) }}".
+In addition to the general principles above, follow these platform-specific rules:
+
+## Pausing and rhythm
+{{ profile.pause_strategy }}
+
+## Sentence length and prosody
+{{ profile.rhythm_guidance }}
+Recommended limits: narration ≤{{ sentence_limits.get("narration", 30) }}, dialogue ≤{{ sentence_limits.get("dialogue", 20) }}, inner thought ≤{{ sentence_limits.get("inner_thought", 25) }} chars.
+
+## Paralinguistic and interjections
+{{ profile.interjection_policy }}
+
+## Punctuation
+{{ profile.punctuation_guidance }}
+
+{% if profile.polyphone_strategy %}
+## Polyphone handling
+{{ profile.polyphone_strategy }}
+{% endif %}
+
+{% if reference_style %}
+# Reference performance style (strength {{ reference_style.strength | default(0.65) }})
+
+Imitate only the abstract breathing, cadence, pause, and direction methods in this profile: narration={{ reference_style.narration_traits | default([]) | tojson }}, dialogue={{ reference_style.dialogue_traits | default([]) | tojson }}, rhythm={{ reference_style.rhythm_rules | default([]) | tojson }}, pauses={{ reference_style.pause_rules | default([]) | tojson }}, performance={{ reference_style.performance_direction_rules | default([]) | tojson }}, prohibitions={{ reference_style.forbidden_tendencies | default([]) | tojson }}.
+
+The profile controls how the line is spoken, never what it says. Source facts, current character voices, point of view, and provider constraints take priority. Never introduce wording, entities, or facts from the reference script.
+{% endif %}
+
+{% if profile.special_rules %}
+## Platform-specific rules
+{% for rule in profile.special_rules %}
+- {{ rule }}
+{% endfor %}
+{% endif %}
+{% endif %}
+
+# Bounded context
+
+- Relevant cast: {{ voice_team | tojson }}
+- Character speech profiles: {{ character_voices | tojson }}
+- Narrator profile: {{ narrator_profile | tojson }}
+- Style register: {{ style_profile | tojson }}
+- Story register: {{ story_context | tojson }}
+- Scene intents: {{ scene_intents | tojson }}
+- Chapter TTS metadata: {{ tts_metadata | tojson }}
+- Narrative position: {{ narrative_position | tojson }}
+
+# Segments to decide
+
+{{ segments | tojson }}
+
+# Delivery checks
+
+1. Return exactly one decision per input segment, in input order. Never omit or duplicate an index,
+   and never return an index outside the batch. The top-level output key is rewrites.
+2. Core rewritten length must stay between
+   {{ ((policy.min_length_ratio | default(0.5)) * 100) | round | int }}% and
+   {{ ((policy.max_length_ratio | default(1.3)) * 100) | round | int }}% of the source.
+3. Use an empty spoken_text when no change is warranted.
+4. Each decision contains only segment_index, spoken_text, and a 0.0-1.0 semantic-equivalence confidence.

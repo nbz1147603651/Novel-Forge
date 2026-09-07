@@ -1,0 +1,104 @@
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：plan_chapter_contracts.j2
+服务步骤：PLAN_CHAPTER_CONTRACTS（逐章契约规划）
+作用简述：将全书叙事契约拆分为当前输入章节的逐章可执行契约。
+上游输入：
+  - narrative_contract：全书叙事契约
+  - outline：章节大纲，可含 contract_batch 限定批次
+下游输出：
+  - JSON：chapter_contracts 列表，含 entry_state_requirements, required_events,
+    allowed_changes, forbidden_changes, required_progressions, allowed_progressions,
+    forbidden_progressions, completion_criteria, future_leak_risks 等
+  - 下游消费者：PLAN_CHAPTER / ADJUDICATE_CONTRACT_COMPLETION / 状态裁判
+消费链优先级：P0（每章必须发生/保持/禁止）> P1（promise/relationship/item/knowledge ops）> P2（source）
+================================================================================
+#}
+
+## 任务
+把叙事契约拆分为当前输入章节的逐章可执行契约。
+
+若章节大纲中包含 `contract_batch`，只为 `contract_batch.chapter_numbers` 与
+`outline.chapters` 里列出的章节生成契约；不要补写未提供的其他章节。
+
+## Source Artifact 生成边界
+- 本模板生成 `ChapterContractIndexArtifact` 的核心 payload；每章契约会被下游切成 `ChapterSourceSlice`。
+- 每章契约只允许输出当前章执行目标、入口/出口状态、知识变化、禁止推进、完成标准和实体引用线索。
+- 不复制人物大包、世界设定大包或全书创作规划；人物只用规范名/实体引用线索和本章相关状态。
+- 别名、旧名、误称不得在章节契约中另造；如必须提示，只写成已注册实体的本章称谓风险。
+- 若 `outline.entity_catalog.allowed_entities` 非空，所有角色/实体引用必须来自该目录：结构化 ID 字段使用 `entity_id`，自然语言名称使用 `canonical_name`；alias 只能用于识别输入，不得作为输出规范名。
+- 无法在 `outline.entity_catalog` 中确认的角色、物品、地点、组织或概念，不得写进 `pov_character_id`、`*_character_ids`、`item_ops.entity_id`、`relationship_ops`、`cognitive_constraints.cognitive_subjects` 或 `cognitive_constraints.character_knowledge_coverage` 键；确实是本章叙事/大纲需要的首次出现实体，必须先写入对应候选字段：人物 `new_character_candidates`，群体/组织 `new_group_candidates` 或 `new_organization_candidates`，地点 `new_location_candidates`，物件 `new_item_candidates`，概念 `new_concept_candidates`，无法归类时 `new_entity_candidates`。同章 `knowledge_ops` 等自然语言操作字段需要引用时，必须使用候选的同一规范名。
+- 交付前逐字段自检所有自然语言人物名、`cognitive_subjects`、`character_knowledge_coverage` 键和证据文本：不得输出与目录规范名仅一字之差的错名；无法唯一确认时置空或改写为不含未登记实体的约束。
+- 禁止揭示、知识边界、承诺兑现顺序只在 `cognitive_constraints`、`knowledge_ops`、`future_leak_risks`、`forbidden_progressions` 中表达，不散落到自由说明。
+- 如果后续章节上下文用于判断边界，只写“本章不得提前确认/兑现”的可审计约束，不写后续高光场面。
+
+## 字段内容约束
+- `chapter_contracts[]` 每个对象只允许这些英文 `snake_case` 字段：`chapter_number`、`title`、`entry_state_requirements`、`required_events`、`allowed_changes`、`forbidden_changes`、`promise_ops`、`relationship_ops`、`item_ops`、`knowledge_ops`、`cognitive_constraints`、`new_character_candidates`、`new_entity_candidates`、`new_group_candidates`、`new_collective_candidates`、`new_organization_candidates`、`new_location_candidates`、`new_item_candidates`、`new_concept_candidates`、`exit_state_targets`、`required_progressions`、`allowed_progressions`、`forbidden_progressions`、`completion_criteria`、`future_leak_risks`、`pov_character_id`、`involved_character_ids`、`required_character_ids`、`support_character_ids`、`cast_plan`、`emotional_plan`、`scene_design_goals`、`source`；补充解释并入已有字段。
+- 所有 *_requirements、*_events、*_changes、*_progressions、*_criteria、*_risks、*_targets 字段都必须是 JSON 数组；没有内容写 []。
+- `pov_character_id`、`involved_character_ids`、`required_character_ids`、`support_character_ids`、`cast_plan`、`emotional_plan`、`scene_design_goals` 必须从输入章节大纲逐章继承，不得改写 entity_id；如需压缩，只压缩情感/场景目标的文字，不压缩 ID。
+- `promise_ops`、`relationship_ops`、`item_ops`、`knowledge_ops`、`cognitive_constraints` 只能是对象数组或 []；`cognitive_constraints` 必须来自输入 `outline.init_claim_constraints`，保留 `claim_id`、`cognitive_object`、`cognitive_level`、`action_level`、`reader_awareness`、`cognitive_chapter`、`public_reveal_chapter`、`foreshadow_chapters`，不得自由新增或改写强语义；但 `cognitive_subjects` 与 `character_knowledge_coverage` 键必须按 `outline.entity_catalog` 归一为规范角色，无法确认映射时置空，不得照抄未登记名称。
+- `knowledge_ops` 字段语义固定：`character`/`knower`/`actor` 写获知、怀疑、误解或隐瞒该知识的规范角色；`entity_id` 写该角色 ID；`subject`/`fact`/`target`/`knowledge`/`knowledge_name`/`value`/`object` 写被知道的知识命题或事实，不是人物/组织实体。不要把“某人背叛真相”“某体系内部分裂”“某身份正名确认”这类知识命题登记成新实体。
+- 若输入 `contract_scaffold` 中含 `contract_budget`，必须按该章预算控制数量：
+  - `required_progressions` 与 `required_events` 合计表达同一组硬性推进，不要复制扩写。
+  - 超出预算的大纲细节只能合并成更概括的一条或省略，不能转移到 `allowed_changes`/`allowed_progressions` 形成软性降级。
+  - `source` 固定写 `"plan_chapter_contracts"`；不要复制 scaffold 的本地来源标记。
+
+## 拆分原则
+- 每章契约只写“必须发生/必须保持/必须禁止”的最小执行约束，避免写成详细剧情稿。
+- 每章 `entry_state_requirements` 2-4 条，`required_events` 1-3 条，`allowed_changes`/`forbidden_changes` 各 1-4 条，`exit_state_targets` 1-4 条；若 `contract_budget` 更低，以预算为准。
+- **forbidden_changes 跨章去重（关键）**：长线禁令（如"反转前禁止揭示X真相"）只在反转节点的前一章声明一次，后续章节通过 `narrative_contract` 继承，不得逐章重复同一条禁令。相邻章节的 `forbidden_changes` 不得有逐字相同的条目；若语义重复，合并为一条或改为引用上游契约。若输入提供了相邻章 `forbidden_changes` 摘要，本轮生成的 `forbidden_changes` 不得与摘要中已声明的条目逐字重复。
+- **cognitive_constraints 完整且可执行**：`outline.init_claim_constraints` 已是当前章的完整轻量投影；不得取前 N 条、按本地重要性删除或合并不同 `claim_id`。可压缩每条描述，但必须保留每个约束的角色覆盖、认知/行动等级与时间锚。上游在上下文压力下会拆分章节批次，本步不做语义取舍。
+- 每章必须写入剧情推进边界：
+  - `required_progressions`：本章必须实际推进的事件/知识/关系/信物/承诺/悬念，2-5 条；若 `contract_budget.hard_required_limit` 存在，不得超过它。
+  - `allowed_progressions`：本章允许触碰、铺垫或轻推但不一定完成的内容，1-5 条；若 `contract_budget.soft_allowed_limit` 存在，不得超过它。
+  - `forbidden_progressions`：本章禁止提前揭示、禁止完成、禁止触发的未来节点，1-5 条。
+  - `completion_criteria`：判断本章完成的可观察标准，1-4 条；若 `contract_budget.state_target_limit` 存在，不得超过它。
+  - `future_leak_risks`：本章最容易误提前消费的未来剧情资本，1-5 条。
+- `promise_ops`、`relationship_ops`、`item_ops`、`knowledge_ops` 每类最多 3 条；每条 `description` 控制在 40 个汉字以内。
+- `relationship_ops` 只能写人物到人物的社会、情感、敌对、合作关系；道具、档案、概念、组织请写入 `item_ops` 或 `knowledge_ops`。
+- 每章若 `outline.init_claim_constraints` 对应该章有条目，必须写入 `cognitive_constraints`；若该约束改变角色知情状态，同步写入 `knowledge_ops`，但 `knowledge_ops` 不得替代 `cognitive_constraints`。
+- 认知约束只允许压缩文字，不能把 `internal` 改为 `revealed`，不能提前 `public_reveal_chapter`，不能把读者已知写成角色已知。
+- 每章可写 `new_character_candidates`，用于上游预裁决“可能需要建档的新人物”：
+  - 只放本章首次进入可观察剧情、且可能影响后续承接的人物。
+  - 不要放已有角色的阶段状态、括号处境、伪装称呼、职业/功能标签、群体称谓、道具或知识项。
+  - `importance` 只能是 major / supporting / minor / incidental；`should_consider_profile` 只有在值得自动建档时才为 true。
+- 每章可写 `new_group_candidates`、`new_organization_candidates`、`new_location_candidates`、`new_item_candidates`、`new_concept_candidates` 或 `new_entity_candidates`，用于上游预裁决“确实由大纲/叙事需要引入的新实体”：
+  - 只放本章首次承担可观察叙事功能、且无法从 `outline.entity_catalog` 唯一确认的实体。
+  - 候选对象至少写 `name` 或对应类型名（如 `group_name`、`location_name`、`item_name`、`concept_name`），可写 `entity_type`、`aliases`、`brief`。
+  - 不要把错别字、已有实体别名、泛泛场景词、情绪状态或一次性修辞写成新增候选；无法判断时改写为不含实体名的约束。
+- 若同一伏笔在多章递进，前章写“端倪/误认/疑点”，后章写“确认/反转/兑现”，不要复制同一句关键台词。
+- 对未来章节只能使用功能性摘要，例如“保留信物共振高潮到指定后章”，不要把后续高光的具体触发方式、台词、完整场面写进当前章节契约。
+- 若大纲/contract_batch 提供了后续章节上下文，它只用于判断本章边界；当前章不得执行超出本章窗口的未来 payoff。
+- 输出要紧凑完整；内容过长时压缩每条文字，不能截断 JSON。
+
+## 输入
+叙事契约：
+{{ narrative_contract }}
+
+章节大纲：
+{{ outline }}
+
+{% if outline_research_grounding %}
+大纲资料校准（参考提醒，不是硬设定）：
+{{ outline_research_grounding | tojson(indent=2) }}
+
+资料校准使用边界：
+- 只把 `global_notes`、`chapter_notes`、`fact_risks`、`terminology` 当作写作提醒和事实风险提示。
+- 不得因为资料提醒改写章节大纲、叙事契约、角色 ID、实体目录或上下游硬约束。
+- 若资料与 StoryBible / Blueprint / Outline 冲突，优先遵守 StoryBible / Blueprint / Outline，并把资料问题转化为 `future_leak_risks` 或 `completion_criteria` 中可审计的低侵入提醒；不要新增未授权设定。
+- 架空、幻想、异世界题材只提取灵感和术语参考，不强制现实约束。
+{% endif %}
+
+## 质量校准
+- 工作身份：你是一位长篇叙事架构师，擅长把故事资产拆成可承接、可验证、不过度剧透的执行计划。
+- 规划推断路径：先锁定 P0 硬约束，再分配 P1 推进节奏，最后用 P2 风格/主题补足表现层。
+- 字段级质量示例（非输出格式）：平弱=“推进关系”；高质量=“写清谁因何行动、关系如何变化、下一环如何承接”。
+- 可操作路径：计划项要能被后续写作/审计直接检查，避免只给抽象愿望或主题口号。
+
+## 交付前核验
+- P0/P1/P2 优先级是否被保持，且没有让弱参考覆盖硬约束。
+- 是否能把关键判断回指到输入证据、上游契约或已批准计划。
+- 是否避免新增未授权的人物、地点、世界规则、未来 payoff 或格式协议。
+- 是否把抽象目标转化为可观察的行动、冲突、状态变化或章节承接点。

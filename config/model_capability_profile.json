@@ -1,0 +1,932 @@
+{
+  "version": "1.2.0",
+  "description": "模型能力事实注册表。精确模型覆盖族规则；官方未声明的能力保持 unknown，运行时使用保守兜底。max_output_tokens 是生产安全上限，只有 notes 明确说明时才等于供应商理论最大值。",
+  "last_updated": "2026-07-16",
+  "verification_policy": "official_provider_docs_only + conservative_runtime_observation",
+  "model_families": [
+    {
+      "id": "openai-gpt-5.6",
+      "provider": "openai",
+      "model_pattern": "gpt-5.6*",
+      "availability": "active",
+      "context_window_tokens": 1050000,
+      "max_output_tokens": 128000,
+      "supports_thinking": true,
+      "thinking_control": "effort",
+      "thinking_modes": ["off", "low", "medium", "high", "xhigh", "max"],
+      "default_thinking_mode": "off",
+      "supports_multi_turn": true,
+      "supports_function_calling": true,
+      "structured_output": {
+        "json_schema": "supported",
+        "json_mode": "supported",
+        "tool_calling": "supported",
+        "strict_schema": "supported",
+        "constrained_decoding": "supported",
+        "notes": "OpenAI Structured Outputs supports strict JSON Schema on current GPT models."
+      },
+      "verified_at": "2026-07-13",
+      "source_urls": [
+        "https://developers.openai.com/api/docs/models",
+        "https://developers.openai.com/api/docs/guides/structured-outputs"
+      ],
+      "notes": "Official current family: gpt-5.6 alias, gpt-5.6-sol, gpt-5.6-terra and gpt-5.6-luna; 1.05M context and 128K maximum output."
+    },
+    {
+      "id": "openai-modern-structured",
+      "provider": "openai",
+      "model_pattern": "gpt-4o*",
+      "availability": "legacy",
+      "supports_multi_turn": true,
+      "supports_function_calling": true,
+      "structured_output": {
+        "json_schema": "supported",
+        "json_mode": "supported",
+        "tool_calling": "supported",
+        "strict_schema": "supported",
+        "constrained_decoding": "supported"
+      },
+      "verified_at": "2026-07-13",
+      "source_urls": [
+        "https://developers.openai.com/api/docs/guides/structured-outputs"
+      ]
+    },
+    {
+      "id": "anthropic-current-5",
+      "provider": "anthropic",
+      "model_pattern": "claude-*-5*",
+      "availability": "active",
+      "context_window_tokens": 200000,
+      "max_output_tokens": 128000,
+      "supports_thinking": true,
+      "supports_multi_turn": true,
+      "supports_function_calling": true,
+      "structured_output": {
+        "json_schema": "supported",
+        "json_mode": "unsupported",
+        "tool_calling": "supported",
+        "strict_schema": "supported",
+        "constrained_decoding": "supported",
+        "notes": "Claude JSON outputs use output_config.format; strict tool use is a separate capability."
+      },
+      "verified_at": "2026-07-13",
+      "source_urls": [
+        "https://platform.claude.com/docs/en/about-claude/models/overview",
+        "https://platform.claude.com/docs/en/build-with-claude/structured-outputs"
+      ]
+    },
+    {
+      "id": "anthropic-current-4.x",
+      "provider": "anthropic",
+      "model_pattern": "claude-*-4-*",
+      "availability": "active",
+      "context_window_tokens": 200000,
+      "max_output_tokens": 64000,
+      "supports_thinking": true,
+      "supports_multi_turn": true,
+      "supports_function_calling": true,
+      "structured_output": {
+        "json_schema": "supported",
+        "json_mode": "unsupported",
+        "tool_calling": "supported",
+        "strict_schema": "supported",
+        "constrained_decoding": "supported"
+      },
+      "verified_at": "2026-07-13",
+      "source_urls": [
+        "https://platform.claude.com/docs/en/about-claude/models/model-ids-and-versions",
+        "https://platform.claude.com/docs/en/build-with-claude/structured-outputs"
+      ],
+      "notes": "Structured outputs are documented for Opus 4.6/4.7/4.8, Sonnet 4.5/4.6 and Haiku 4.5. Exact legacy exceptions override this rule."
+    },
+    {
+      "id": "anthropic-opus-current-4.x",
+      "provider": "anthropic",
+      "model_pattern": "claude-opus-4-*",
+      "availability": "active",
+      "max_output_tokens": 128000,
+      "verified_at": "2026-07-13",
+      "source_urls": [
+        "https://platform.claude.com/docs/en/about-claude/models/overview",
+        "https://platform.claude.com/docs/en/about-claude/models/model-ids-and-versions"
+      ],
+      "structured_output": {
+        "json_schema": "supported",
+        "json_mode": "unsupported",
+        "tool_calling": "supported",
+        "strict_schema": "supported",
+        "constrained_decoding": "supported"
+      },
+      "notes": "The current Opus 4.x models use the larger 128K output allowance."
+    },
+    {
+      "id": "anthropic-retired-4.0-snapshots",
+      "provider": "anthropic",
+      "model_pattern": "claude-*-4-20250514",
+      "availability": "retired",
+      "supports_thinking": false,
+      "supports_multi_turn": true,
+      "supports_function_calling": true,
+      "verified_at": "2026-07-13",
+      "source_urls": [
+        "https://platform.claude.com/docs/en/about-claude/models/model-ids-and-versions"
+      ],
+      "structured_output": {
+        "json_schema": "unsupported",
+        "json_mode": "unsupported",
+        "tool_calling": "supported",
+        "strict_schema": "unsupported",
+        "constrained_decoding": "unsupported"
+      },
+      "notes": "The original Claude 4.0 snapshots are retired and must not inherit active 4.x capabilities."
+    },
+    {
+      "id": "deepseek-v4-native",
+      "provider": "deepseek",
+      "model_pattern": "deepseek-v4-*",
+      "availability": "active",
+      "context_window_tokens": 1000000,
+      "max_output_tokens": 384000,
+      "supports_thinking": true,
+      "thinking_control": "effort",
+      "thinking_modes": ["off", "high", "max"],
+      "default_thinking_mode": "high",
+      "supports_multi_turn": true,
+      "supports_function_calling": true,
+      "structured_output": {
+        "json_schema": "unsupported",
+        "json_mode": "supported",
+        "tool_calling": "supported",
+        "strict_schema": "unsupported",
+        "constrained_decoding": "unsupported",
+        "notes": "DeepSeek documents JSON Output, not provider-enforced JSON Schema."
+      },
+      "verified_at": "2026-07-16",
+      "source_urls": [
+        "https://api-docs.deepseek.com/quick_start/pricing",
+        "https://api-docs.deepseek.com/api/create-chat-completion",
+        "https://api-docs.deepseek.com/guides/thinking_mode"
+      ]
+    },
+    {
+      "id": "kimi-current-k2",
+      "provider": "kimi",
+      "model_pattern": "kimi-k2.*",
+      "availability": "active",
+      "context_window_tokens": 262144,
+      "max_output_tokens": 32768,
+      "supports_thinking": true,
+      "thinking_control": "toggle",
+      "thinking_modes": ["off", "on"],
+      "default_thinking_mode": "on",
+      "supports_multi_turn": true,
+      "supports_function_calling": true,
+      "structured_output": {
+        "json_schema": "unsupported",
+        "json_mode": "supported",
+        "tool_calling": "supported",
+        "strict_schema": "unsupported",
+        "constrained_decoding": "unsupported",
+        "notes": "Kimi documents JSON Mode; it does not document strict JSON Schema conformance."
+      },
+      "verified_at": "2026-07-16",
+      "source_urls": [
+        "https://platform.kimi.com/docs/models",
+        "https://platform.kimi.com/docs/guide/use-kimi-k2-thinking-model"
+      ],
+      "notes": "32K is the documented default generation limit and is used as the safe application cap."
+    },
+    {
+      "id": "kimi-retired-k2-hyphen",
+      "provider": "kimi",
+      "model_pattern": "kimi-k2-*",
+      "availability": "retired",
+      "context_window_tokens": 262144,
+      "max_output_tokens": 32768,
+      "supports_thinking": true,
+      "supports_multi_turn": true,
+      "supports_function_calling": true,
+      "structured_output": {
+        "json_schema": "unsupported",
+        "json_mode": "supported",
+        "tool_calling": "supported",
+        "strict_schema": "unsupported",
+        "constrained_decoding": "unsupported"
+      },
+      "verified_at": "2026-07-13",
+      "source_urls": [
+        "https://platform.kimi.ai/docs/models"
+      ],
+      "notes": "Legacy hyphen-style K2 model IDs were discontinued on 2026-05-25. Current K2.5–2.7 IDs use a dot after k2."
+    },
+    {
+      "id": "kimi-moonshot-v1",
+      "provider": "kimi",
+      "model_pattern": "moonshot-v1-*",
+      "availability": "legacy",
+      "supports_thinking": false,
+      "supports_multi_turn": true,
+      "supports_function_calling": false,
+      "structured_output": {
+        "json_schema": "unsupported",
+        "json_mode": "supported",
+        "tool_calling": "unsupported",
+        "strict_schema": "unsupported",
+        "constrained_decoding": "unsupported"
+      },
+      "verified_at": "2026-07-13",
+      "source_urls": [
+        "https://platform.kimi.ai/docs/models"
+      ]
+    },
+    {
+      "id": "minimax-m3-native",
+      "provider": "minimax",
+      "model_pattern": "MiniMax-M3*",
+      "availability": "active",
+      "context_window_tokens": 1000000,
+      "max_output_tokens": 65536,
+      "supports_thinking": true,
+      "thinking_control": "adaptive",
+      "thinking_modes": ["off", "adaptive"],
+      "default_thinking_mode": "adaptive",
+      "supports_multi_turn": true,
+      "supports_function_calling": true,
+      "structured_output": {
+        "json_schema": "unsupported",
+        "json_mode": "unsupported",
+        "tool_calling": "supported",
+        "strict_schema": "unsupported",
+        "constrained_decoding": "unsupported",
+        "notes": "MiniMax response_format is documented as MiniMax-Text-01 only."
+      },
+      "verified_at": "2026-07-16",
+      "source_urls": [
+        "https://platform.minimax.io/docs/guides/text-generation",
+        "https://platform.minimax.io/docs/api-reference/text-chat-openai"
+      ],
+      "notes": "The provider does not publish an M3 maximum output on the model overview; 65,536 is a conservative runtime cap."
+    },
+    {
+      "id": "minimax-m2-native",
+      "provider": "minimax",
+      "model_pattern": "MiniMax-M2*",
+      "availability": "legacy",
+      "context_window_tokens": 204800,
+      "max_output_tokens": 65536,
+      "supports_thinking": true,
+      "thinking_control": "forced",
+      "thinking_modes": ["forced"],
+      "default_thinking_mode": "forced",
+      "supports_multi_turn": true,
+      "supports_function_calling": true,
+      "structured_output": {
+        "json_schema": "unsupported",
+        "json_mode": "unsupported",
+        "tool_calling": "supported",
+        "strict_schema": "unsupported",
+        "constrained_decoding": "unsupported",
+        "notes": "M-series supports tools, but native response_format is not supported."
+      },
+      "verified_at": "2026-07-16",
+      "source_urls": [
+        "https://platform.minimax.io/docs/guides/text-generation",
+        "https://platform.minimax.io/docs/api-reference/text-chat-openai"
+      ],
+      "notes": "All documented M2.x models use 204,800 context. 65,536 is a conservative application cap below the documented 128K M2 output including CoT."
+    },
+    {
+      "id": "minimax-m27-active",
+      "provider": "minimax",
+      "model_pattern": "MiniMax-M2.7*",
+      "availability": "active",
+      "supports_thinking": true,
+      "thinking_control": "forced",
+      "thinking_modes": ["forced"],
+      "default_thinking_mode": "forced",
+      "supports_multi_turn": true,
+      "supports_function_calling": true,
+      "structured_output": {
+        "json_schema": "unsupported",
+        "json_mode": "unsupported",
+        "tool_calling": "supported",
+        "strict_schema": "unsupported",
+        "constrained_decoding": "unsupported"
+      },
+      "verified_at": "2026-07-16",
+      "source_urls": [
+        "https://platform.minimax.io/docs/guides/text-generation",
+        "https://platform.minimax.io/docs/guides/models-intro",
+        "https://platform.minimax.io/docs/api-reference/text-chat-openai"
+      ],
+      "notes": "M2.7 and M2.7-highspeed are current; highspeed changes throughput, not model quality."
+    },
+    {
+      "id": "tongyi-qwen-json-mode",
+      "provider": "tongyi",
+      "model_pattern": "qwen*",
+      "availability": "active",
+      "supports_multi_turn": true,
+      "supports_function_calling": true,
+      "structured_output": {
+        "json_schema": "unsupported",
+        "json_mode": "supported",
+        "tool_calling": "supported",
+        "strict_schema": "unsupported",
+        "constrained_decoding": "unsupported",
+        "notes": "DashScope documents response_format={type: json_object}; thinking mode must not use it."
+      },
+      "verified_at": "2026-07-13",
+      "source_urls": [
+        "https://help.aliyun.com/zh/model-studio/qwen-structured-output",
+        "https://help.aliyun.com/zh/model-studio/qwen-function-calling"
+      ]
+    },
+    {
+      "id": "tongyi-coding-plan",
+      "provider": "tongyi_coding",
+      "model_pattern": "*",
+      "availability": "active",
+      "supports_thinking": false,
+      "supports_multi_turn": true,
+      "structured_output": {
+        "json_schema": "unknown",
+        "json_mode": "unknown",
+        "tool_calling": "supported",
+        "strict_schema": "unknown",
+        "constrained_decoding": "unknown",
+        "notes": "Coding Plan documents an exact model whitelist and tool compatibility, but not a native structured-output contract."
+      },
+      "verified_at": "2026-07-13",
+      "source_urls": [
+        "https://help.aliyun.com/zh/model-studio/coding-plan"
+      ]
+    },
+    {
+      "id": "tongyi-token-plan",
+      "provider": "tongyi_token_plan",
+      "model_pattern": "*",
+      "availability": "active",
+      "supports_multi_turn": true,
+      "structured_output": {
+        "json_schema": "unknown",
+        "json_mode": "unknown",
+        "tool_calling": "unknown",
+        "strict_schema": "unknown",
+        "constrained_decoding": "unknown",
+        "notes": "Token Plan 文档确认 OpenAI 兼容端点和仅文本生成类模型；未单独声明 JSON 结构化输出契约。"
+      },
+      "verified_at": "2026-08-31",
+      "source_urls": [
+        "https://help.aliyun.com/zh/model-studio/more-tools",
+        "https://help.aliyun.com/zh/model-studio/token-plan-personal-overview",
+        "https://help.aliyun.com/zh/model-studio/base-url"
+      ],
+      "notes": "使用 Token Plan 专属 sk-sp- API Key 与 token-plan.cn-beijing.maas.aliyuncs.com 端点；不得与按量付费或 Coding Plan 配置混用。"
+    },
+    {
+      "id": "siliconflow-chat-json-mode",
+      "provider": "siliconflow",
+      "model_pattern": "*",
+      "availability": "runtime_discovered",
+      "supports_multi_turn": true,
+      "structured_output": {
+        "json_schema": "unsupported",
+        "json_mode": "supported",
+        "tool_calling": "unknown",
+        "strict_schema": "unsupported",
+        "constrained_decoding": "unsupported",
+        "notes": "SiliconFlow documents json_object mode for online language models and requires edge-case validation."
+      },
+      "verified_at": "2026-07-13",
+      "source_urls": [
+        "https://docs.siliconflow.cn/cn/userguide/guides/json-mode",
+        "https://docs.siliconflow.cn/cn/api-reference/models/get-model-list"
+      ],
+      "notes": "Availability must be confirmed through GET /models because the hosted catalog changes independently."
+    },
+    {
+      "id": "ollama-local",
+      "provider": "ollama",
+      "model_pattern": "*",
+      "availability": "runtime_discovered",
+      "supports_multi_turn": true,
+      "structured_output": {
+        "json_schema": "supported",
+        "json_mode": "supported",
+        "tool_calling": "unknown",
+        "strict_schema": "unknown",
+        "constrained_decoding": "supported",
+        "notes": "Local Ollama accepts a JSON schema in format/response_format. Installed model support is runtime-discovered."
+      },
+      "verified_at": "2026-07-13",
+      "source_urls": [
+        "https://docs.ollama.com/capabilities/structured-outputs",
+        "https://docs.ollama.com/api/tags",
+        "https://docs.ollama.com/api-reference/show-model-details"
+      ]
+    },
+    {
+      "id": "ollama-cloud-no-structured",
+      "provider": "ollama",
+      "model_pattern": "*:cloud",
+      "availability": "runtime_discovered",
+      "structured_output": {
+        "json_schema": "unsupported",
+        "json_mode": "unsupported",
+        "tool_calling": "unknown",
+        "strict_schema": "unsupported",
+        "constrained_decoding": "unsupported",
+        "notes": "Ollama Cloud currently does not support structured outputs."
+      },
+      "verified_at": "2026-07-13",
+      "source_urls": [
+        "https://docs.ollama.com/capabilities/structured-outputs"
+      ]
+    },
+    {
+      "id": "tencent-tokenhub-hy3",
+      "provider": "tencent",
+      "model_pattern": "hy3*",
+      "availability": "active",
+      "context_window_tokens": 262144,
+      "max_output_tokens": 131072,
+      "supports_thinking": true,
+      "thinking_control": "effort",
+      "thinking_modes": ["off", "low", "medium", "high"],
+      "default_thinking_mode": "off",
+      "supports_multi_turn": true,
+      "supports_function_calling": true,
+      "structured_output": {
+        "json_schema": "unknown",
+        "json_mode": "supported",
+        "tool_calling": "supported",
+        "strict_schema": "unknown",
+        "constrained_decoding": "unknown",
+        "notes": "TokenHub labels the model as supporting structured output; the exact JSON Schema dialect is not documented on the model-list page."
+      },
+      "verified_at": "2026-07-16",
+      "source_urls": [
+        "https://cloud.tencent.com/document/product/1823/130051",
+        "https://cloud.tencent.com/document/product/1823/131208"
+      ]
+    },
+    {
+      "id": "tencent-retired-hunyuan-2-t1",
+      "provider": "tencent",
+      "model_pattern": "hunyuan-2.0-*",
+      "availability": "retired",
+      "supports_multi_turn": true,
+      "structured_output": {
+        "json_schema": "unsupported",
+        "json_mode": "unknown",
+        "tool_calling": "unknown",
+        "strict_schema": "unsupported",
+        "constrained_decoding": "unsupported"
+      },
+      "verified_at": "2026-07-13",
+      "source_urls": [
+        "https://cloud.tencent.com/document/product/1729/131925"
+      ],
+      "notes": "Hunyuan 2.0 API models were retired on 2026-06-22; use TokenHub hy3/hy3-preview."
+    },
+    {
+      "id": "tencent-retired-hunyuan-t1",
+      "provider": "tencent",
+      "model_pattern": "hunyuan-t1*",
+      "availability": "retired",
+      "supports_multi_turn": true,
+      "structured_output": {
+        "json_schema": "unsupported",
+        "json_mode": "unknown",
+        "tool_calling": "unknown",
+        "strict_schema": "unsupported",
+        "constrained_decoding": "unsupported"
+      },
+      "verified_at": "2026-07-13",
+      "source_urls": [
+        "https://cloud.tencent.com/document/product/1729/131925"
+      ],
+      "notes": "Hunyuan T1 API models were retired on 2026-06-22; use TokenHub hy3/hy3-preview."
+    },
+    {
+      "id": "tencent-retired-hunyuan-turbos",
+      "provider": "tencent",
+      "model_pattern": "hunyuan-turbos*",
+      "availability": "retired",
+      "supports_multi_turn": true,
+      "structured_output": {
+        "json_schema": "unsupported",
+        "json_mode": "unknown",
+        "tool_calling": "unknown",
+        "strict_schema": "unsupported",
+        "constrained_decoding": "unsupported"
+      },
+      "verified_at": "2026-07-13",
+      "source_urls": [
+        "https://cloud.tencent.com/document/product/1729/131925"
+      ],
+      "notes": "Hunyuan TurboS API models were retired on 2026-06-22; use TokenHub hy3/hy3-preview."
+    },
+    {
+      "id": "volcengine-doubao-seed-2",
+      "provider": "volcengine_ark",
+      "model_pattern": "doubao-seed-2.0-*",
+      "availability": "active",
+      "supports_thinking": true,
+      "thinking_control": "toggle",
+      "thinking_modes": ["off", "on"],
+      "default_thinking_mode": "on",
+      "supports_multi_turn": true,
+      "supports_function_calling": true,
+      "structured_output": {
+        "json_schema": "supported",
+        "json_mode": "supported",
+        "tool_calling": "supported",
+        "strict_schema": "unknown",
+        "constrained_decoding": "supported"
+      },
+      "verified_at": "2026-07-13",
+      "source_urls": [
+        "https://www.volcengine.com/docs/82379/1795150",
+        "https://www.volcengine.com/docs/82379/1958524"
+      ]
+    }
+  ],
+  "models": {
+    "mimo/mimo-v2.5-pro": {
+      "availability": "active",
+      "context_window_tokens": 1048576,
+      "max_output_tokens": 131072,
+      "supports_thinking": true,
+      "thinking_control": "toggle",
+      "thinking_modes": ["off", "on"],
+      "default_thinking_mode": "on",
+      "supports_multi_turn": true,
+      "supports_function_calling": true,
+      "structured_output": {
+        "json_schema": "unsupported",
+        "json_mode": "supported",
+        "tool_calling": "supported",
+        "strict_schema": "unsupported",
+        "constrained_decoding": "unsupported"
+      },
+      "verified_at": "2026-07-16",
+      "source_urls": [
+        "https://mimo.mi.com/docs/en-US/api/chat/openai-api",
+        "https://mimo.mi.com/docs/en-US/quick-start/usage-guide/text-generation/structured-output",
+        "https://mimo.mi.com/docs/en-US/quick-start/usage-guide/other/deep-thinking"
+      ],
+      "notes": "Current flagship text model; OpenAI-compatible API uses max_completion_tokens and explicit thinking.type controls."
+    },
+    "mimo/mimo-v2.5": {
+      "availability": "active",
+      "context_window_tokens": 1048576,
+      "max_output_tokens": 131072,
+      "supports_thinking": true,
+      "thinking_control": "toggle",
+      "thinking_modes": ["off", "on"],
+      "default_thinking_mode": "on",
+      "supports_multi_turn": true,
+      "supports_function_calling": true,
+      "structured_output": {
+        "json_schema": "unsupported",
+        "json_mode": "supported",
+        "tool_calling": "supported",
+        "strict_schema": "unsupported",
+        "constrained_decoding": "unsupported"
+      },
+      "verified_at": "2026-07-16",
+      "source_urls": [
+        "https://mimo.mi.com/docs/en-US/api/chat/openai-api",
+        "https://mimo.mi.com/docs/en-US/quick-start/usage-guide/text-generation/structured-output",
+        "https://mimo.mi.com/docs/en-US/quick-start/usage-guide/other/deep-thinking"
+      ],
+      "notes": "Current omni-modal model, registered here for text routing through Chat Completions."
+    },
+    "mimo/mimo-v2.5-pro-ultraspeed": {
+      "availability": "active",
+      "context_window_tokens": 1048576,
+      "max_output_tokens": 131072,
+      "supports_thinking": true,
+      "thinking_control": "toggle",
+      "thinking_modes": ["off", "on"],
+      "default_thinking_mode": "on",
+      "supports_multi_turn": true,
+      "supports_function_calling": true,
+      "structured_output": {
+        "json_schema": "unknown",
+        "json_mode": "unknown",
+        "tool_calling": "supported",
+        "strict_schema": "unknown",
+        "constrained_decoding": "unknown"
+      },
+      "verified_at": "2026-07-16",
+      "source_urls": [
+        "https://mimo.mi.com/models/en-US/mimo-v2.5-pro-ultraspeed"
+      ],
+      "notes": "Limited-access UltraSpeed variant; users must obtain provider approval before routing tasks to it."
+    },
+    "minimax/MiniMax-M2.7-highspeed": {
+      "availability": "active",
+      "instruction_following": "medium",
+      "structured_output_reliability": "medium",
+      "context_window_tokens": 204800,
+      "max_output_tokens": 65536,
+      "supports_thinking": true,
+      "thinking_control": "forced",
+      "thinking_modes": ["forced"],
+      "default_thinking_mode": "forced",
+      "supports_multi_turn": true,
+      "supports_function_calling": true,
+      "structured_output": {
+        "json_schema": "unsupported",
+        "json_mode": "unsupported",
+        "tool_calling": "supported",
+        "strict_schema": "unsupported",
+        "constrained_decoding": "unsupported",
+        "notes": "Official MiniMax API limits response_format to MiniMax-Text-01."
+      },
+      "preferred_for": [
+        "DRAFT_CHAPTER",
+        "EDIT_CHAPTER",
+        "agentic_text"
+      ],
+      "avoid_for": [
+        "native_structured_output_required"
+      ],
+      "verified_at": "2026-07-16",
+      "source_urls": [
+        "https://platform.minimax.io/docs/guides/text-generation",
+        "https://platform.minimax.io/docs/api-reference/text-chat-openai",
+        "https://platform.minimax.io/docs/token-plan/faq"
+      ],
+      "notes": "Same output quality as MiniMax-M2.7, approximately 100 tps instead of 60 tps. Prompt-only JSON requires local schema validation and deterministic fallback."
+    },
+    "minimax/MiniMax-Text-01": {
+      "availability": "legacy",
+      "instruction_following": "medium",
+      "structured_output_reliability": "high",
+      "context_window_tokens": 1000192,
+      "max_output_tokens": 2048,
+      "supports_thinking": false,
+      "supports_multi_turn": true,
+      "supports_function_calling": true,
+      "structured_output": {
+        "json_schema": "supported",
+        "json_mode": "unsupported",
+        "tool_calling": "supported",
+        "strict_schema": "unknown",
+        "constrained_decoding": "supported",
+        "notes": "This is the only MiniMax model documented to accept response_format."
+      },
+      "preferred_for": [
+        "small_structured_json_output"
+      ],
+      "avoid_for": [
+        "long_generation"
+      ],
+      "verified_at": "2026-07-13",
+      "source_urls": [
+        "https://platform.minimax.io/docs/api-reference/text-post"
+      ],
+      "notes": "Legacy text model retained only for small native JSON Schema tasks."
+    },
+    "openai/gpt-5.6": {
+      "availability": "active",
+      "instruction_following": "excellent",
+      "structured_output_reliability": "excellent",
+      "context_window_tokens": 1050000,
+      "max_output_tokens": 128000,
+      "supports_thinking": true,
+      "supports_multi_turn": true,
+      "supports_function_calling": true,
+      "structured_output": {
+        "json_schema": "supported",
+        "json_mode": "supported",
+        "tool_calling": "supported",
+        "strict_schema": "supported",
+        "constrained_decoding": "supported",
+        "notes": "Alias for gpt-5.6-sol."
+      },
+      "preferred_for": [
+        "complex_reasoning",
+        "structured_json_output"
+      ],
+      "avoid_for": [],
+      "verified_at": "2026-07-13",
+      "source_urls": [
+        "https://developers.openai.com/api/docs/models"
+      ],
+      "notes": "Current OpenAI flagship alias."
+    },
+    "deepseek/deepseek-v4-flash": {
+      "availability": "active",
+      "instruction_following": "good",
+      "structured_output_reliability": "high",
+      "context_window_tokens": 1000000,
+      "max_output_tokens": 384000,
+      "supports_thinking": true,
+      "thinking_control": "effort",
+      "thinking_modes": ["off", "high", "max"],
+      "default_thinking_mode": "high",
+      "supports_multi_turn": true,
+      "supports_function_calling": true,
+      "structured_output": {
+        "json_schema": "unsupported",
+        "json_mode": "supported",
+        "tool_calling": "supported",
+        "strict_schema": "unsupported",
+        "constrained_decoding": "unsupported",
+        "notes": "JSON object mode plus application-side schema validation."
+      },
+      "preferred_for": [
+        "structured_json_output",
+        "DRAFT_CHAPTER",
+        "EDIT_CHAPTER"
+      ],
+      "avoid_for": [],
+      "verified_at": "2026-07-16",
+      "source_urls": [
+        "https://api-docs.deepseek.com/quick_start/pricing",
+        "https://api-docs.deepseek.com/guides/thinking_mode"
+      ],
+      "notes": "Official API supports 1M context, 384K maximum output, dual thinking modes, JSON Output and tool calls."
+    },
+    "kimi/kimi-k2.7-code-highspeed": {
+      "availability": "active",
+      "instruction_following": "excellent",
+      "structured_output_reliability": "high",
+      "context_window_tokens": 262144,
+      "max_output_tokens": 32768,
+      "supports_thinking": true,
+      "supports_multi_turn": true,
+      "supports_function_calling": true,
+      "structured_output": {
+        "json_schema": "unsupported",
+        "json_mode": "supported",
+        "tool_calling": "supported",
+        "strict_schema": "unsupported",
+        "constrained_decoding": "unsupported",
+        "notes": "Highspeed is the same model as K2.7 Code; JSON Mode is documented."
+      },
+      "preferred_for": [
+        "coding",
+        "agentic_tasks",
+        "long_context"
+      ],
+      "avoid_for": [
+        "non_thinking_required"
+      ],
+      "verified_at": "2026-07-13",
+      "source_urls": [
+        "https://platform.kimi.ai/docs/guide/kimi-k2-7-code-quickstart",
+        "https://platform.kimi.ai/docs/pricing/chat-k27-code"
+      ],
+      "notes": "Forced thinking, fixed temperature 1.0/top_p 0.95, approximately 180 tps and up to 260 tps for short contexts."
+    },
+    "anthropic/claude-opus-4-8": {
+      "availability": "active",
+      "instruction_following": "excellent",
+      "structured_output_reliability": "excellent",
+      "context_window_tokens": 200000,
+      "max_output_tokens": 128000,
+      "supports_thinking": true,
+      "supports_multi_turn": true,
+      "supports_function_calling": true,
+      "structured_output": {
+        "json_schema": "supported",
+        "json_mode": "unsupported",
+        "tool_calling": "supported",
+        "strict_schema": "supported",
+        "constrained_decoding": "supported",
+        "notes": "Uses output_config.format and strict tool schemas."
+      },
+      "preferred_for": [
+        "complex_reasoning",
+        "precise_editing",
+        "structured_json_output"
+      ],
+      "avoid_for": [],
+      "verified_at": "2026-07-13",
+      "source_urls": [
+        "https://platform.claude.com/docs/en/about-claude/models/overview",
+        "https://platform.claude.com/docs/en/build-with-claude/structured-outputs"
+      ],
+      "notes": "Current complex agentic/coding model; native structured outputs are generally available."
+    },
+    "tencent/hy3": {
+      "availability": "active",
+      "instruction_following": "good",
+      "structured_output_reliability": "high",
+      "context_window_tokens": 262144,
+      "max_output_tokens": 131072,
+      "supports_thinking": true,
+      "supports_multi_turn": true,
+      "supports_function_calling": true,
+      "structured_output": {
+        "json_schema": "unknown",
+        "json_mode": "supported",
+        "tool_calling": "supported",
+        "strict_schema": "unknown",
+        "constrained_decoding": "unknown",
+        "notes": "TokenHub documents structured output but not the exact schema dialect."
+      },
+      "preferred_for": [
+        "chinese_generation",
+        "long_context"
+      ],
+      "avoid_for": [
+        "native_json_schema_required"
+      ],
+      "verified_at": "2026-07-13",
+      "source_urls": [
+        "https://cloud.tencent.com/document/product/1823/130051"
+      ],
+      "notes": "Current TokenHub model; old Hunyuan 2.0/T1 names were retired on 2026-06-22."
+    },
+    "tencent/hunyuan-2.0-instruct-20251111": {
+      "availability": "retired",
+      "instruction_following": "medium",
+      "structured_output_reliability": "unknown",
+      "context_window_tokens": 32768,
+      "max_output_tokens": 4096,
+      "supports_thinking": false,
+      "supports_multi_turn": true,
+      "supports_function_calling": false,
+      "structured_output": {
+        "json_schema": "unsupported",
+        "json_mode": "unknown",
+        "tool_calling": "unsupported",
+        "strict_schema": "unsupported",
+        "constrained_decoding": "unsupported",
+        "notes": "Retired model must not be selected for new routes."
+      },
+      "preferred_for": [],
+      "avoid_for": [
+        "all_runtime_tasks"
+      ],
+      "verified_at": "2026-07-13",
+      "source_urls": [
+        "https://cloud.tencent.com/document/product/1729/131925"
+      ],
+      "notes": "Officially retired on 2026-06-22; migrate to hy3/hy3-preview on TokenHub."
+    },
+    "anthropic/claude-3-5-sonnet": {
+      "availability": "retired",
+      "instruction_following": "excellent",
+      "structured_output_reliability": "medium",
+      "context_window_tokens": 200000,
+      "max_output_tokens": 8192,
+      "supports_thinking": false,
+      "supports_multi_turn": true,
+      "supports_function_calling": true,
+      "structured_output": {
+        "json_schema": "unsupported",
+        "json_mode": "unsupported",
+        "tool_calling": "supported",
+        "strict_schema": "unsupported",
+        "constrained_decoding": "unsupported",
+        "notes": "Claude 3.5 predates JSON output_config support and is no longer a current model."
+      },
+      "preferred_for": [],
+      "avoid_for": [
+        "new_runtime_routes"
+      ],
+      "verified_at": "2026-07-13",
+      "source_urls": [
+        "https://platform.claude.com/docs/en/about-claude/models/overview"
+      ],
+      "notes": "Retained only to classify legacy user configuration."
+    },
+    "kimi/kimi-k2-thinking": {
+      "availability": "retired",
+      "instruction_following": "good",
+      "structured_output_reliability": "medium",
+      "context_window_tokens": 262144,
+      "max_output_tokens": 32768,
+      "supports_thinking": true,
+      "thinking_control": "forced",
+      "thinking_modes": ["forced"],
+      "default_thinking_mode": "forced",
+      "supports_multi_turn": true,
+      "supports_function_calling": true,
+      "structured_output": {
+        "json_schema": "unsupported",
+        "json_mode": "supported",
+        "tool_calling": "supported",
+        "strict_schema": "unsupported",
+        "constrained_decoding": "unsupported"
+      },
+      "preferred_for": [],
+      "avoid_for": [
+        "all_runtime_tasks"
+      ],
+      "verified_at": "2026-07-13",
+      "source_urls": [
+        "https://platform.kimi.ai/docs/models"
+      ],
+      "notes": "The whole legacy kimi-k2 series was discontinued on 2026-05-25."
+    }
+  }
+}

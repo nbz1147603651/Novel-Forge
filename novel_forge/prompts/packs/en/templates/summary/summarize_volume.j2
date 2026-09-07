@@ -1,0 +1,64 @@
+{%- from "_base/_summary_pass.j2" import render_summary_pass -%}
+{# source_template_hash: 83859187327268912bc1b6d9dd365b49756977e7f80c4481c98bfc65048025fc #}
+{#
+================================================================================
+【Notes】
+================================================================================
+Prompt: summarize_volume.j2
+Service Step: SUMMARIZE_VOLUME (Volume Summary)
+Function Summary: Compress multiple chapters into volume-level summary for subsequent volume creation and memory retrieval
+Upstream Input:
+  - volume_title/volume_theme: Volume Information
+  - target_words: Target word count (default 800)
+  - text/chapter_text: Input text
+Downstream Output:
+  - JSON: summary
+  - Downstream Consumer: Next Volume Planning / Memory System
+Consumption Chain Priority:
+  P0 = Preserve volume-level main plot progression
+  P1 = Delete chapter-level details / Avoid chapter-by-chapter chronology
+  P2 = Clarify this volume's ending state and next volume's pickup point
+Brief Example:
+  Input: volume_title="Volume 1: Awakening", volume_theme="Identity", text="Chapter 1...Chapter 5..."
+  Output: {"summary":"..."}
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer: Task Definition and Input Consumption
+    --------------------------------------------------------------------------- -#}
+
+Compress the following into a volume-level summary for subsequent volume creation and memory retrieval.
+
+{{ render_summary_pass(summary_pass | default(''), source_scope | default('')) }}
+
+{% if volume_title %}- Volume Title: {{ volume_title }}{% endif %}
+{% if volume_theme %}- Volume Theme: {{ volume_theme }}{% endif %}
+- Target Length: approximately {{ target_words | default(800) }} words
+
+## Input Text
+{{ text if text else chapter_text }}
+
+## Output Field Description
+- `summary`: Volume-level high-density summary, preserving volume-level main plot progression, key character changes, and unresolved plot threads, approximately {{ target_words | default(800) }} words.
+
+## Rules
+1. Preserve volume-level main plot progression, key character changes, and unresolved plot threads.
+2. Delete chapter-level details and redundant information, avoid chapter-by-chapter chronology.
+3. Clarify this volume's ending state and next volume's pickup point.
+
+## Quality Calibration
+- Working Identity: You are a chapter memory editor, skilled at compressing main text into high-density narrative summaries that subsequent creation can directlyhandoff.
+- Summary Path: First extract core events in chronological order, then supplement character status, unresolved questions, and new facts, finally compress into searchable statements.
+- Evidence Calibration: Summary only carries forward information that actually occurred in this chapter or was explicitly established; rhetorical atmosphere is reduced to background, not escalated to hard facts.
+- Actionable Path: Each summary item should be directly referenceable by subsequent chapter Bridge, Memory, or VolumeAudit.
+
+## Pre-delivery Verification
+- Whether P0/P1/P2 priority is maintained, and no weak references override hard constraints.
+- Whether key judgments can be traced back to input evidence, upstream contracts, or approved plans.
+- Whether unauthorized characters, locations, world rules, future payoffs, or format agreements are avoided.
+- Whether factual boundaries needed for subsequent merging/retrieval are preserved, and speculation is not written as established facts.
+
+{#- ---------------------------------------------------------------------------
+    Format Layer: Output Format and Schema
+    --------------------------------------------------------------------------- -#}

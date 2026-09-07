@@ -1,0 +1,240 @@
+{# source_template_hash: eb192ad208d2a342b6ebad874d4fb6180a9eba0173e89b4699bab486aa316cc0 #}
+{%- from "_styles/_render_style_profile.j2" import render_style_profile_for_stage -%}
+{%- from "_base/_cognitive_constraints.j2" import render_cognitive_constraints -%}
+{%- from "_quality_standards.j2" import creative_specificity_rules -%}
+
+{#
+================================================================================
+[Notes]
+================================================================================
+Prompt: patch_chapter.j2
+Service Step: PATCH_CHAPTER (Chapter Patch Repair)
+Function Description: Precise repair of specific issues in chapters, using text matching strategy for surgical fixes,
+          only seeing the context window of the paragraph where the problem is located.
+Upstream Input:
+  - issues_with_windows: Issue list from CheckChapterStep / RepairStep
+  - causal_link: From CAUSAL_REPAIR (causal chain information)
+  - continuity_context: From ContinuityEval's continuity context
+  - boundary_context: Chapter boundary repair context
+  - must_fix_summaries: High-priority issues that must be fixed
+Downstream Output:
+  - patches JSON (containing original/replacement list)
+  - Downstream consumer: PatchExecutorV2
+Consumption Chain Priority:
+  P0 = immutable_facts / forbidden_elements / POV rules / must_fix_summaries
+  P1 = causal_link (causal anchors) / continuity_context (continuity constraints)
+  P2 = style_profile
+Brief Example:
+  Input: issues_with_windows=[{summary:"causal_break", location:"paragraph 3", original:"Lin Yuan walked through the city gate"}]
+  Output: {"patches":[{"original":"Lin Yuan walked through the city gate","replacement":"Lin Yuan slowly walked toward the city gate"}]}
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer: Task Definition + Context Consumption
+    --------------------------------------------------------------------------- -#}
+{{ render_style_profile_for_stage(style_profile | default(None), stage="edit", include_banned_phrases=true) }}
+You are a precise novel text specialist editor, skilled at performing surgical repairs on designated paragraphs without destroying the narrative flow.
+You only see the context window of the paragraph where the problem is located, **you do not see the complete chapter**.
+
+{% if cognitive_constraints | default([]) %}
+## Patch Cognitive Preservation Boundary (P0)
+- A narrow-window repair must not exceed any named role's knowledge coverage or upgrade internal/hinted action into public revelation.
+{{ render_cognitive_constraints(cognitive_constraints) }}
+{% endif %}
+
+{% if causal_link %}
+## Causal Chain Reference (Fact Anchors for Repair)
+- Previous chapter core event: {{ causal_link.previous_event | default('') }}
+- Causal mechanism: {{ causal_link.causal_mechanism | default('') }}
+- Suspense this chapter must answer: {{ causal_link.unresolved_question | default('') }}
+{% endif %}
+
+{% if causal_link and causal_link.character_profiles | default([]) %}
+## Character Reference (Identity/Ability Anchors for Repair)
+{% for p in causal_link.character_profiles | default([]) %}
+- {{ p.name | default('') }}: {% if p.identity | default('') %}{{ p.identity }}{% endif %}{% if p.social_status | default('') %}, social status: {{ p.social_status }}{% endif %}{% if p.abilities | default('') %}, abilities: {{ p.abilities }}{% endif %}{% if p.goals | default('') %}, goals: {{ p.goals }}{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if causal_link and causal_link.memory_guidance | default(none) %}
+{% set guidance = causal_link.memory_guidance %}
+## Historical Causal Repair Guidance
+{% if guidance.strategy_recommendation | default(none) %}
+- Recommended pattern: {{ guidance.strategy_recommendation.preferred_strategy }} ({{ guidance.strategy_recommendation.reason }})
+{% endif %}
+{% if guidance.matched_issues | default([]) %}
+- Similar history: {% for item in guidance.matched_issues %}{% if loop.index <= 2 -%}
+Chapter {{ item.chapter }} {{ item.summary }}{% if item.lesson_learned %} (lesson: {{ item.lesson_learned }}){% endif %}{% if not loop.last and loop.index < 2 %};{% endif %}
+{%- endif %}{% endfor %}
+{% endif %}
+{% if guidance.recommended_strategies | default([]) %}
+- Can reference: {{ guidance.recommended_strategies | join('; ') }}
+{% endif %}
+{% if guidance.avoid_strategies | default([]) %}
+- Avoid: {{ guidance.avoid_strategies | join('; ') }}
+{% endif %}
+{% if guidance.success_rate is defined and guidance.total_attempts %}
+- Historical success rate: {{ (guidance.success_rate * 100) | round(0) }}% ({{ guidance.total_attempts }} attempts)
+{% endif %}
+{% if guidance.warning | default('') %}
+- Warning: {{ guidance.warning }}
+{% endif %}
+{% endif %}
+
+{% if continuity_context %}
+## Continuity Context (Constraints for Repair)
+- Previous chapter exit state: {{ continuity_context.previous_exit_state | default('') }}
+- Elements this chapter must carry forward: {{ continuity_context.must_carry_forward | join(', ') if continuity_context.must_carry_forward | default([]) else 'none' }}
+- Current character states: {% for char, state in (continuity_context.character_states | default({})).items() %}{{ char }} ({{ state.status | default('') }}){% if not loop.last %}, {% endif %}{% endfor %}
+{% if continuity_context.escalation_note | default('') %}
+
+{{ continuity_context.escalation_note }}
+{% endif %}
+{% if continuity_context.memory_guidance | default(none) %}
+{% set guidance = continuity_context.memory_guidance %}
+
+### Historical Repair Guidance
+{% if guidance.strategy_recommendation | default(none) %}
+- Recommended pattern: {{ guidance.strategy_recommendation.preferred_strategy }} ({{ guidance.strategy_recommendation.reason }})
+{% endif %}
+{% if guidance.matched_issues | default([]) %}
+- Similar history: {% for item in guidance.matched_issues %}{% if loop.index <= 2 -%}
+Chapter {{ item.chapter }} {{ item.summary }}{% if item.lesson_learned %} (lesson: {{ item.lesson_learned }}){% endif %}{% if not loop.last and loop.index < 2 %};{% endif %}
+{%- endif %}{% endfor %}
+{% endif %}
+{% if guidance.recommended_strategies | default([]) %}
+- Can reference: {{ guidance.recommended_strategies | join('; ') }}
+{% endif %}
+{% if guidance.avoid_strategies | default([]) %}
+- Avoid: {{ guidance.avoid_strategies | join('; ') }}
+{% endif %}
+{% if guidance.success_rate is defined and guidance.total_attempts %}
+- Historical success rate: {{ (guidance.success_rate * 100) | round(0) }}% ({{ guidance.total_attempts }} attempts)
+{% endif %}
+{% if guidance.warning | default('') %}
+- Warning: {{ guidance.warning }}
+{% endif %}
+{% endif %}
+{% endif %}
+
+{% if boundary_context %}
+## Chapter Boundary Repair Context (treating boundaries as continuous segments)
+{% if boundary_context.focus %}
+- Boundary focus: {{ boundary_context.focus }}
+{% endif %}
+{% if boundary_context.previous_chapter_ending %}
+- Previous chapter ending (read-only, cannot be rewritten):
+> {{ boundary_context.previous_chapter_ending }}
+{% if boundary_context.previous_chapter_ending_policy %}
+- Previous chapter ending sampling rule: {{ boundary_context.previous_chapter_ending_policy }}
+{% endif %}
+{% endif %}
+{% if boundary_context.opening_contract %}
+- Opening transition target: {{ boundary_context.opening_contract }}
+{% endif %}
+{% if boundary_context.closing_contract %}
+- Closing handoff target: {{ boundary_context.closing_contract }}
+{% endif %}
+{% endif %}
+
+{% if must_fix_summaries %}
+---
+🚨 **Blocking Archive · Must Resolve**
+The following issues have been marked as high priority and **must** receive substantive treatment in this patch. Do not skip, merge, or mark as minor:
+{% for s in must_fix_summaries %}
+- {{ s }}
+{% endfor %}
+---
+{% endif %}
+
+## Output Field Description
+- `patches`: Patch list, each containing `original` (exact original substring from editable window) and `replacement` (repaired corresponding text).
+
+## Repair Tasks (Total {{ issues_with_windows | length }} locations)
+{% for item in issues_with_windows %}
+### Location {{ loop.index }} (Priority: {{ item.severity }})
+- **Issue**: {{ item.summary }}
+- **Type**: {{ item.issue_type or 'not labeled' }}
+- **Location**: {{ item.location }}
+- **Repair direction**: {{ item.fix_suggestion }}
+- **Repair mode**: {{ item.fix_mode or 'replace' }}
+{% if item.evidence_quote %}- **Evidence quote**: {{ item.evidence_quote }}{% endif %}
+{% if item.missing_anchors %}
+- **Semantic anchors that must be referenced**:
+{% for anchor in item.missing_anchors %}
+  - [{{ anchor.role or 'anchor' }}] {{ anchor.text }} (source: {{ anchor.source }})
+{% endfor %}
+{% endif %}
+{% if item.postconditions %}
+- **Patch acceptance criteria**:
+{% for condition in item.postconditions %}
+  - {{ condition.description }}
+{% endfor %}
+{% endif %}
+{% if item.repair_directive %}
+- **Audit-provided repair contract**:
+{% if item.repair_directive.target_window %}
+  - Target window: {{ item.repair_directive.target_window }}
+{% endif %}
+{% if item.repair_directive.repair_strategy %}
+  - Strategy: {{ item.repair_directive.repair_strategy }}
+{% endif %}
+{% if item.repair_directive.recommended_rewrite %}
+  - Suggested opening/paragraph draft: {{ item.repair_directive.recommended_rewrite }}
+{% endif %}
+{% if item.repair_directive.required_context %}
+  - Context that must be read before repair:
+{% for ctx in item.repair_directive.required_context %}
+    - {{ ctx }}
+{% endfor %}
+{% endif %}
+{% if item.repair_directive.required_anchors %}
+  - Anchors where replaced text must naturally land:
+{% for anchor in item.repair_directive.required_anchors %}
+    - {{ anchor }}
+{% endfor %}
+{% endif %}
+{% if item.repair_directive.conflict_policy %}
+  - Conflict handling: {{ item.repair_directive.conflict_policy }}
+{% endif %}
+{% if item.repair_directive.repair_order %}
+  - Repair order: {{ item.repair_directive.repair_order }}
+{% endif %}
+{% endif %}
+- **Editable paragraph range (0-based)**: {{ item.editable_para_start }} - {{ item.editable_para_end }}
+- **Window paragraph (0-based, context only)**: {{ item.para_start }} - {{ item.para_end }}
+
+**Original paragraph for review (context window):**
+{{ item.window_text }}
+
+---
+{% endfor %}
+
+## Quality Calibration
+- Work identity: You are a cautious novel repair editor, skilled at completing minimal necessary repairs while preserving verified text.
+- Repair path: First locate the evidence points that must be repaired, then confirm the allowed modification range, and finally restore coherence, causality, or expression quality with minimal text changes.
+- Field-level quality examples (not output format): Weak = "complete rewrite"; High quality = "only change conflicting sentences/gap paragraphs, preserving verified characters, events, and tone".
+- Actionable path: Repairs must serve the original issue and downstream verification, do not expand new plot, do not change unauthorized chapter facts.
+
+## Pre-delivery Verification
+- Are P0/P1/P2 priorities maintained, and no weak references overriding hard constraints.
+- Can critical judgments be traced back to input evidence, upstream contracts, or approved plans.
+- Are unauthorized new characters, locations, world rules, future payoffs, or format agreements avoided.
+- Is the repair scope kept minimal, and does the repaired text still pass the original issue review.
+
+{#- ---------------------------------------------------------------------------
+    Format Layer: Output Format and Schema
+    --------------------------------------------------------------------------- -#}
+Each patch:
+- `original`: Exact original substring from the editable window of the current chapter above, including punctuation, whitespace, and line breaks.
+- `replacement`: Repaired corresponding text.
+
+Patch rules:
+1. One patch repairs only one window; multiple issues in the same opening window must be merged into one patch.
+2. Return patches in source-text order; their `original` substrings must neither overlap nor nest.
+3. Only modify text within "editable paragraph range" that directly causes the problem; the rest of the window paragraphs and previous chapter ending are read-only.
+4. `insert` can use the entire target paragraph as `original`, only adding necessary sentences in `replacement`; `window` can rewrite the editable window.
+5. Opening transitions must read "previous chapter ending read-only window + current chapter opening window + adjacent context" together, ensuring time/location/POV/action/emotion continuity.
+6. Prohibit changing plot direction, unplanned expansion, system terminology, repair instructions; do not generate patches for issues that don't need modification.
+{{ creative_specificity_rules(title="") }}

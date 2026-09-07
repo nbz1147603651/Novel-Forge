@@ -1,0 +1,235 @@
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：check_chapter.j2
+服务步骤：CHECK_CHAPTER（章节质量检查）
+作用简述：对章节正文进行本章内部质量与提示误读风险检查，输出风险等级
+         与可执行的修复动作列表。
+上游输入：
+  - chapter_number/chapter_text：来自 Draft/Edit 步骤产出的章节正文
+  - canon_context.characters：来自 CanonStore 的当前角色状态
+  - character_profiles：来自 CharacterBible 的角色权威档案
+  - previous_chapter_ending：仅作背景输入；本任务不审跨章承接
+  - known_prompt_markers：来自 PromptBuilder 的已知系统标记词表
+  - creative_contract：来自章节计划的轻量创意验收合同（scene_id/summary/emotional_beat/sensory_focus/dialogue_subtext）
+  - local_detected_prompt_leaks：来自本地预检的高置信度泄露项
+  - local_forbidden_element_candidates：本地字符串召回的禁用元素候选，需语义裁决
+  - previous_report：来自上一轮 CHECK_CHAPTER 的结果（delta 复检模式）
+  - changed_sections：来自 ContinuityRepair 的修前/修后片段（delta 模式）
+下游输出：
+  - JSON：{"risk_level", "summary", "prompt_leaks", "factual_errors",
+           "continuity_errors", "expression_errors", "repair_actions",
+           "forbidden_element_findings"}
+  - 下游消费者：ChapterRepairStep / EditStep（用于循环修复）
+消费链优先级：P0（章内事实/身份/称谓一致性）> P1（提示词泄露/事实错误）
+              > P2（表达错误/章内自洽）
+简要例子：
+  输入：chapter_text="翌日清晨，林远站在城门口...", 
+        canon_context={"characters":{"林远":{"alive":true,"location":"城门"}}}
+  输出：{"risk_level":"medium","prompt_leaks":["翌日清晨+主角名模板化开场"],
+         "factual_errors":[],"repair_actions":["改写开头避免模板化时间标记"]}
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    指导层：任务定义 + 上下文消费
+    --------------------------------------------------------------------------- -#}
+
+请检查以下章节正文的"本章正确性与表达清晰度"。注意：这不是大纲对齐、跨章连续性、因果链或护栏评估；重点只放在本章内部事实、身份称谓、表达清晰度与提示误读风险。
+
+## 章节信息
+- 第 {{ chapter_number }} 章
+
+{% if check_mode | default("full") == "delta" %}
+## 复检模式
+- 本次为 continuity repair 之后的局部复检，请优先检查改动片段，不要重新扫描未修改部分。
+{% if change_ratio | default(none) is not none %}- 修前修后段落相似度：{{ "%.2f"|format(change_ratio) }}{% endif %}
+
+{% if previous_report | default(none) %}
+## 上一次本章检查结果（默认视为仍然成立）
+- 摘要：{{ previous_report.summary or "无" }}
+- 提示词泄露：{{ previous_report.prompt_leaks | join('；') if previous_report.prompt_leaks else '无' }}
+- 事实错误：{{ previous_report.factual_errors | join('；') if previous_report.factual_errors else '无' }}
+- 连续性错误：{{ previous_report.continuity_errors | join('；') if previous_report.continuity_errors else '无' }}
+- 表达错误：{{ previous_report.expression_errors | join('；') if previous_report.expression_errors else '无' }}
+{% endif %}
+{% endif %}
+
+## 已知正史状态（供核对）
+{% for name, state in canon_context.characters.items() %}
+- {{ name }}：{% if not state.alive %}已死亡{% else %}alive，位置={{ state.location }}，情绪={{ state.emotional_state }}{% endif %}
+{% endfor %}
+
+{% if character_profiles %}
+## 角色权威档案（身份/称谓核对基准）
+{% for profile in character_profiles %}
+- {{ profile.get('name', '') }}{% if profile.get('role') | default('') %}（{{ profile.get('role') }}）{% endif %}{% if profile.get('personality') | default('') %}：{{ profile.get('personality') }}{% elif profile.get('backstory') | default('') %}：{{ profile.get('backstory') }}{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if creative_contract | default([]) %}
+## 本章创意合同（P2 表达验收）
+以下合同来自 `plan.scene_intents` 的轻量投影，只用于检查已规划的情绪、感官和潜台词是否在正文中**可感知落地**；不得据此新增人物、地点、事件、世界规则或未来 payoff。
+{% for item in creative_contract %}
+- {{ item.scene_id | default('scene') }}{% if item.summary | default('') %}：{{ item.summary }}{% endif %}{% if item.emotional_beat | default('') %}；情绪节拍={{ item.emotional_beat }}{% endif %}{% if item.sensory_focus | default('') %}；感官侧重={{ item.sensory_focus }}{% endif %}{% if item.dialogue_subtext | default('') %}；对白潜台词={{ item.dialogue_subtext }}{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if known_prompt_markers | default([]) %}
+## 已知提示词/系统标记（若出现在正文应视为泄露）
+{{ known_prompt_markers | join("、") }}
+{% endif %}
+{% if local_detected_prompt_leaks | default([]) %}
+## 本地预检提示（高置信度）
+{{ local_check_note | default("以下是本地预检命中的疑似提示词泄露，请重点核实其是否仍残留在正文中。") }}
+{% for item in local_detected_prompt_leaks %}
+- {{ item }}
+{% endfor %}
+{% endif %}
+{% if local_detected_resurrection_risks | default([]) %}
+## 本地预检：已死角色出现风险提示
+{{ local_resurrection_note | default("以下角色在正史中已死亡，但在正文中出现了名字。请判断是正常提及还是错误复活。") }}
+{% for name in local_detected_resurrection_risks %}
+- {{ name }}
+{% endfor %}
+{% endif %}
+{% if local_detected_quality_issues | default([]) %}
+## 本地预检：章内质量信号
+{{ local_quality_note | default("以下是本地质量预筛选结果，请结合正文复核。") }}
+{% for issue in local_detected_quality_issues %}
+- [{{ issue.issue_type | default("quality") }}]{% if issue.confidence is defined %} 置信度 {{ "%.2f"|format(issue.confidence) }}{% endif %}：{{ issue.summary | default("") }}{% if issue.evidence | default("") %}；证据：{{ issue.evidence }}{% endif %}
+{% endfor %}
+{% endif %}
+{% if local_forbidden_element_candidates | default([]) %}
+## 本地预检：禁用元素候选（必须语义裁决）
+{{ local_forbidden_note | default("以下只是字符串召回候选，不等于违规。请结合上下文判断。") }}
+{% for item in local_forbidden_element_candidates %}
+- [{{ item.level }} / {{ item.match_type }}] 禁用项：{{ item.forbidden }}；正文命中：{{ item.matched }}；上下文：{{ item.context_excerpt }}
+{% endfor %}
+{% endif %}
+{% if local_expression_channel_hits | default([]) %}
+## 本地预检：表达通道候选（必须语义裁决）
+{{ local_expression_channel_note | default("以下只是表达通道候选，不等于违规。请结合角色、POV、语义功能和审美疲劳风险判断。") }}
+{% for item in local_expression_channel_hits %}
+- [{{ item.channel }}/{{ item.channel_id }}] {{ item.reason }}；命中 {{ item.count }} 次；样例：{{ item.matched | join("；") }}{% if item.replacement_axes %}；替代方向：{{ item.replacement_axes | join("、") }}{% endif %}{% if item.allowed_when %}；保留边界：{{ item.allowed_when }}{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if check_mode | default("full") == "delta" %}
+## 修复后的改动片段
+{% for section in changed_sections | default([]) %}
+### 片段 {{ loop.index }}（新稿第 {{ section.start_paragraph }}{% if section.end_paragraph != section.start_paragraph %}-{{ section.end_paragraph }}{% endif %} 段）
+{% if section.before %}
+- 修前：
+{{ section.before }}
+{% endif %}
+{% if section.after %}
+- 修后：
+{{ section.after }}
+{% endif %}
+{% endfor %}
+
+## 复检重点
+1. 上一次报告中的问题，若本次修改没有明确修复，应继续保留在结果里。
+2. 只有当修后片段已经明确修复某个旧问题，或该问题仅存在于被替换掉的旧片段中，才可将其移除。
+3. 检查修后片段是否引入新的提示词泄露、章内事实矛盾、身份称谓错误或明显表达错误；跨章边界和因果链由其他模块处理。
+4. 若某个旧问题无法仅凭局部片段确认已修复，请保守地继续保留它。
+{% else %}
+## 正文
+{{ chapter_text }}
+
+## 检查重点
+
+以下结构性问题已由本地预检覆盖（你无需主动排查，但可复核）：
+`prompt_leak` · `resurrection_risk`
+
+你的任务是**语义层面的质量判断**，重点如下：
+
+{%- from "_quality_standards.j2" import forbidden_system_markers, anti_meta_narrative_rules %}
+### 1. 提示词/系统标记泄露（复核）
+本地预检已标记高置信度泄露项，你只需复核并补充遗漏。
+{{ forbidden_system_markers(
+    context="正文",
+    include_meta_examples=false,
+    emphasize=false,
+    planning_intro="规划术语混入：",
+    planning_tail=""
+) }}
+- 若章末出现"这是一个未决的线索""这些伏笔终将回收""这场博弈才刚刚拉开序幕""暗示/意味着……"等总结句，也视为 `prompt_leaks`。
+{{ anti_meta_narrative_rules(title="") }}
+
+{%- from "_quality_standards.j2" import anti_exposition_rules, creative_specificity_rules %}
+### 2. 误读提示导致的词汇混入
+{{ anti_exposition_rules(
+    title="",
+    opening_intro="禁止使用说明腔，例如",
+    planning_label_rule="把要求/评价/限定写成正文；不要把大纲标签直接抄入正文（如\"本章目标\" \"主线推进点\"）。",
+    opening_narrative_rule="不要用说明句替代叙事。"
+) }}
+{{ creative_specificity_rules(title="") }}
+
+### 3. 事实错误
+- 人物生死、身份、称谓、时间线、地点、关键物品状态与正史冲突。
+- 尤其核对角色身份/职务/称谓：若角色档案与正文称谓冲突（例如把普通角色写成不属于他的最高权力称号），必须记入 `factual_errors`。
+- 角色自称核对：检查角色自称是否明显违反其身份等级或场景语境，结合世界观背景判断，违反视为事实错误。{{ address_rules or "例如：正式场合对上级应用相应敬称，私下交往用日常自称" }}
+{% if world_context_rules %}
+- 世界观时代语境核对：以下规则来自故事圣经，若正文出现时代错位词、器物错位、礼制/称谓/自称违背规则，必须记入 `factual_errors`。
+{{ world_context_rules }}
+{% endif %}
+{% if world_rule_card | default({}) %}
+- 本章规则卡：以下始终生效及本章相关规则必须逐条核对；任何硬规则冲突均记入 `factual_errors` 并给出正文证据。
+{% for item in world_rule_card.always_on | default([]) %}
+  - [{{ item.rule.rule_id | default('') }}] {{ item.rule.content | default('') }}{% if item.rule.forbidden_behavior | default([]) %}；禁止={{ item.rule.forbidden_behavior | join('；') }}{% endif %}{% if item.rule.cost_or_consequence | default([]) %}；代价={{ item.rule.cost_or_consequence | join('；') }}{% endif %}
+{% endfor %}
+{% for item in world_rule_card.relevant_rules | default([]) %}
+  - [{{ item.rule.rule_id | default('') }}] {{ item.rule.content | default('') }}{% if item.rule.trigger_conditions | default([]) %}；触发={{ item.rule.trigger_conditions | join('；') }}{% endif %}{% if item.rule.forbidden_behavior | default([]) %}；禁止={{ item.rule.forbidden_behavior | join('；') }}{% endif %}{% if item.rule.cost_or_consequence | default([]) %}；代价={{ item.rule.cost_or_consequence | join('；') }}{% endif %}
+{% endfor %}
+{% endif %}
+
+### 4. 章内自洽
+- 只检查同一章内部已建立信息之间的矛盾，例如同一场景内地点/时间自相矛盾、同一人物身份称谓前后冲突。
+- 跨章边界、上一章承接、重大事件因果链、护栏约束履行均由对应模块负责，本项不重复审查。
+
+{% if creative_contract | default([]) %}
+### 5. 创意合同落地（P2）
+- 只检查上方创意合同中非空的 `emotional_beat`、`sensory_focus`、`dialogue_subtext`，用语义判断，不做逐字匹配。
+- `emotional_beat`：正文应通过动作选择、对白语气、身体信号、环境映射或沉默让读者感到该情绪转向；只写“他很紧张/她很释然”不算充分落地。
+- `sensory_focus`：指定通道至少应有一个服务冲突、情绪或选择的具体感官细节；纯装饰性景物、与本场功能无关的感官堆砌不算充分落地。
+- `dialogue_subtext`：若该项非空，正文对白或沉默应让读者能推断未明说意图；只有直白解释、或删掉潜台词后对话含义不变，视为弱落地。
+- 若某项明显未落地或落地很弱，写入 `expression_errors`，格式建议包含 scene_id 和缺口类型；`repair_actions` 只建议补短动作、感官细节、停顿、回避、沉默或一句有潜台词的对白，不建议整场重写。
+- 这是 P2 表达验收：不得因为创意合同缺口而新增剧情事实；除非缺口造成理解错误，否则不要写入 `factual_errors`。
+{% endif %}
+
+### 6. 明显表达错误
+- 指代不明、语义歧义、明显语病且影响理解。
+- 若正文密集使用定义式否定转折来解释细节为何真实/高级/更深层，或反复用同构辨析句包装目光、沉默、生理反应、心动/恐惧等感受，造成审美疲劳或替读者做阅读理解，记入 `expression_errors`；孤立且确有叙事转折、人物自辩、事实纠偏或关键情感悬置功能的句子可以接受。
+- 对此类问题的修复动作应要求模型保留叙事功能，改成动作、对白、环境阻力、角色决策或直接陈述；不要要求本地机械删除，也不要建议同义词替换。
+- 对“禁用元素候选”只做语义裁决：若它是机械复用且没有新的叙事功能，可记入 `expression_errors`；若它是剧情锚点、有意回环、角色动作必需、或只是无害普通描写，不得记为错误。
+- 对“表达通道候选”也必须语义裁决：只有当同一情绪触发方式/动作标签/感官锚点在本章或近期角色范围内造成审美疲劳，才记入 `expression_errors`；不能因为本地候选命中就自动判错。
+- 不要仅因词面出现就扣分；必须说明其是否破坏表达质量、造成审美疲劳或违反本章计划中的修辞禁用目的。
+- 对每个候选都在 `forbidden_element_findings` 中输出结构化判断：`verdict` 使用 violation / mechanical_reuse / acceptable_callback / story_anchor / benign / uncertain；`blocking` 仅在确实必须阻断归档时为 true。
+
+### 7. 信息密度检查
+- 统计本章 `key_revelations` 数量，若超过叙事契约预算（默认 {{ (_cp | default({})).max_key_revelations_per_chapter | default(2) }} 条），记入 `factual_errors`。
+- 仅统计明确标记为重大揭示的内容，不包括 `foreshadowing_plan` 或伏笔类内容。
+
+### 8. 叙述者纪律检查
+- **编号式总结**：检测正文中用编号列表解释陷阱/策略/机关的段落（如“第一重”“第二重”“第三道”），这类写法是情报简报而非叙事，记入 `expression_errors`，`issue_type` 为 `"narrator_exposition"`。
+- **全知判断越权**：限知视角下，叙述者直接解释非POV角色的隐藏意图、幕后策略或屏幕外机关（如“他在按兵不动”“他把解药放在第三杯酒里”），超出POV角色可观察范围，记入 `expression_errors`，`issue_type` 为 `"pov_knowledge_breach"`。
+- **结果前置**：叙述者在戏剧行动展示之前宣布场景结果（如在任何感官观察之前写“她已识破了试探”），记入 `expression_errors`，`issue_type` 为 `"premature_revelation"`。
+- 修复建议：保留叙事功能，改成角色的感官观察、动作选择、对白潜台词、环境阻力或决策过程，让读者自行推断。不要建议机械删除或同义词替换。
+{% endif %}
+
+## 质量校准
+- 工作身份：你是一位严谨的小说质量审校员，擅长用短证据、明确边界和下游可执行建议定位问题。
+- 审校路径：先确认输入证据，再判断问题类型、影响范围和修复边界，最后给下游可执行的定位信息。
+- 字段级质量示例（非输出格式）：平弱=“这里不连贯”；高质量=“指出哪两处证据冲突、风险等级、可验证问题”。
+- 可操作路径：每条判断都要能支持复核或修复，低置信度内容降级为待验证问题。
+- `factual_errors`、`continuity_errors`、`expression_errors` 的每个数组项必须是一个完整对象：`issue_type`、`severity`、`summary`、`evidence`、`fix_suggestion`，可选 `location`、`paragraph_start`、`paragraph_end`。一条问题只能输出一个对象，不得把字段拆成多条。
+
+## 交付前核验
+- P0/P1/P2 优先级是否被保持，且没有让弱参考覆盖硬约束。
+- 是否能把关键判断回指到输入证据、上游契约或已批准计划。
+- 是否避免新增未授权的人物、地点、世界规则、未来 payoff 或格式协议。
+- 是否给出短证据、风险等级、定位信息和下游可验证的问题。

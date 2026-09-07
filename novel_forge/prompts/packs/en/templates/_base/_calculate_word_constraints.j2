@@ -1,0 +1,72 @@
+{# source_template_hash: 56e71b86f163c73146adbaf9331cbca74963ea9750f5a5ebbf49d386752000b0 #}
+{#- Word Count Constraint Macros — Base Module -#}
+{#- Extract word count range calculation logic for target_word_count × 0.85 / 1.15 -#}
+
+{#-
+  === Macro Module: Word Count Constraint Calculation and Rendering ===
+  File Type: Macro Module
+  Summary: Calculate word count upper/lower bounds (target × 0.85/1.15), and render as word count constraint prompts for different scenarios (hard constraint version, editor self-check version).
+
+  Defined Macros and Parameters:
+  1. calculate_word_constraints(target_word_count: int) → namespace(min_words=int, max_words=int)
+     - Calculate ±15% range of target word count
+  2. render_word_constraint_hard(target_word_count, label="This Chapter's Target", is_hard_constraint=True)
+     - Render hard constraint version word count prompt, output like "This Chapter's Target **3000 words** (★ Hard Constraint: Must be within 2550-3450 words)"
+  3. render_word_constraint_self_check(target_word_count)
+     - Render editor post-edit self-check word count prompt, output like "Self-check word count after editing: If below X words, add more..."
+
+  Usage:
+  - Called by templates like writing/draft_chapter.j2, writing/edit_chapter.j2 via {% import %}
+-#}
+
+{#-
+  Calculate word count upper/lower bounds.
+
+  Parameters:
+    - target_word_count: Target word count
+
+  Returns: namespace(min_words=int, max_words=int)
+-#}
+{% macro calculate_word_constraints(target_word_count) %}
+{%- set _min = (target_word_count * 0.85) | int -%}
+{%- set _max = (target_word_count * 1.15) | int -%}
+{{ namespace(min_words=_min, max_words=_max) }}
+{% endmacro %}
+
+{#-
+  Render word count constraint prompt (hard constraint version).
+
+  Applicable to scenarios like draft_chapter that require explicit word count ranges.
+
+  Parameters:
+    - target_word_count: Target word count
+    - label: Label prefix (default "This Chapter's Target")
+    - is_hard_constraint: Whether to mark as hard constraint (default True)
+
+  Output: Like "This Chapter's Target **3000 words** (★ Hard Constraint: Must be within 2550-3450 words)."
+-#}
+{% macro render_word_constraint_hard(target_word_count, label="This Chapter's Target", is_hard_constraint=True) %}
+{%- if target_word_count is defined and target_word_count -%}
+{%- set _min = (target_word_count * 0.85) | int -%}
+{%- set _max = (target_word_count * 1.15) | int -%}
+{{ label }} **{{ target_word_count }} words**{% if is_hard_constraint %} (★ Hard Constraint: Must be within {{ _min }}-{{ _max }} words, exceeding is considered unqualified){% else %} (Recommended {{ _min }}-{{ _max }} words){% endif %}
+{%- endif %}
+{% endmacro %}
+
+{#-
+  Render word count self-check prompt (editor version).
+
+  Applicable to post-edit self-check scenarios like edit_chapter.
+
+  Parameters:
+    - target_word_count: Target word count
+
+  Output: Like "Self-check word count after editing: If below 2550 words, add more process/action/dialogue details; if above 3450 words, compress repetitive explanations and low-information-density passages."
+-#}
+{% macro render_word_constraint_self_check(target_word_count) %}
+{%- if target_word_count is defined and target_word_count -%}
+{%- set _min = (target_word_count * 0.85) | int -%}
+{%- set _max = (target_word_count * 1.15) | int -%}
+Self-check word count after editing: If below {{ _min }} words, add more process/action/dialogue details; if above {{ _max }} words, compress repetitive explanations and low-information-density passages.
+{%- endif %}
+{% endmacro %}

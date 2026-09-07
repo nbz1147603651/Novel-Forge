@@ -1,0 +1,226 @@
+{# source_template_hash: 3c7a6d32501453219e6da18b67b234dbd9194fd4a6f6dad281f58415cc9741e5 #}
+{#
+================================================================================
+【REMARKS】
+================================================================================
+Prompt: check_chapter.j2
+Service Step: CHECK_CHAPTER (Chapter Quality Check)
+Function Summary: Perform internal chapter quality check and prompt misreading risk assessment on chapter body text, output risk level and actionable repair action list.
+Upstream Input:
+  - chapter_number/chapter_text: Chapter body from Draft/Edit step output
+  - canon_context.characters: Current character states from CanonStore
+  - character_profiles: Authoritative character archives from CharacterBible
+  - previous_chapter_ending: Background input only; this task does not review cross-chapter continuity
+  - known_prompt_markers: Known system marker vocabulary from PromptBuilder
+  - creative_contract: Lightweight creative acceptance contract from chapter planning (scene_id/summary/emotional_beat/sensory_focus/dialogue_subtext)
+  - local_detected_prompt_leaks: High-confidence leak items from local pre-check
+  - local_forbidden_element_candidates: String-recalled forbidden element candidates requiring semantic judgment
+  - previous_report: Output from previous round of CHECK_CHAPTER (delta recheck mode)
+  - changed_sections: Pre/post-repair segments from ContinuityRepair (delta mode)
+Downstream Output:
+  - JSON: {"risk_level", "summary", "prompt_leaks", "factual_errors",
+           "continuity_errors", "expression_errors", "repair_actions",
+           "forbidden_element_findings"}
+  - Downstream Consumer: ChapterRepairStep / EditStep (for iterative repair)
+Consumption Chain Priority: P0 (intra-chapter facts/identity/name consistency) > P1 (prompt leaks/factual errors)
+              > P2 (expression errors/intra-chapter coherence)
+Brief Example:
+  Input: chapter_text="The next morning, Lin Yuan stood at the city gate...",
+        canon_context={"characters":{"Lin Yuan":{"alive":true,"location":"city gate"}}}
+  Output: {"risk_level":"medium","prompt_leaks":["next morning + protagonist name templated opening"],
+         "factual_errors":[],"repair_actions":["Rewrite opening to avoid templated time marker"]}
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer: Task Definition + Context Consumption
+    --------------------------------------------------------------------------- -#}
+
+Please check the "intra-chapter correctness and expression clarity" of the following chapter body. Note: This is not outline alignment, cross-chapter continuity, causal chain, or guardrail assessment; the focus is only on intra-chapter facts, identity references, expression clarity, and prompt misreading risks.
+
+## Chapter Information
+- Chapter {{ chapter_number }}
+
+{% if check_mode | default("full") == "delta" %}
+## Recheck Mode
+- This is a partial recheck after continuity repair; please prioritize checking the modified segments and do not rescan unmodified sections.
+{% if change_ratio | default(none) is not none %}- Pre/post-repair segment similarity: {{ "%.2f"|format(change_ratio) }}{% endif %}
+
+{% if previous_report | default(none) %}
+## Previous Chapter Check Results (default as still valid)
+- Summary: {{ previous_report.summary or "None" }}
+- Prompt Leaks: {{ previous_report.prompt_leaks | join('; ') if previous_report.prompt_leaks else 'None' }}
+- Factual Errors: {{ previous_report.factual_errors | join('; ') if previous_report.factual_errors else 'None' }}
+- Continuity Errors: {{ previous_report.continuity_errors | join('; ') if previous_report.continuity_errors else 'None' }}
+- Expression Errors: {{ previous_report.expression_errors | join('; ') if previous_report.expression_errors else 'None' }}
+{% endif %}
+{% endif %}
+
+## Known Canon State (for verification)
+{% for name, state in canon_context.characters.items() %}
+- {{ name }}: {% if not state.alive %}deceased{% else %}alive, location={{ state.location }}, emotional_state={{ state.emotional_state }}{% endif %}
+{% endfor %}
+
+{% if character_profiles %}
+## Character Authority Archives (identity/name reference baseline)
+{% for profile in character_profiles %}
+- {{ profile.get('name', '') }}{% if profile.get('role') | default('') %} ({{ profile.get('role') }}){% endif %}{% if profile.get('personality') | default('') %}: {{ profile.get('personality') }}{% elif profile.get('backstory') | default('') %}: {{ profile.get('backstory') }}{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if creative_contract | default([]) %}
+## Chapter Creative Contract (P2 expression acceptance)
+The following contract is a lightweight projection from `plan.scene_intents`, used only to check whether planned emotions, senses, and subtext are **perceptually grounded** in the body text; no new characters, locations, events, world rules, or future payoffs may be added based on this.
+{% for item in creative_contract %}
+- {{ item.scene_id | default('scene') }}{% if item.summary | default('') %}: {{ item.summary }}{% endif %}{% if item.emotional_beat | default('') %}; emotional_beat={{ item.emotional_beat }}{% endif %}{% if item.sensory_focus | default('') %}; sensory_focus={{ item.sensory_focus }}{% endif %}{% if item.dialogue_subtext | default('') %}; dialogue_subtext={{ item.dialogue_subtext }}{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if known_prompt_markers | default([]) %}
+## Known Prompt/System Markers (if appearing in body text, should be treated as leaks)
+{{ known_prompt_markers | join(", ") }}
+{% endif %}
+{% if local_detected_prompt_leaks | default([]) %}
+## Local Pre-check Alerts (High Confidence)
+{{ local_check_note | default("The following are suspected prompt leaks hit by local pre-check; please focus on verifying whether they still remain in the body text.") }}
+{% for item in local_detected_prompt_leaks %}
+- {{ item }}
+{% endfor %}
+{% endif %}
+{% if local_detected_resurrection_risks | default([]) %}
+## Local Pre-check: Deceased Character Appearance Risk Alert
+{{ local_resurrection_note | default("The following characters are deceased in canon but their names appear in the body text. Please judge whether this is normal mention or erroneous resurrection.") }}
+{% for name in local_detected_resurrection_risks %}
+- {{ name }}
+{% endfor %}
+{% endif %}
+{% if local_detected_quality_issues | default([]) %}
+## Local Pre-check: Intra-chapter Quality Signals
+{{ local_quality_note | default("The following are local quality pre-screening results; please verify against the body text.") }}
+{% for issue in local_detected_quality_issues %}
+- [{{ issue.issue_type | default("quality") }}]{% if issue.confidence is defined %} confidence {{ "%.2f"|format(issue.confidence) }}{% endif %}: {{ issue.summary | default("") }}{% if issue.evidence | default("") %}; evidence: {{ issue.evidence }}{% endif %}
+{% endfor %}
+{% endif %}
+{% if local_forbidden_element_candidates | default([]) %}
+## Local Pre-check: Forbidden Element Candidates (semantic judgment required)
+{{ local_forbidden_note | default("The following are only string-recalled candidates, not equivalent to violations. Please judge based on context.") }}
+{% for item in local_forbidden_element_candidates %}
+- [{{ item.level }} / {{ item.match_type }}] Forbidden item: {{ item.forbidden }}; body hit: {{ item.matched }}; context: {{ item.context_excerpt }}
+{% endfor %}
+{% endif %}
+{% if local_expression_channel_hits | default([]) %}
+## Local Pre-check: Expression Channel Candidates (semantic judgment required)
+{{ local_expression_channel_note | default("The following are only expression channel candidates, not equivalent to violations. Please judge based on character, POV, semantic function, and aesthetic fatigue risk.") }}
+{% for item in local_expression_channel_hits %}
+- [{{ item.channel }}/{{ item.channel_id }}] {{ item.reason }}; hit {{ item.count }} times; examples: {{ item.matched | join("; ") }}{% if item.replacement_axes %}; replacement directions: {{ item.replacement_axes | join(", ") }}{% endif %}{% if item.allowed_when %}; retention boundaries: {{ item.allowed_when }}{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if check_mode | default("full") == "delta" %}
+## Modified Segments After Repair
+{% for section in changed_sections | default([]) %}
+### Segment {{ loop.index }} (New draft paragraphs {{ section.start_paragraph }}{% if section.end_paragraph != section.start_paragraph %}-{{ section.end_paragraph }}{% endif %})
+{% if section.before %}
+- Before:
+{{ section.before }}
+{% endif %}
+{% if section.after %}
+- After:
+{{ section.after }}
+{% endif %}
+{% endfor %}
+
+## Recheck Focus
+1. Issues from the previous report should be retained in results if the current modifications do not clearly fix them.
+2. Only remove an old issue when the post-repair segment has clearly fixed it, or the issue existed only in the replaced old segment.
+3. Check whether the post-repair segments introduce new prompt leaks, intra-chapter factual contradictions, identity/name errors, or obvious expression errors; cross-chapter boundaries and causal chains are handled by other modules.
+4. If an old issue cannot be confirmed as fixed using only local segments, conservatively continue retaining it.
+{% else %}
+## Body Text
+{{ chapter_text }}
+
+## Check Focus
+
+The following structural issues have been covered by local pre-check (you do not need to actively investigate, but may verify):
+`prompt_leak` · `resurrection_risk`
+
+Your task is **semantic-level quality judgment**, with focus as follows:
+
+{%- from "_quality_standards.j2" import forbidden_system_markers, anti_meta_narrative_rules %}
+### 1. Prompt/System Marker Leaks (Verification)
+Local pre-check has flagged high-confidence leak items; you only need to verify and supplement omissions.
+{{ forbidden_system_markers(
+    context="body text",
+    include_meta_examples=false,
+    emphasize=false,
+    planning_intro="Planning terminology intrusion:",
+    planning_tail=""
+) }}
+- If the chapter end contains summary sentences like "This is an unresolved clue," "These foreshadows will eventually be paid off," "This game is just beginning," "implies/means..." etc., also treat as `prompt_leaks`.
+{{ anti_meta_narrative_rules(title="") }}
+
+{%- from "_quality_standards.j2" import anti_exposition_rules, creative_specificity_rules %}
+### 2. Vocabulary Intrusion from Misread Prompts
+{{ anti_exposition_rules(
+    title="",
+    opening_intro="Prohibit expository tone, for example",
+    planning_label_rule="Write requirements/evaluations/limitations as body text; do not copy outline labels directly into body text (e.g., 'chapter objective' 'main plot advancement point').",
+    opening_narrative_rule="Do not use expository sentences to replace narration."
+) }}
+{{ creative_specificity_rules(title="") }}
+
+### 3. Factual Errors
+- Character life/death, identity, names, timeline, locations, key item states conflict with canon.
+- Specifically verify character identity/position/names: If character archive conflicts with body text names (e.g., writing an ordinary character with the supreme power title that does not belong to them), must record in `factual_errors`.
+- Character self-reference verification: Check whether character self-references clearly violate their identity level or scene context, judge with world-building background; violations count as factual errors. {{ address_rules or "For example: formal occasions with superiors should use appropriate honorifics; private interactions use everyday self-references" }}
+{% if world_context_rules %}
+- World-building era context verification: The following rules come from the story bible; if the body text contains era anachronisms, artifact anachronisms, or violates etiquette/names/self-reference rules, must record in `factual_errors`.
+{{ world_context_rules }}
+{% endif %}
+
+### 4. Intra-chapter Coherence
+- Only check contradictions between already established information within the same chapter, such as location/time contradictions within the same scene, or identity/name conflicts for the same character.
+- Cross-chapter boundaries, previous chapter continuity, major event causal chains, and guardrail fulfillment are handled by corresponding modules; this item does not repeat review.
+
+{% if creative_contract | default([]) %}
+### 5. Creative Contract Grounding (P2)
+- Only check non-empty `emotional_beat`, `sensory_focus`, `dialogue_subtext` from the creative contract above; use semantic judgment, do not do literal matching.
+- `emotional_beat`: Body text should make readers feel the emotional shift through action choices, dialogue tone, body signals, environmental mapping, or silence; merely writing "he was nervous/she was relieved" does not count as sufficient grounding.
+- `sensory_focus`: The specified channel should have at least one concrete sensory detail serving conflict, emotion, or choice; purely decorative scenery or sensory accumulation unrelated to the scene's function does not count as sufficient grounding.
+- `dialogue_subtext`: If this item is non-empty, body text dialogue or silence should allow readers to infer unstated intentions; only having straightforward explanations, or dialogue meaning unchanged after removing subtext, counts as weak grounding.
+- If any item is clearly not grounded or very weakly grounded, write to `expression_errors`, format should include scene_id and gap type; `repair_actions` only suggest supplementary actions, sensory details, pauses, avoidance, silence, or one line of subtextual dialogue, not full scene rewriting.
+- This is P2 expression acceptance: do not add new plot facts due to creative contract gaps; unless gaps cause understanding errors, do not write to `factual_errors`.
+{% endif %}
+
+### 6. Obvious Expression Errors
+- Ambiguous references, semantic ambiguity, obvious grammatical errors affecting comprehension.
+- If the body text densely uses definitional negative turns to explain why details are real/superior/deeper, or repeatedly uses homogeneous analytical sentences to frame gazes, silence, physiological reactions, heartbeats/fear, etc., causing aesthetic fatigue or doing reading comprehension for readers, record in `expression_errors`; isolated sentences that genuinely have narrative turning points, character self-justification, factual correction, or key emotional suspense functions can be accepted.
+- Repair actions for this type of problem should require the model to preserve narrative function, changing to actions, dialogue, environmental resistance, character decisions, or direct statements; do not suggest local mechanical deletion, nor synonym replacement.
+- For "forbidden element candidates," only do semantic judgment: if it is mechanical reuse without new narrative function, can record in `expression_errors`; if it is a plot anchor, intentional callback, required character action, or just harmless ordinary description, should not be recorded as error.
+- "Expression channel candidates" must also be judged semantically: only record in `expression_errors` when the same emotional trigger method/action label/sensory anchor causes aesthetic fatigue within the chapter or recent character scope; do not automatically penalize just because a local candidate hit.
+- Do not deduct points solely for word appearance; must explain whether it damages expression quality, causes aesthetic fatigue, or violates rhetorical prohibition purposes in this chapter's plan.
+- For each candidate, output structured judgment in `forbidden_element_findings`: `verdict` uses violation / mechanical_reuse / acceptable_callback / story_anchor / benign / uncertain; `blocking` is only true when archiving must genuinely be blocked.
+
+### 7. Information Density Check
+- Count the number of `key_revelations` in this chapter; if it exceeds the narrative contract budget (default {{ (_cp | default({})).max_key_revelations_per_chapter | default(2) }}), record in `factual_errors`.
+- Only count content clearly marked as major revelations; do not include `foreshadowing_plan` or foreshadowing-type content.
+
+### 8. Narrator Discipline Check
+- **Numbered Summaries**: Detect paragraphs in body text that use numbered lists to explain traps/strategies/devices (e.g., "first layer," "second layer," "third mechanism"); this writing style is an intelligence briefing rather than narrative, record in `expression_errors`, `issue_type` as `"narrator_exposition"`.
+- **Omniscient Judgment Overreach**: Under limited POV, the narrator directly explains non-POV characters' hidden intentions, behind-the-scenes strategies, or off-screen mechanisms (e.g., "he is holding his position," "he placed the antidote in the third wine glass"), exceeding what the POV character can observe, record in `expression_errors`, `issue_type` as `"pov_knowledge_breach"`.
+- **Result Pre-announcement**: The narrator announces scene results before dramatic action display (e.g., writing "she has seen through the test" before any sensory observation), record in `expression_errors`, `issue_type` as `"premature_revelation"`.
+- Repair suggestions: Preserve narrative function, change to character's sensory observation, action choices, dialogue subtext, environmental resistance, or decision-making process, letting readers infer themselves. Do not suggest mechanical deletion or synonym replacement.
+{% endif %}
+
+## Quality Calibration
+- Working Identity: You are a rigorous novel quality proofreader, skilled at locating problems using short evidence, clear boundaries, and downstream-executable suggestions.
+- Proofreading Path: First confirm input evidence, then judge problem type, impact scope, and repair boundaries, finally provide downstream-executable positioning information.
+- Field-level Quality Examples (not output format): Weak = "this is incoherent"; High-quality = "point out which two pieces of evidence conflict, risk level, verifiable problem."
+- Actionable Path: Each judgment must support verification or repair; low-confidence content demoted to pending verification problems.
+- Every item in `factual_errors`, `continuity_errors`, and `expression_errors` must be one complete object with `issue_type`, `severity`, `summary`, `evidence`, and `fix_suggestion` (optional: `location`, `paragraph_start`, `paragraph_end`). One diagnosis must produce exactly one object; never split its fields into separate array items.
+
+## Pre-delivery Verification
+- Are P0/P1/P2 priorities maintained without weak references overriding hard constraints.
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans.
+- Are unauthorized new characters, locations, world rules, future payoffs, or format agreements avoided.
+- Are short evidence, risk level, positioning information, and downstream-verifiable problems provided.

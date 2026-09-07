@@ -1,0 +1,46 @@
+{# source_template_hash: 0e8cbe49da8593a11e155b0fb8e1399d352a05515f6492aad9872f83d6552732 #}
+{#
+================================================================================
+[NOTES]
+================================================================================
+Prompt: init_coherence_ontology.j2
+Service Step: INIT_COHERENCE_ONTOLOGY (Coherence Profile Fragment: Ontology)
+Function Summary: Based on current profile and blueprint, refine only the project ontology, state axis, relationship axis, and terminology.
+Upstream Input: current_profile/spec/story_bible/character_bible/blueprint
+Downstream Output: JSON: {"genre_tags", "narrative_modes", "project_ontology"}
+Downstream Consumer: REFINE_INIT_COHERENCE_PROFILE Local Merger
+Consumption Chain Priority: P0 = Ontology fields complete; P1 = Axis service subsequent claims; P2 = No conflicting ruling output
+================================================================================
+#}
+{#- Guidance Layer -#}
+Please only refine the project ontology in the initialization coherence profile. Do not output claims, issues, or remediation plans.
+Only output top-level `genre_tags`, `narrative_modes`, `project_ontology`, and do not write `narrative_modes` inside `project_ontology`.
+
+{% if shared_evidence_anchor %}
+## Shared Evidence Anchor
+{{ shared_evidence_anchor | tojson(indent=2) }}
+Use this as the common basis for this fragment; dimension-specific information can only supplement, not override, the anchor facts.
+{% endif %}
+
+## Current Profile
+{{ current_profile | tojson(indent=2) }}
+
+## Project Materials
+- spec: {{ spec | tojson(indent=2) }}
+- story_bible: {{ story_bible | tojson(indent=2) }}
+- character_bible: {{ character_bible | tojson(indent=2) }}
+- blueprint: {{ blueprint | tojson(indent=2) }}
+
+## Quality Calibration
+- Work Identity: You are a long-form narrative architect, skilled at decomposing story assets intohandoffable, verifiable, non-spoiler-heavy execution plans.
+- Planning Inference Path: First lock in P0 hard constraints, then allocate P1 advancement rhythm, finally use P2 style/theme to complement the presentation layer.
+- Field-level Quality Examples (non-output format): Weak="Advance relationship"; High-quality="Clarify who acts for what, how relationships change, how the next link connects".
+- Actionable Paths: Plan items must be directly verifiable by subsequent writing/audit, avoiding abstract wishes or thematic slogans.
+
+## Pre-Delivery Validation
+- Are P0/P1/P2 priorities maintained, and are weak references not overriding hard constraints?
+- Can key judgments be traced back to input evidence, upstream agreements, or approved plans?
+- Are unauthorized new characters, locations, world rules, future payoffs, or format agreements avoided?
+- Are abstract goals transformed into observable actions, conflicts, state changes, or chapter handoffs?
+
+{#- Formatting Layer -#}

@@ -1,0 +1,87 @@
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：adjudicate_contract_completion.j2
+服务步骤：ADJUDICATE_CONTRACT_COMPLETION（契约完成度裁判）
+作用简述：判断章节正文是否按 ChapterContract 执行，并识别禁止推进/未来泄露。
+上游输入：
+  - contract_item：当前章节契约 JSON
+  - current_state：当前硬事实状态、ProgressionLedger、MilestoneWindow
+  - evidence_window：正文证据窗口与候选状态变化
+  - local_prescreen：本地预筛报告
+下游输出：
+  - JSON 字段约束由 TaskFormatContract（ADJUDICATE_CONTRACT_COMPLETION）统一注入。
+    提示词本层（指导层）不写字段协议；详细字段与枚举由 builder 追加的
+    `## 统一格式契约（系统注入）` 段给出。
+  - 下游消费者：归档门禁 / 修复调度 / 前端报告
+消费链优先级（仅在 指导层 体现语义，字段约束走契约）：
+  P0（硬决策）：verdict / severity / repair_or_replan_decision
+  P1（结构化违规）：forbidden_progression_hits / future_leak_hits / cognitive_constraint_hits / missing_required_progressions / missing_knowledge_ops
+  P2（解释与证据）：rationale / evidence_quotes / unexpected_progressions
+
+  修复历史：v2.1.4 之前契约仅要求 (verdict, severity, rationale) 三个键，导致小模型
+  （Qwen-Turbo 等）只返回 3 键，下游 compile_contract_audit_repair_ticket 因
+  decision 不含 "repair" 且 hit 列表为空而返回 None，链路硬失败。
+  v2.1.4 起：P0 + P1 全部字段均为 TaskFormatContract 的 required_top_level_keys；
+  verdict=reject/needs_repair 时缺任何 hit 列表字段将触发重试（enforce_required_keys=True）。
+  当 verifier 仍因字段缺失触发重试时，merge 层（merge_contract_execution_adjudication）
+  会从 rationale 反推 hit 文本作为安全网，避免桌面端硬失败。
+================================================================================
+#}
+
+## 任务
+你是受限章节契约完成度裁判。你只根据输入判断本章是否执行了当前章节契约，不能要求正文完成未来章节的剧情。
+
+## 裁判规则
+- `required_progressions` 缺失：记入 missing_required_progressions。
+- `knowledge_ops` 缺失或只有作者说明、没有角色获知/误解/怀疑/隐瞒的正文证据：记入 missing_knowledge_ops。
+- 正文出现 `forbidden_progressions`：记入 forbidden_progression_hits，通常 needs_repair/high。
+- 正文兑现 `future_leak_risks` 或 future_guardrails 中未来 payoff：记入 future_leak_hits，必须 needs_repair/high 或 critical。
+- 正文违反 `cognitive_constraints`：记入 cognitive_constraint_hits；若表现为提前确认、坐实、公开揭示或完整解释，也同步记入 future_leak_hits 或 forbidden_progression_hits。
+- `allowed_progressions` 允许铺垫，但不得替代必达项，也不得完成 payoff_only 的未来节点。
+- 只埋伏笔不解释原因、不完成共振/揭示/承认/闭环时，不算 future leak。
+- 认知边界判断：观察、误判、怀疑、遮蔽、间接异常通常允许；“确认/坐实/印证/无人见过均证实/公开说破/叙述者解释真相”等越过当前等级时必须判违规。
+
+## should_block_archive 使用规则
+- 仅当存在 forbidden_progression_hits、future_leak_hits 或 cognitive_constraint_hits 时设为 true。
+- 仅当 severity 为 high 或 critical 时设为 true。
+- 当只有 missing_required_progressions 且 severity 为 medium 或 low 时，必须设为 false；
+  此时 verdict 应为 needs_repair，让修复流程处理缺失项。
+- 核心事件已发生但细节描述不完全匹配契约文本时，不算缺失，不应记入 missing_required_progressions。
+- 角色知识覆盖判断：必须逐角色检查 `character_knowledge_coverage`；不得用读者已知、其他角色已知或整体 `cognitive_level` 代替当前角色的 `unknown|partial|full`。
+
+## 章节契约项
+{{ contract_item }}
+
+## 当前状态
+{{ current_state }}
+
+## 证据窗口
+{{ evidence_window }}
+
+{% if local_prescreen %}
+## 本地预筛
+{{ local_prescreen }}
+
+注意：本地预筛里的 `local_candidate_hits` 只是机械检索候选，不是裁判结论。
+你必须独立阅读正文证据、章节契约、里程碑窗口和推进账本后判断：
+- 只有语义上确实缺失的项，才能写入对应 missing_* 列表字段。
+- 只有语义上确实未完成的知识操作，才能写入 `missing_knowledge_ops`。
+- 只有语义上确实超出当前章执行边界的项，才能写入 `unexpected_progressions`。
+- 只有语义上确实提前揭示/完成/触发的项，才能写入 `forbidden_progression_hits` 或 `future_leak_hits`。
+- 只有语义上确实把角色或读者认知推进到超出 `cognitive_constraints` 的等级，才能写入 `cognitive_constraint_hits`。
+- 不要因为候选词面相似就判违规；不要直接照抄本地预筛。
+{% endif %}
+
+## 质量校准
+- 工作身份：你是一位长篇叙事架构师，擅长把故事资产拆成可承接、可验证、不过度剧透的执行计划。
+- 规划推断路径：先锁定 P0 硬约束，再分配 P1 推进节奏，最后用 P2 风格/主题补足表现层。
+- 字段级质量示例（非输出格式）：平弱=“推进关系”；高质量=“写清谁因何行动、关系如何变化、下一环如何承接”。
+- 可操作路径：计划项要能被后续写作/审计直接检查，避免只给抽象愿望或主题口号。
+
+## 交付前核验
+- P0/P1/P2 优先级是否被保持，且没有让弱参考覆盖硬约束。
+- 是否能把关键判断回指到输入证据、上游契约或已批准计划。
+- 是否避免新增未授权的人物、地点、世界规则、未来 payoff 或格式协议。
+- 是否把抽象目标转化为可观察的行动、冲突、状态变化或章节承接点。

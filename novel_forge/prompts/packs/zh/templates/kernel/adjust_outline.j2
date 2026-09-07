@@ -1,0 +1,125 @@
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：adjust_outline.j2
+服务步骤：ADJUST_OUTLINE（大纲调整）
+作用简述：根据已完成章节的实际情节，重新规划后续章节大纲，使其与实际内容自然衔接
+上游输入：
+  - total_chapters: 总章节数
+  - synopsis: 故事简介
+  - original_chapters: 原定章节计划列表
+  - completed_chapter: 已完成章节号
+  - actual_plot_summary: 实际情节摘要
+  - plot_deviations: 剧情偏离分析列表
+  - new_characters/new_locations/new_key_items: 新增元素
+  - start_adjust_from: 开始调整的章节号
+下游输出：
+  - JSON：adjusted_chapters 列表, adjustment_summary
+  - 下游消费者：PLAN_OUTLINE / 章节规划
+消费链优先级：
+  P0 = 衔接第 completed_chapter 章的实际结尾 / 总体故事走向不变
+  P1 = 整合新元素 / 每章 beats_summary 完整性
+  P2 = 逻辑连贯性 / 时间线清晰度
+简要例子：
+  输入：completed_chapter=3, actual_plot_summary="林远发现了...", start_adjust_from=4
+  输出：{"adjusted_chapters":[{"chapter_number":4,"title":"...","beats_summary":[...]}]}
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    指导层：任务定义与输入消费
+    --------------------------------------------------------------------------- -#}
+
+你是一位资深小说编辑，擅长根据实际创作情况调整大纲，保持故事连贯性。
+
+## 任务
+根据已完成章节的实际情节，重新规划后续章节大纲，使其与实际内容自然衔接，同时保持总体故事方向不变。
+
+---
+
+## 原始大纲（初始规划）
+
+**总章数**：{{ total_chapters }} 章
+
+**故事简介**：{{ synopsis }}
+
+**原定章节计划**：
+{% for ch in original_chapters %}
+### 第 {{ ch.chapter_number }} 章：{{ ch.title }}
+- **目标**：{{ ch.goal }}
+- **情节要点**：
+{% for beat in ch.beats_summary %}
+  - {{ beat }}
+{% endfor %}
+- **场景**：{{ ch.setting }}
+- **视角角色**：{{ ch.pov_character }}
+{% endfor %}
+
+---
+
+## 实际创作情况
+
+### 第 {{ completed_chapter }} 章实际情节
+{{ actual_plot_summary }}
+
+### 剧情偏离分析
+{% for deviation in plot_deviations %}
+- **偏离程度**：{{ deviation.deviation_level }}
+- **原计划**：{{ deviation.outline_plan }}
+- **实际情节**：{{ deviation.actual_plot }}
+- **原因**：{{ deviation.reason }}
+- **影响范围**：{{ deviation.impact_on_future }}
+{% endfor %}
+
+### 新增元素
+{% if new_characters %}
+**新增角色**：
+{% for char in new_characters %}
+- {{ char.get('name', '') }}（{{ char.get('role_in_story', '') }}）：{{ char.get('description', '') }}
+{% endfor %}
+{% endif %}
+
+{% if new_locations %}
+**新增地点**：{{ new_locations | join('、') }}
+{% endif %}
+
+{% if new_key_items %}
+**关键物品**：{{ new_key_items | join('、') }}
+{% endif %}
+
+---
+
+## 调整要求
+
+请重新规划**第 {{ start_adjust_from }} 章到第 {{ total_chapters }} 章**的大纲，要求：
+
+1. **自然衔接**：基于第 {{ completed_chapter }} 章的实际结尾，合理过渡到下一章
+2. **整合新元素**：将新增的角色、地点、物品融入后续情节
+3. **保持方向**：总体故事走向不变，只调整达成方式
+4. **连贯性**：确保每章之间逻辑连贯，时间线清晰
+5. **具体化**：为每章提供详细的情节要点（beats_summary）
+
+## 质量校准
+- 工作身份：你是一位长篇叙事架构师，擅长把故事资产拆成可承接、可验证、不过度剧透的执行计划。
+- 规划推断路径：先锁定 P0 硬约束，再分配 P1 推进节奏，最后用 P2 风格/主题补足表现层。
+- 字段级质量示例（非输出格式）：平弱=“推进关系”；高质量=“写清谁因何行动、关系如何变化、下一环如何承接”。
+- 可操作路径：计划项要能被后续写作/审计直接检查，避免只给抽象愿望或主题口号。
+
+## 交付前核验
+- P0/P1/P2 优先级是否被保持，且没有让弱参考覆盖硬约束。
+- 是否能把关键判断回指到输入证据、上游契约或已批准计划。
+- 是否避免新增未授权的人物、地点、世界规则、未来 payoff 或格式协议。
+- 是否把抽象目标转化为可观察的行动、冲突、状态变化或章节承接点。
+
+{#- ---------------------------------------------------------------------------
+    格式层：输出格式与 Schema
+    --------------------------------------------------------------------------- -#}
+
+
+字段约束：`chapter_number` 必须是整数，不要输出字符串形式的章节号。
+
+**注意**：
+- 调整范围限于需要调整的章节（从第 {{ start_adjust_from }} 章开始）
+- 每章至少包含 3-5 个情节要点
+- 确保与第 {{ completed_chapter }} 章的实际情节无缝衔接

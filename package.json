@@ -1,0 +1,19 @@
+{
+  "name": "nimo-ui-parity-workspace",
+  "private": true,
+  "packageManager": "pnpm@11.9.0",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "desktop": "python -m novel_forge.desktop.tauri_launcher --dev",
+    "desktop:build": "python scripts/build_desktop.py",
+    "desktop:pyside": "python -m novel_forge.desktop.main",
+    "ui:dev": "pnpm --filter @nimo/desktop dev",
+    "ui:build": "pnpm --filter @nimo/desktop build",
+    "ui:check": "pnpm --filter @nimo/desktop check",
+    "ui:test": "pnpm --filter @nimo/desktop test",
+    "ui:visual": "pnpm --filter @nimo/desktop visual",
+    "ui:visual:update": "pnpm --filter @nimo/desktop visual:update"
+  }
+}

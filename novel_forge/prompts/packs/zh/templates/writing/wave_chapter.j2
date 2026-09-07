@@ -1,0 +1,276 @@
+{%- from "_base/_calculate_word_constraints.j2" import render_word_constraint_hard, render_word_constraint_self_check -%}
+{%- from "_base/_artifact_source_contract.j2" import render_artifact_source_contract -%}
+{%- from "_base/_cognitive_constraints.j2" import render_cognitive_constraints -%}
+{%- from "_base/_pov_knowledge_constraints.j2" import render_pov_knowledge_constraints -%}
+{%- from "_quality_standards.j2" import creative_specificity_rules, anti_exposition_rules, traditional_time_marker_rules -%}
+
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：wave_chapter.j2
+服务步骤：WAVE_CHAPTER（长篇 scene-weaving，长篇 6 阶段架构中的 Generate 阶段第二步）
+作用简述：
+  本步骤在 DRAFT 写完各场景后，**单次**将多场景草稿编织为完整长篇章节。
+  核心职责：
+    1. 在场景之间补入过渡段或过渡句
+    2. 兑现 plan.cross_scene_intent.cross_scene_references（callback/foreshadow/parallel/contrast/echo）
+    3. 按 plan.cross_scene_intent.pacing_curve 调整局部节奏
+    4. 统一跨场景 POV、声纹与风格
+    5. 在需要时删去跨场景重复或补全锚点
+  严格禁止：
+    - 整段重写任何场景的 POV 主体
+    - 整段删除场景
+    - 新增计划之外的场景（DRAFT 漏掉的已批准 scene 必须恢复）
+    - 改动 plan.scene_intents 中已锁定的 POV 字符
+    - 字数相对 target 超出 +/-30% 区间
+上游输入：
+  - draft_text：DRAFT 阶段产出的当前章节草稿
+  - stage_cards.source：ChapterSourceSlice，含本章禁揭示边界和声纹/风格投影
+  - stage_cards：plan / characters / editorial / style / quality 的局部派生卡
+  - cross_scene_intent：plan 中的跨场景约束（2 字段：cross_scene_references + pacing_curve）
+下游输出：
+  - TEXT：编织后的完整章节正文
+消费链优先级：
+  P0 = 场景间过渡通畅 / 必要因果承接 / POV 一致 / 字数在 +/-30%
+  P1 = pacing_curve 节奏匹配 / 母题连续性仅作软参考，不为呼应硬补 / 角色声纹跨场景一致
+  P2 = 风格胶囊 / 追读力胶囊
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    指导层
+    --------------------------------------------------------------------------- -#}
+
+{% set cards = stage_cards | default({}) %}
+{% set source = cards.source | default({}) %}
+{% set source_contract = source.chapter_contract | default({}, true) %}
+{% set chapter = cards.chapter | default({}) %}
+{% set position = chapter.chapter_position | default(chapter_position | default({})) %}
+{% set contract = source_contract if source_contract else (cards.contract | default({})) %}
+{% set plan_card = cards.plan | default({}) %}
+{% set cross_scene_intent = plan_card.cross_scene_intent | default({}) %}
+{% set characters = cards.characters | default([]) %}
+{% set style = cards.style | default({}) %}
+{% set editorial = cards.editorial | default({}) %}
+{% set quality = cards.quality | default({}) %}
+{% set repair = cards.repair | default({}) %}
+{% set element = cards.element | default({}) %}
+{% set stitch = scene_stitch_report | default({}) %}
+{% set coverage = draft_plan_coverage | default({}) %}
+{% set cognitive_constraints = contract.cognitive_constraints | default([]) %}
+
+## 任务
+对第 {{ chapter.chapter_number | default(chapter_number) }} 章的草稿执行 **scene-weaving**（场景编织）。本步骤不重新规划：常态下编织 DRAFT 已写场景；若本地验收明确指出某个已批准 scene 或字面锚点缺失，必须在原 Plan 边界内恢复，这不属于“新增场景”。
+{% if position %}
+- 章节位置：第 {{ position.chapter_number | default(chapter.chapter_number | default(chapter_number)) }} / {{ position.total_chapters }} 章；is_last_chapter={{ position.is_last_chapter | default(false) }}。
+{% if position.is_last_chapter | default(false) %}
+- 本章是当前 outline 的全书终章，可以保留全书级收束语气。
+{% else %}
+- 本章不是全书终章：不得把草稿编织成全书结局，不得新增终局总结、最终命运定论或全线 payoff。
+{% endif %}
+{% if position.is_previously_final_chapter | default(false) %}
+- 本章曾是旧终章但已被延长：只做过渡/再开启的编织，不按最终章加重收束。
+{% endif %}
+{% endif %}
+
+{{ render_word_constraint_hard(chapter.target_word_count | default(target_word_count | default(0))) }}
+
+## P0 契约与揭示边界
+WAVE 只能做场景编织，不得把疑点、伏笔或误导升级成确认、坐实、公开揭示或新增物证。
+{{ traditional_time_marker_rules() }}
+{{ render_artifact_source_contract(source, title="## Source Artifact 契约（P0）", mode="wave") }}
+
+## Artifact 消费规则
+- WAVE 只消费 DraftArtifact 文本、PlanArtifact 的 cross_scene_intent、source.forbidden_reveal_boundaries 和局部声纹/风格投影。
+- 六要素文学职责已经由 PlanArtifact 的 scene_intents 承载；WAVE 只能修顺跨场衔接、节奏、POV 守恒和声纹一致，不新增合同外 payoff。
+- WAVE 不新增计划外场景、事实、确认式揭示或契约外事件 ledger；但不得以此为由拒绝恢复 Plan 已批准而 DRAFT 漏掉的 scene / event。
+- WAVE 只读取 source.world_rule_card 的始终生效规则与最多四条相关边界；场景具体规则已在 DraftArtifact 落地，不能为“编织顺畅”擅自改写代价、前提或禁令。
+- 如果草稿缺少局部计划锚点，用短句、过渡动作或局部替换补锚；如果缺少整个已批准 scene，可补回实现该 scene 的最小完整段落，不改写已正确的 POV 主体。
+{% if contract.required_events | default([]) %}- 必达事件：{{ contract.required_events | join('；') }}{% endif %}
+{% if contract.required_progressions | default([]) %}- 必达推进：{{ contract.required_progressions | join('；') }}{% endif %}
+{% if contract.allowed_progressions | default([]) %}- 允许铺垫：{{ contract.allowed_progressions | join('；') }}{% endif %}
+{% if contract.forbidden_changes | default([]) %}- 禁止变化：{{ contract.forbidden_changes | join('；') }}{% endif %}
+{% if contract.forbidden_progressions | default([]) %}- 禁止提前推进：{{ contract.forbidden_progressions | join('；') }}{% endif %}
+{% if contract.future_leak_risks | default([]) %}- 未来泄露风险：{{ contract.future_leak_risks | join('；') }}{% endif %}
+{% if cognitive_constraints %}
+- 认知约束：下列对象不得超过指定认知/行动等级，也不得在编织场景时抹平角色之间的知识覆盖差异。
+{{ render_cognitive_constraints(cognitive_constraints) }}
+{% endif %}
+
+## 跨场景承接与可选表达
+
+{% set scene_refs = cross_scene_intent.cross_scene_references | default([]) %}
+{% if scene_refs %}
+### 跨场景引用清单（共 {{ scene_refs | length }} 条）
+{% for ref in scene_refs %}
+- [{{ ref.ref_type | default('callback') }}] {{ ref.from_scene | default('?') }} -> {{ ref.to_scene | default('?') }}：{{ ref.description | default('') }}（满足方式：{{ (ref.requirement | default({})).satisfaction | default('optional') }}）
+{% endfor %}
+
+#### 分别验收
+只有 requirement.satisfaction 为 narrative/literal 的必要承接需要验收；narrative 按人物行动与因果后果判断，不以复述词句或意象判断。optional 或未标注的引用可以省略，不补短句，不因缺席扣分。
+{% else %}
+（本计划无显式跨场景引用，可按场景内部节奏自由编织过渡）
+{% endif %}
+
+{% set pacing = cross_scene_intent.pacing_curve | default([]) %}
+{% if pacing %}
+### 节奏曲线
+每个场景期望的张力强度（1-5）：
+{% for level in pacing %}
+- 场景 {{ loop.index }}：强度 {{ level }}
+{% endfor %}
+请在过渡段或场景开头/结尾用张力对比呼应此曲线。
+{% endif %}
+
+## 场景列表（仅供锚定，禁止改写 POV 主体）
+{% set scene_intents = plan_card.scene_intents | default([]) %}
+{% if scene_intents %}
+{% for scene in scene_intents %}
+- **场景 {{ loop.index }}** ({{ scene.scene_id | default('?') }})：{{ scene.summary | default('') }}；POV：{{ scene.pov_character | default('') }}；目标字数：{{ scene.target_words | default(0) }}
+{% if scene.emotional_beat | default('') or scene.sensory_focus | default('') or scene.dialogue_subtext | default('') %}  创意锚：{% if scene.emotional_beat | default('') %}情绪={{ scene.emotional_beat }}{% endif %}{% if scene.sensory_focus | default('') %}{% if scene.emotional_beat | default('') %}；{% endif %}感官={{ scene.sensory_focus }}{% endif %}{% if scene.dialogue_subtext | default('') %}{% if scene.emotional_beat | default('') or scene.sensory_focus | default('') %}；{% endif %}潜台词={{ scene.dialogue_subtext }}{% endif %}
+{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if stitch %}
+## 场景拼接诊断（优先修补）
+- 场景数：{{ stitch.scene_count | default(scene_intents | length) }}；缺失场景：{{ stitch.missing_scenes | default([]) | join('、') or "无" }}
+{% if stitch.possible_transition_gaps | default([]) %}- 转场缝隙：{{ stitch.possible_transition_gaps | join('；') }}{% endif %}
+{% if stitch.soft_warning_count | default(0) %}- 单场景软诊断数量：{{ stitch.soft_warning_count }}；本轮只做转场、声调、锚点和节奏微修，不新增剧情。{% endif %}
+{% if stitch.hard_failures_resolved | default([]) %}
+- 已通过单场景重试解决的硬失败：{% for item in stitch.hard_failures_resolved %}{{ item.scene_id }}={{ item.code }}{% if not loop.last %}；{% endif %}{% endfor %}
+{% endif %}
+{% if stitch.scene_diagnostics | default({}) %}
+### 单场景软诊断摘要
+{% for sid, diag in stitch.scene_diagnostics.items() %}
+{% set warnings = diag.soft_warnings | default([]) %}
+{% if warnings %}
+- {{ sid }}：{% for item in warnings %}{{ item.code | default('warning') }}={{ item.message | default('') }}{% if not loop.last %}；{% endif %}{% endfor %}
+{% endif %}
+{% endfor %}
+{% endif %}
+{% endif %}
+
+{% if coverage %}
+## 草稿计划覆盖诊断（本地、仅作定向微修）
+- 草稿字数：{{ coverage.word_count | default(0) }} / {{ coverage.target_word_count | default(target_word_count | default(0)) }}；状态={{ coverage.word_count_status | default('not_checked') }}。
+{% if coverage.missing_required_literals | default([]) %}
+- P0 字面验收失败：下列 Planning LLM 显式裁定的文字必须逐字补回；请根据语义与放置提示选择最小改动位置，不得同义改写：
+{% for item in coverage.missing_required_literals %}
+  - {{ item.contract_id | default('未编号') }} / {{ item.scene_id | default('?') }}：「{{ item.literal }}」；不可改写原因={{ item.reason | default('上游已裁定') }}；放置提示={{ item.placement_hint | default('结合上下文定位') }}
+{% endfor %}
+{% endif %}
+{% if coverage.weak_anchors | default([]) %}
+- 以下计划锚点在原稿中覆盖较弱。它们不是新增剧情授权；只可在原计划范围内用短句、动作接力或局部替换补足：
+{% for item in coverage.weak_anchors %}
+  - {{ item.scene_id | default('?') }} / {{ item.kind | default('anchor') }}：{{ item.message | default(item.anchor | default('')) }}
+{% endfor %}
+{% else %}
+- 本地匹配未发现明显弱锚点；仍以 Plan 与 P0 契约为准。
+{% endif %}
+{% endif %}
+
+{% for scene in scene_intents %}
+{{ render_pov_knowledge_constraints(scene, fallback_pov='', heading_level=2) }}
+{% endfor %}
+
+## 角色声纹（仅用于跨场景统一）
+{% set pov_name = chapter.pov_character | default(pov_character | default('')) %}
+{% for ch in characters %}
+{% if ch.name == pov_name %}
+- POV 角色「{{ ch.name }}」：{{ ch.voice | default('') }}
+{% endif %}
+{% endfor %}
+{% set editorial_voices = editorial.character_voices | default([]) %}
+{% if editorial_voices %}
+### 编辑声纹契约（P1）
+- 只用于统一跨场景对白句法、情绪句法和表达 register；不得照抄样例台词，不得据此新增人物历史、关系结论或身份揭示。
+{% for item in editorial_voices %}
+- {{ item.character | default('角色') }}：句式={{ item.sentence_profile | default('') }}；情绪句法={{ item.emotion_syntax | default('') }}；解释倾向={{ item.explanation_bias | default('') }}
+{% if item.signature_moves | default([]) %}  标志动作/句法：{{ item.signature_moves | join('；') }}{% endif %}
+{% if item.sample_lines | default([]) %}  声纹样例（只作节奏参考，禁止原句复用）：{{ item.sample_lines[:2] | join(' / ') }}{% endif %}
+{% if item.taboo_patterns | default([]) %}  禁用口吻：{{ item.taboo_patterns | join('、') }}{% endif %}
+{% endfor %}
+{% endif %}
+
+## 风格与编辑契约（仅供过渡段参考，不进入 POV 主体）
+{% if style.banned_phrases | default([]) %}- 禁用短语：{{ style.banned_phrases | join('；') }}{% endif %}
+
+{% set style_golden_block = render_style_golden_examples(style_golden_examples | default([]), title="### 项目级高分段落参考（P2，只学习过渡与笔触，禁止逐字复用）") %}
+{% if style_golden_block %}
+## 项目级风格正例（P2）
+- 仅用于调整过渡段、句法节奏和细节选择；不得重写 POV 主体段落，不得复写原句。
+- 若正例与场景编织规则、揭示边界或 POV 守恒冲突，忽略正例。
+
+{{ style_golden_block }}
+{% endif %}
+{% set editorial_risk = editorial.risk_guidance | default({}) %}
+{% set editorial_risk_items = editorial_risk.get('items', []) if editorial_risk else [] %}
+{% set denouement_risk = editorial_risk.get('denouement', {}) if editorial_risk else {} %}
+{% if editorial_risk_items or denouement_risk.guidance | default('') %}
+- 编辑准入风险只约束转场、章末补锚和重复删减，不授权 WAVE 新增场景或新增事实。
+{% if denouement_risk.guidance | default('') %}  - 余波/尾声：{{ denouement_risk.guidance }}；补过渡时不得额外添加纯确认段。{% endif %}
+{% for item in editorial_risk_items %}
+  - [{{ item.severity }}] {{ item.summary }}；编织动作={{ item.action }}
+{% endfor %}
+{% endif %}
+{% if editorial.scene_resistance_rules | default([]) %}- 场景阻力规则：{% for r in editorial.scene_resistance_rules %}{{ r }}{% if not loop.last %}；{% endif %}{% endfor %}{% endif %}
+{% if editorial.expression_channel_budget | default({}) %}- 表达通道预算：{{ editorial.expression_channel_budget }}{% endif %}
+
+## 当前正文（来自 DRAFT 阶段）
+{{ draft_text }}
+
+## Wave 编织规则
+1. **编织优先，缺失恢复例外**：已存在的 POV 主体段落保持原样；本地诊断确认计划 scene 整体缺失时，可补入该 scene 的最小完整实现。
+2. **必要承接按意义验收**：检查因果、情绪与信息顺序；可选修辞不计入命中率，不为缺少意象补句。
+3. **POV 守恒**：所有场景的 POV 必须保持为 `{{ pov_name }}`；如发现 DRAFT 误切了 POV，仅允许加一句"视角回到 {{ pov_name }}"过渡。
+4. **节奏曲线呼应**：对 pacing_curve 中相邻强度差 >= 2 的场景，过渡段必须有可见的"减压/加压"动作。
+5. **字数硬约束**：最终正文字数相对 target 必须在 +/-30% 区间内；如需删减，优先删跨场景重复的描写、动作或对话。
+6. **场景诊断处理**：若存在“场景拼接/计划覆盖诊断”，按严重度处理：局部弱锚点用短句或动作补；整场缺失才恢复最小完整 scene。
+7. **禁止行为**：
+   - 不得整段删除任何场景
+   - 不得新增计划之外的场景；恢复 Plan 中已有而 DRAFT 遗漏的 scene 不在此限
+   - 不得改动 plan.scene_intents 中已锁定的 POV 字符
+   - 不得引入未在 plan 出现的角色、地点、事件
+   - 不得为了处理软诊断而新增未规划事件、未规划揭示、未规划角色状态变化
+   - 不得重写 POV 主体的核心段落（仅可对 1-2 句做衔接性微调）
+8. **系统痕迹**：删除系统标记、规划术语、报告术语、元叙事词。
+9. **风格胶囊优先**：声纹、象征物解释、余波和身体信号预算只用于“补过渡”，不用于“改 POV 主体”。
+10. **情感连续性**：相邻场景的情绪基调过渡必须自然——前场的退出情绪（emotional_beat 的余韵）应在后场开头 1-2 段有可感知的延续或转折。不允许两场之间情绪断裂（如前场悲伤收尾，后场直接跳到欢快开场，没有过渡锚点）。
+
+{{ creative_specificity_rules(title="") }}
+{{ anti_exposition_rules(
+    title="### 过场与承接说明腔禁止",
+    dramatization_rule="过场与承接（场景补过渡、场景间承接、章末余波）不得用叙述者视角解释前一场或后一场的剧情含义；只用动作接力、环境变化、时间推进或情绪余波来衔接；不得在场景交界处出现\"这场戏的意义是……\"\"这一幕展现了……\"等说明性总结。"
+) }}
+
+## 交付前核验
+- 必要承接是否成立？可选呼应可以没有。
+- pacing_curve 相邻强度差 >= 2 的场景之间是否有可观察的减压/加压动作？
+- POV 在所有场景中是否保持为 `{{ pov_name }}`？
+- 字数是否在 target +/-30% 区间内？
+- 是否有任何"整段重写 POV 主体"的痕迹（违规）？
+- 是否有未授权的新增人物、地点、世界规则、payoff（违规）？
+- 是否仍缺少本地诊断列出的已批准 scene / 字面锚点（违规）？
+
+{#- ---------------------------------------------------------------------------
+    格式层
+    --------------------------------------------------------------------------- -#}
+
+## 写作规则
+1. 直接输出编织后的完整章节正文，不包含"以下是正文的修订版本"等元描述。
+2. 不要用代码块包裹正文，保留 Markdown 段落分隔。
+3. 章节标题（如果原 DRAFT 有）保持原样。
+4. 不要在正文里出现 scene_id、opening_contract、required_outcome、cross_scene_intent 等规划术语。
+
+{#- ---------------------------------------------------------------------------
+    校验层
+    --------------------------------------------------------------------------- -#}
+
+## 自检清单
+- 全文字数在 `{{ render_word_constraint_self_check(chapter.target_word_count | default(target_word_count | default(0))) }}` 区间内。
+- POV 始终是 `{{ pov_name }}`，无中途切换。
+- 必要承接由行动和后果兑现，可选呼应不设覆盖率。
+- 过渡段数量 <= 场景数 x 2（避免过渡段吞噬正文）。
+- 不出现规划术语、报告术语、系统元叙事词。

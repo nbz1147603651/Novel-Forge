@@ -1,0 +1,30 @@
+name: 问题反馈
+description: 报告可复现的问题，请先移除私人内容
+body:
+  - type: markdown
+    attributes:
+      value: "安全漏洞请参阅 SECURITY.md。不要上传 .env、模型配置、真实正文或原始调用日志。"
+  - type: textarea
+    id: environment
+    attributes:
+      label: 环境
+      description: 操作系统、提交或版本、NIMO / CLI / API / PySide 后备入口
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 复现步骤
+      description: 使用合成作品说明操作步骤
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: 预期与实际结果
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 脱敏后的错误或截图

@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="NIMO AI novel creation logo">
+  <title>NIMO AI novel creation logo</title>
+  <g id="story-book" fill="none" stroke="#000000" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M38 86C70 72 99 76 128 98V190C99 173 70 169 38 181V86Z" stroke-width="12" />
+    <path d="M218 86C186 72 157 76 128 98V190C157 173 186 169 218 181V86Z" stroke-width="12" />
+    <path d="M128 98V190" stroke-width="8" opacity=".8" />
+    <path d="M62 126C83 119 101 123 118 137" stroke-width="7" opacity=".48" />
+    <path d="M194 126C173 119 155 123 138 137" stroke-width="7" opacity=".48" />
+  </g>
+  <g id="ai-story-paths" fill="none" stroke="#000000" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M84 71V158" stroke-width="13" />
+    <path d="M84 71L172 158" stroke-width="13" />
+    <path d="M172 71V158" stroke-width="13" />
+    <path d="M84 71C105 54 151 54 172 71" stroke-width="7" opacity=".48" />
+    <path d="M84 158C107 176 149 176 172 158" stroke-width="7" opacity=".48" />
+  </g>
+  <g id="ai-writing-nib" fill="#000000" fill-rule="evenodd" clip-rule="evenodd">
+    <path d="M128 139L151 181H105L128 139Z" />
+    <path d="M122 177H134V211H122V177Z" opacity=".82" />
+    <path d="M112 209C122 205 134 205 144 209C134 215 122 215 112 209Z" opacity=".56" />
+    <path d="M128 153C132 158 135 163 135 168C135 173 132 177 128 177C124 177 121 173 121 168C121 163 124 158 128 153Z" fill="#000000" />
+  </g>
+  <g id="ai-nodes" fill="#000000">
+    <circle cx="84" cy="71" r="7" />
+    <circle cx="172" cy="71" r="7" />
+    <circle cx="84" cy="158" r="6" />
+    <circle cx="172" cy="158" r="6" />
+    <circle cx="128" cy="115" r="6" />
+  </g>
+  <g id="nimo-wordmark" fill="#000000" opacity=".92">
+    <path d="M47 226H54V248H47V226ZM67 226H74V248H67V226ZM54 226L74 248H65L47 228V226H54Z" />
+    <path d="M87 226H94V248H87V226Z" />
+    <path d="M107 226H114L128 240L142 226H149V248H142V237L131 248H125L114 237V248H107V226Z" />
+    <path
+      d="M174 225C185 225 193 232 193 237C193 243 185 249 174 249C163 249 155 243 155 237C155 232 163 225 174 225ZM174 231C168 231 162 234 162 237C162 241 168 244 174 244C180 244 186 241 186 237C186 234 180 231 174 231Z"
+      fill-rule="evenodd"
+      clip-rule="evenodd"
+    />
+  </g>
+</svg>

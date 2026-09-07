@@ -1,0 +1,45 @@
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：init_coherence_ontology.j2
+服务步骤：INIT_COHERENCE_ONTOLOGY（一致性画像分片：本体）
+作用简述：基于当前画像与蓝图，只精炼项目本体、状态轴、关系轴与术语。
+上游输入：current_profile/spec/story_bible/character_bible/blueprint
+下游输出：JSON：{"genre_tags", "narrative_modes", "project_ontology"}
+下游消费者：REFINE_INIT_COHERENCE_PROFILE 本地合并器
+消费链优先级：P0 = 本体字段齐全；P1 = 轴服务后续 claims；P2 = 不输出冲突裁判结果
+================================================================================
+#}
+{#- 指导层 -#}
+请只精炼初始化一致性画像中的项目本体。不要输出 claims、issues 或修复方案。
+只输出顶层 `genre_tags`、`narrative_modes`、`project_ontology`，不得把 `narrative_modes` 写入 `project_ontology` 内部。
+
+{% if shared_evidence_anchor %}
+## 共享证据锚点
+{{ shared_evidence_anchor | tojson(indent=2) }}
+请以此作为本次分片的共同依据；维度特需信息只能补充，不得覆盖锚点事实。
+{% endif %}
+
+## 当前画像
+{{ current_profile | tojson(indent=2) }}
+
+## 项目资料
+- spec: {{ spec | tojson(indent=2) }}
+- story_bible: {{ story_bible | tojson(indent=2) }}
+- character_bible: {{ character_bible | tojson(indent=2) }}
+- blueprint: {{ blueprint | tojson(indent=2) }}
+
+## 质量校准
+- 工作身份：你是一位长篇叙事架构师，擅长把故事资产拆成可承接、可验证、不过度剧透的执行计划。
+- 规划推断路径：先锁定 P0 硬约束，再分配 P1 推进节奏，最后用 P2 风格/主题补足表现层。
+- 字段级质量示例（非输出格式）：平弱=“推进关系”；高质量=“写清谁因何行动、关系如何变化、下一环如何承接”。
+- 可操作路径：计划项要能被后续写作/审计直接检查，避免只给抽象愿望或主题口号。
+
+## 交付前核验
+- P0/P1/P2 优先级是否被保持，且没有让弱参考覆盖硬约束。
+- 是否能把关键判断回指到输入证据、上游契约或已批准计划。
+- 是否避免新增未授权的人物、地点、世界规则、未来 payoff 或格式协议。
+- 是否把抽象目标转化为可观察的行动、冲突、状态变化或章节承接点。
+
+{#- 格式层 -#}

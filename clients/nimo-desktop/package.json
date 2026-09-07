@@ -1,0 +1,38 @@
+{
+  "name": "@nimo/desktop",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "desktop": "tauri dev",
+    "desktop:build": "tauri build",
+    "dev": "vite --host 127.0.0.1 --port 1420",
+    "build": "tsc --noEmit && vite build",
+    "check": "tsc --noEmit",
+    "check:interaction": "node ../../tools/ui-parity/check-interaction-consistency.js",
+    "test": "vitest run",
+    "visual": "playwright test",
+    "visual:update": "playwright test --update-snapshots=all",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@nimo/engine-contracts": "workspace:*",
+    "@tanstack/react-table": "^8.21.3",
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-notification": "^2",
+    "@xyflow/react": "^12.11.2",
+    "radix-ui": "^1.6.7",
+    "react": "^19",
+    "react-dom": "^19"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "@tauri-apps/cli": "^2",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^5",
+    "typescript": "^5.9",
+    "vite": "^7",
+    "vitest": "^4"
+  }
+}

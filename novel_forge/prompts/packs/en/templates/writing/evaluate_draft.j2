@@ -1,0 +1,265 @@
+{# source_template_hash: 44466fc0e1d2ab5751f7a2c032593a4ea356257e0be37dc14d259e43505aa15d #}
+{%- from "_styles/_render_style_profile.j2" import render_style_profile_for_stage -%}
+{%- import "_base/_render_style_profile_global.j2" as style_global -%}
+
+{#
+================================================================================
+【REMARKS】
+================================================================================
+Prompt: evaluate_draft.j2
+Service Step: EVALUATE (short story/long-form universal quality assessment)
+Function Summary: Conduct seven-dimension quality assessment on short story or long-form chapter body (consistency, continuity, substantive progression, character, style, engagement, pacing), output assessment scores and repair suggestions.
+Upstream Input:
+  - draft_text: edited body text from EDIT step
+  - tone/genre/chapter_goal/theme/opening_style/ending_style/target_word_count: specification parameters
+  - blueprint: blueprint/chapter projection constraints; long-form only allows bounded chapter context, no complete future blueprint
+  - beats: beat reference; for long-form, projected from this chapter's scene_intents
+  - execution_plan: execution goals; for long-form, projected from this chapter's plan/cross_scene_intent
+  - causal_link: causal chain constraints
+  - rewrite_notes: rewrite direction
+Downstream Output:
+  - JSON: scores / overall_score / passed / summary / repair_suggestions
+  - Downstream Consumer: EditStep (for loop repair)
+Consumption Chain Priority:
+  P0 = causal chain / POV / immutable_facts (word count only participates when word count gate is enabled)
+  P1 = consistency / continuity / character / prompt leakage
+  P2 = style / engagement / pacing
+Brief Example:
+  Input: draft_text="Lin Yuan walked through the alley...", causal_link={previous_event:"discovered a body"}
+  Output: differentiated scores with reasons for each dimension in scores; do not use fixed all 8.0 examples.
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer: Task Definition + Context Consumption
+    --------------------------------------------------------------------------- -#}
+{{ render_style_profile_for_stage(style_profile | default(None), stage="eval") }}
+{%- set _dialogue_ratio = style_global.global_style_value(style_profile | default(None), 'dialogue_ratio') | trim -%}
+{%- set _emotional_style = style_global.global_style_value(style_profile | default(None), 'emotional_style') | trim -%}
+{%- set _environment_ratio = style_global.global_style_value(style_profile | default(None), 'environment_ratio') | trim -%}
+{%- set _info_density = style_global.global_style_value(style_profile | default(None), 'info_density') | trim -%}
+{%- set _dlg_min = style_global.dialogue_ratio_min(style_profile | default(None)) | trim | int -%}
+{%- set _dlg_max = style_global.dialogue_ratio_max(style_profile | default(None)) | trim | int -%}
+{%- set _word_count_gate_enabled = word_count_gate_enabled | default(true) -%}
+
+Please perform quality assessment on the following novel body text.
+
+{% if tone | default('') or genre | default('') or chapter_goal | default('') or theme | default('') or opening_style | default('') or ending_style | default('') or target_word_count | default(0) or not _word_count_gate_enabled %}
+## Chapter Creation Specs
+{% if tone | default('') %}- Tone: {{ tone }}{% endif %}
+{% if genre | default('') %}- Genre: {{ genre }}{% endif %}
+{% if chapter_goal | default('') %}- Chapter Goal: {{ chapter_goal }}{% endif %}
+{% if theme | default('') %}- Theme: {{ theme }}{% endif %}
+{% if opening_style | default('') %}- Opening Style: {{ opening_style }}{% endif %}
+{% if ending_style | default('') %}- Ending Style: {{ ending_style }}{% endif %}
+{% if target_word_count | default(0) and _word_count_gate_enabled %}- Target Word Count: {{ target_word_count }}{% endif %}
+{% if target_word_count | default(0) and not _word_count_gate_enabled %}- Target Word Count: {{ target_word_count }} (word count gate closed, only as planning background, not involved in scoring or passed judgment){% endif %}
+{% if not target_word_count | default(0) and not _word_count_gate_enabled %}- Word Count Gate: closed; body text length not involved in scoring or passed judgment{% endif %}
+
+{% endif %}
+{% if blueprint | default({}) %}
+## Blueprint Reference
+- Synopsis: {{ blueprint.synopsis }}
+{% if blueprint.emotional_arc | default('') %}- Emotional Arc: {{ blueprint.emotional_arc }}{% endif %}
+{% if blueprint.ending_strategy | default('') %}- Ending Strategy: {{ blueprint.ending_strategy }}{% endif %}
+{% if blueprint.anchor_elements | default({}) %}
+{% set anchor = blueprint.anchor_elements %}
+{% if anchor.time_frame | default('') %}- Time Frame: {{ anchor.time_frame }}{% endif %}
+{% if anchor.primary_locations | default([]) %}- Primary Locations: {{ anchor.primary_locations | join(', ') }}{% endif %}
+{% if anchor.core_characters | default([]) %}- Core Characters: {% for c in anchor.core_characters %}{{ c.name }}{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}
+{% if anchor.central_event | default('') %}- Central Event: {{ anchor.central_event }}{% endif %}
+{% endif %}
+
+{% endif %}
+{% if beats | default([]) %}
+## Beat Reference
+{% for beat in beats %}
+{{ beat.sequence }}. [{{ beat.beat_type | upper }}] {{ beat.summary }}
+{% endfor %}
+{% endif %}
+{% if execution_plan | default({}) %}
+## Local Execution Goals
+{% if execution_plan.opening_contract | default('') %}- Opening Execution Goal: {{ execution_plan.opening_contract }}{% endif %}
+{% if execution_plan.ending_contract | default('') %}- Ending Execution Goal: {{ execution_plan.ending_contract }}{% endif %}
+{% endif %}
+{% if causal_link | default({}) %}
+## Causal Chain Constraints (Must Verify)
+- Previous Chapter Core Event: {{ causal_link.previous_event | default('') }}
+- Causal Mechanism: {{ causal_link.causal_mechanism | default('') }}
+- Unresolved Question to Be Answered This Chapter: {{ causal_link.unresolved_question | default('') }}
+Please verify whether the body text reflects the above causal logic!
+{% endif %}
+{% if memory_layered_context | default({}) and memory_layered_context.L1_core_memory | default('') %}
+## Core Memory Verification
+{{ memory_layered_context.L1_core_memory }}
+{% endif %}
+{% if memory_layered_context | default({}) and memory_layered_context.L2_on_demand | default('') %}
+## Recent Events Verification
+{{ memory_layered_context.L2_on_demand }}
+{% endif %}
+{% if memory_motif_suggestions | default([]) %}
+## Motif Execution Check (Assessment Dimension Reference)
+The following motif references come from the planning phase, serve only as style continuity collateral; the body text must not be required to add imagery, symbols, or theme explanations to complete motifs:
+{% for item in memory_motif_suggestions %}
+- {{ item.motif_name }} (Priority: {{ item.priority }}): {{ item.reason }}
+{% endfor %}
+- If this chapter **intentionally reflects** the above motifs, they can at most serve as positive collateral for consistency/style;
+- If this chapter **completely fails to reflect** high-priority motifs, no points should be deducted alone; only when the body text simultaneously violates explicit plot anchors, character status, or written continuity facts should it be evaluated according to corresponding dimensions;
+- If this chapter **unconsciously repeats** imagery that should be avoided, prioritize aesthetic fatigue handling; if that imagery serves as plot anchor or intentional cyclical function, continuity should not be deducted.
+{% endif %}
+{% if memory_forbidden_repetition | default([]) %}
+⚠️ **Frequent Expression Risk Reference**: Use prose evidence to judge repeated function; frequency or intentionality alone is not a verdict. Preserve necessary facts, explicit user refrains and recurrence with a new function — {{ memory_forbidden_repetition | join(', ') }}
+{% endif %}
+
+{% if rewrite_notes | default('') %}
+## Chapter Rewrite Direction (Check body text for explicit corresponding manifestations during assessment)
+{{ rewrite_notes }}
+
+{% endif %}
+## Text to Assess
+{{ draft_text }}
+
+---
+
+## Assessment Rules (Seven-Dimension Assessment System v2)
+
+### Scoring Semantics
+- consistency / continuity / plot_progression mainly measure structure, continuity, contract fulfillment, and substantive progression; high scores do not mean literary expression is already perfect.
+- style / engagement / pacing bear more judgments on language texture, readability, rhythm, and reader engagement; if expression is repetitive, hollow, or aesthetically fatigued, points should be deducted in these dimensions.
+- Good chapters are allowed high overall scores, but multiple dimensions must not be anchored to the same integer score just to "look balanced."
+
+### Dimension One: consistency (Setting Consistency, Max Score 10)
+Check whether story world settings are consistent throughout:
+- A. Timeline has no logical errors, or jumps are clearly explained in the text (2 points)
+- B. Location/space logic is correct; characters do not appear in different locations without movement (2 points)
+- C. Character abilities/levels/identities are consistent with established settings; no ability overuse (2 points)
+- D. Established world rules are not broken without causation (2 points)
+- E. **Causal chain is complete** (key item, 2 points): main plot at chapter end has traceable causal chain with beginning
+- ⚠️ If item E is not satisfied, consistency score cannot exceed 6 points
+
+### Dimension Two: continuity (Scene Coherence, Max Score 10)
+Check coherent connections within and between chapters:
+- A. Scene transitions have clear action/transition support, not hard cuts (2 points)
+- B. Chapter opening state is natural continuation of previous chapter's ending (2 points)
+- C. Plot lines connect clearly; no plot threads suddenly disappear (2 points)
+- D. Foreshadowing/suspense has reasonable advancement or callbacks, not forgotten or contradictory (2 points)
+- E. Information flow is natural; readers are not confused due to missing context (2 points)
+{% if blueprint | default({}) or beats | default([]) %}
+- In short story mode, check whether opening quickly establishes character and situation, and whether ending forms completestage-level result; if not satisfied, cannot exceed 6 points
+{% endif %}
+
+### Dimension Three: plot_progression (Substantive Advancement, Max Score 10)
+Check whether this chapter avoids being a "filler chapter" and produces traceable state changes:
+- A. Main line goal or chapter_goal has visible phase advancement, not just repeating existing goals (2 points)
+- B. At least one character relationship, character state, resource, cognition, or risk landscape undergoes traceable change (2 points)
+- C. Scene outcome will change subsequent choices, costs, dangers, or opportunities (2 points)
+- D. Foreshadowing/suspense/promises have at least new clues, fulfillments, turns, or upgrades (2 points)
+- E. No replacement of event advancement with repetitive explanations, hollow psychology, or static buildup (2 points)
+- If body text basically only restates existing information without changing any state, plot_progression cannot exceed 5 points.
+- If main_plot_points, chapter_goal, or causal chain constraints are basically not implemented, plot_progression cannot exceed 6 points.
+
+### Dimension Four: character (Character Consistency, Max Score 10)
+Check whether characters behave appropriately and have consistent personalities:
+- A. POV is stable throughout the chapter, or scene change breaks have clear ─── markers (2 points); if non-POV character's inner thoughts appear ("XX thought/wondered/inwardly") without separator → item A gets 0 points; if POV switches with separator but >3 times → item A gets 1 point
+- B. Character's informed/uninformed states are consistent throughout, no information paradoxes (2 points)
+- C. Character motivations are logically reasonable, no abrupt actions serving plot (2 points)
+- D. Personality expressions are consistent with established character; if changes occur, there are triggering event preparations (2 points)
+- E. Dialogue style matches character's identity and personality (2 points)
+
+### Dimension Five: style (Literary Style, Max Score 10)
+- A. Narrative tone is consistent with tone/genre in specifications (1.5 points)
+- B. Verbs are specific and visual (generalized verbs like "walk/look/say" account for less than 15%) (1.5 points)
+- C. Sentence variety (no more than 3 consecutive paragraphs using same sentence structure) (1.5 points)
+- D. No obvious redundant words and repetitive expressions (1.5 points)
+- E. No prompt/system marker leakage (2 points)
+- F. Opening 100 characters do not contain formulaic starts with "precise timestamp + location" (2 points)
+  If opening_style/ending_style are provided, please include them in A, F judgments.
+**Style-Specific Score Adjustments**:
+- Dialogue proportion should be between {{ _dlg_min }}-{{ _dlg_max }}%, points should be deducted if below {{ _dlg_min - 10 }}% or above {{ _dlg_max + 5 }}%
+{%- if _emotional_style == 'direct' %}
+- Emotional presentation should be directly outward (high-tension scenes), points should be deducted if overly restrained
+{%- elif _emotional_style == 'subtle' %}
+- Emotional presentation should be subtle and restrained, conveyed through actions/environment/details; direct outward expression should have points deducted appropriately
+{%- endif %}
+{%- if _environment_ratio == 'low' %}
+- Environment description proportion should not exceed 15%; points should be deducted if entire paragraphs of pure scenery description appear
+{%- elif _environment_ratio == 'high' %}
+- Environment description proportion can reach 25-35%, and should echo character psychological states
+{%- endif %}
+{%- if _info_density == 'high' %}
+- Every 500 characters should have at least 1 new informationplacement, points should be deducted if information density is too low
+{%- endif %}
+{%- if _dialogue_ratio == 'high' %}
+- Chapter end should have clear suspense or hook; points should be deducted if it ends flatly
+{%- elif _dialogue_ratio == 'low' %}
+- Chapter end can leave open-ended thoughts or emotional resonance, need not be specific suspense
+{%- endif %}
+
+### Dimension Six: engagement (Reader Engagement, Max Score 10)
+- A. Effective dialogue accounts for ≥ {{ _dlg_min }}% of full text (dialogue proportion requirement: {{ _dlg_min }}-{{ _dlg_max }}%), and advances information/relationship/decision changes (2 points)
+- B. Sensory descriptions cover at least 3 types (visual/auditory/tactile/olfactory/gustatory) (2 points)
+- C. Each scene transition has at least one sensory anchor (2 points)
+- D. Chapter end has clear suspense or emotional resonance (2 points)
+- E. No paragraphs exceeding 50 characters with highly repetitive content (2 points)
+{% if blueprint | default({}) or beats | default([]) %}
+- If short story body text stops at "to-be-continued type floating position," only creates suspense without resolution endpoint, item D cannot receive full points.
+{% endif %}
+
+### Dimension Seven: pacing (Rhythm Sense, Max Score 10)
+- A. Paragraph rhythm has tension and release (high-tension scenes are short; relaxed scenes appropriately lengthened) (2.5 points)
+- B. Proportion of narration/dialogue/description/interior monologue is reasonable; no single element overly concentrated (2.5 points)
+- C. Emotional intensity hasups and downs, not entirely flat or entirely high-pitched (2.5 points)
+- D. Information density is appropriate (no more than 3 technical details per 500 characters; no piled-up technical descriptions) (2.5 points)
+{% if require_intent_compliance | default(false) %}
+
+### Dimension Eight: intent_compliance (User Intent Compliance, Max Score 10)
+- Check every explicit, immutable user requirement injected by the system: character identity and relationships, POV, ending, world rules, central conflict, genre/tone, prohibited content, and locked include/exclude elements.
+- Score 10 when every non-empty user field is preserved; score 7-9 only for weak execution without rewriting a hard intent.
+- Any rewritten, reversed, or silently overwritten hard intent must score 0-2, force passed=false, and produce a high-priority repair suggestion with a precise location.
+- When external facts or inspiration conflict with an invented user setting, preserve the user setting and do not deduct for realism.
+{% endif %}
+{% if rewrite_notes | default('') %}
+
+### Additional Dimension: rewrite_compliance (Rewrite Direction Implementation, Max Score 10)
+Check each requirement in the "Rewrite Direction" above against the body text for explicit corresponding content:
+- 9-10: all directions have specific manifestations in body text
+- 7-8: most directions (≥70%) implemented
+- 5-6: partial directions (40-69%) implemented
+- 3-4: few directions (10-39%) implemented
+- 0-2: basically not reflected (<10%)
+{% endif %}
+
+## Scoring Constraints
+1. Each dimension score = sum of sub-items (maximum 10 points).
+2. overall_score = simple average of all output dimension scores including consistency/continuity/plot_progression/character/style/engagement/pacing{% if require_intent_compliance | default(false) %}/intent_compliance{% endif %} (retain 1 decimal place).
+3. passed = overall_score >= threshold (threshold = 6.0).
+4. **Causal chain is the baseline**: if consistency item E is not satisfied (score<1), passed must be false.
+5. Do not subjectively deduct points due to style preferences; judge only according to the above checklist.
+6. Multiple assessment results on the same body text should be highly consistent; do not randomly fluctuate more than ±0.5 points.
+{% if require_intent_compliance | default(false) %}
+7. intent_compliance < 9 indicates a hard-intent risk and passed must be false.
+{% endif %}
+{% if not _word_count_gate_enabled %}
+8. Word count gate closed: body text length exceeding target must not affect any score, overall_score, or passed; only evaluate text quality such as structure, character, expression, pacing, and read-on quality.
+{% endif %}
+
+## Score Result Field Constraints
+- `scores`: item-by-item includes dimension, score, comment; each score must be calculated according to the above sub-items, decimals allowed, must not uniformly give the same score without basis.
+- `scores[].dimension` fixed as: consistency/continuity/plot_progression/character/style/engagement/pacing{% if require_intent_compliance | default(false) %}/intent_compliance{% endif %}{% if rewrite_notes | default('') %}/rewrite_compliance{% endif %}.
+- `overall_score`: simple average of all dimension scores, retain 1 decimal place.
+- `passed`: true when overall_score >= 6.0 AND consistency.E >= 1, otherwise false.
+- `threshold`: fixed at 6.0.
+- `summary`: a Chinese summary not exceeding 100 characters.
+- `repair_suggestions`: when any dimension score < 7, provide at least 1 repair suggestion for that dimension (including issue, location, suggestion, priority, dimension).
+
+## Quality Calibration
+- Work Identity: You are a rigorous novel quality reviewer, adept at locating problems with short evidence, clear boundaries, and downstream-executable suggestions.
+- Review Path: first confirm input evidence, then judge problem type, impact range, and repair boundaries, finally give downstream-executable positioning information.
+- Field-Level Quality Example (non-output format): Weak = "here is incoherent"; High-Quality = "point out where two pieces of evidence conflict, risk level, verifiable problem".
+- Actionable Path: each judgment must support review or repair; low-confidence content downgraded to pending verification problems.
+
+## Pre-Delivery Verification
+- Whether P0/P1/P2 priorities are maintained, and weak references are not allowed to override hard constraints.
+- Whether key judgments can be traced back to input evidence, upstream contracts, or approved plans.
+- Whether addition of unauthorized characters, locations, world rules, future payoffs, or format agreements is avoided.
+- Whether short evidence, risk level, positioning information, and downstream-verifiable problems are provided.

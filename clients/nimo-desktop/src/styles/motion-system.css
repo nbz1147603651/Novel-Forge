@@ -1,0 +1,221 @@
+/*
+ * Cross-surface feedback is deliberately kept outside page CSS.  The native
+ * client remains the visual source for every stable state; this layer only
+ * adds short feedback while a user is pressing a control or a local task is
+ * actively changing.  A later runtime can reuse the same state classes for
+ * real EngineClient streams without each dialog inventing its own animation.
+ */
+:root {
+  --nf-motion-feedback: 140ms;
+  --nf-motion-status: 1.35s;
+  --nf-motion-ease: cubic-bezier(.22, .61, .36, 1);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .button:not(:disabled):active,
+  .topbar-action:not(:disabled):active,
+  .model-connection-reveal:not(:disabled):active {
+    transform: translateY(0) scale(.985);
+  }
+
+  .operation-progress.is-running li.is-active span::after {
+    position: absolute;
+    inset: -5px;
+    border: 1px solid color-mix(in srgb, var(--nf-accent-primary) 48%, transparent);
+    border-radius: inherit;
+    animation: nimo-active-step-pulse var(--nf-motion-status) var(--nf-motion-ease) infinite;
+    content: "";
+    pointer-events: none;
+  }
+
+  .model-connection-card.is-checking .model-connection-dot {
+    animation: nimo-connection-pulse var(--nf-motion-status) var(--nf-motion-ease) infinite;
+  }
+
+  .model-connection-status.is-revealing .model-connection-reveal {
+    opacity: .62;
+  }
+
+  /* ============================================================
+   * Global motion system — page transitions, dialogs, sidebar
+   * ============================================================ */
+
+  /* Page canvas content entrance — subtle fade + slide */
+  .page-canvas > :not(.overlay-backdrop) {
+    animation: nimo-page-enter 200ms var(--nf-motion-ease) both;
+  }
+
+  /* Sidebar collapse/expand smooth width transition */
+  .nimo-app {
+    transition: grid-template-columns 250ms var(--nf-motion-ease);
+  }
+
+  .side-rail {
+    transition: padding 200ms ease,
+                box-shadow 160ms ease,
+                background-color 160ms ease;
+  }
+
+  /* Dialog backdrop fade */
+  .app-dialog-backdrop {
+    animation: dialog-backdrop-in 180ms ease-out;
+  }
+
+  /* Dialog panel rise */
+  .app-dialog {
+    animation: dialog-rise-in 200ms var(--nf-motion-ease);
+  }
+
+  /* Overlay surface entrance */
+  .overlay-backdrop {
+    animation: dialog-backdrop-in 180ms ease-out;
+  }
+
+  .overlay-surface > .app-dialog {
+    animation: dialog-rise-in 200ms var(--nf-motion-ease);
+  }
+
+  /* Status bar smooth updates */
+  .status-bar {
+    transition: color 200ms ease, border-color 200ms ease;
+  }
+
+  .status-bar > span:first-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+
+  /* Top bar smooth content transitions */
+  .top-bar {
+    transition: border-color 200ms ease, background-color 200ms ease;
+  }
+
+  /* Toast/operation notice slide-in */
+  .reader-operation-notice,
+  .studio-operation-notice {
+    animation: notice-slide-in 250ms var(--nf-motion-ease) both;
+  }
+}
+
+@keyframes nimo-active-step-pulse {
+  0%, 100% { opacity: .3; transform: scale(.92); }
+  50% { opacity: .9; transform: scale(1); }
+}
+
+@keyframes nimo-connection-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--nf-status-warning) 13%, transparent); }
+  50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--nf-status-warning) 5%, transparent); }
+}
+
+@keyframes nimo-page-enter {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes dialog-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes dialog-rise-in {
+  from { transform: translateY(8px) scale(.985); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+@keyframes notice-slide-in {
+  from { opacity: 0; transform: translateX(8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* ============================================================
+ * Custom scrollbar — thin, rounded, theme-colored
+ * ============================================================ */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--nf-border-default) 40%, transparent)
+                   transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--nf-border-default) 40%, transparent);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--nf-accent-primary) 50%, transparent);
+}
+
+/* Sidebar scrollbar — lighter for dark background */
+.side-rail * {
+  scrollbar-color: color-mix(in srgb, var(--nf-text-brand-gold) 25%, transparent)
+                   transparent;
+}
+
+.side-rail *::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--nf-text-brand-gold) 25%, transparent);
+}
+
+.side-rail *::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--nf-text-brand-gold) 40%, transparent);
+}
+
+/* ============================================================
+ * Reduced motion — disable all animations globally
+ * ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  * {
+    scrollbar-width: auto;
+  }
+}
+
+/* ============================================================
+ * Dialog exit animation — triggered by .is-closing class
+ * ============================================================ */
+@media (prefers-reduced-motion: no-preference) {
+  .overlay-backdrop.is-closing {
+    animation: dialog-backdrop-out 160ms ease-in both;
+  }
+
+  .overlay-backdrop.is-closing .app-dialog,
+  .overlay-backdrop.is-closing .overlay-surface > .app-dialog {
+    animation: dialog-drop-out 160ms ease-in both;
+  }
+}
+
+@keyframes dialog-backdrop-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes dialog-drop-out {
+  from { transform: translateY(0) scale(1); opacity: 1; }
+  to { transform: translateY(6px) scale(.985); opacity: 0; }
+}
+
+/* ============================================================
+ * Loading skeleton shimmer — enhanced with staggered delays
+ * ============================================================ */
+@media (prefers-reduced-motion: no-preference) {
+  .loading-surface span:nth-child(2) { animation-delay: 120ms; }
+  .loading-surface span:nth-child(3) { animation-delay: 240ms; }
+}

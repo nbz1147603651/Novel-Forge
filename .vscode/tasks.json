@@ -1,0 +1,38 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "NIMO 桌面（默认 React/Tauri）",
+      "type": "shell",
+      "command": "pnpm desktop",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "NIMO 前端预览",
+      "type": "shell",
+      "command": "pnpm ui:dev",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "提示: 前端启动命令",
+      "type": "shell",
+      "command": "echo \"NIMO: pnpm desktop; frontend preview: pnpm ui:dev\"",
+      "problemMatcher": []
+    },
+    {
+      "label": "开源内容检查",
+      "type": "shell",
+      "command": "python scripts/check_public_release.py",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    }
+  ]
+}

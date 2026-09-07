@@ -1,0 +1,745 @@
+/*
+ * Dashboard geometry is derived from DashboardPage's PySide6 layout:
+ * a 340px hero with 18px vertical content margins and a metrics column
+ * that consumes the remaining height.  Keep it page-scoped so shared
+ * buttons and section headings can evolve independently on other surfaces.
+ */
+.dashboard-page .dashboard-hero {
+  min-height: 292px;
+  max-height: 292px;
+  padding: 18px 24px;
+  grid-template-columns: minmax(0, 1fr) 520px;
+  gap: 16px;
+}
+
+.dashboard-page .hero-copy .section-kicker {
+  font-size: var(--nf-font-ui);
+  line-height: 18px;
+}
+
+.dashboard-page .hero-copy h2 {
+  margin: 7px 0 7px;
+  font-family: "Songti SC", "STSong", "NSimSun", Georgia, serif;
+  font-size: var(--nf-font-display);
+  line-height: 32px;
+}
+
+.dashboard-page .hero-copy > p {
+  font-size: var(--nf-font-body);
+  line-height: 20px;
+}
+
+.dashboard-page .button-row {
+  margin-top: 10px;
+}
+
+.dashboard-page .hero-copy .button-row {
+  gap: 12px;
+}
+
+/* Keep project lookup directly below the welcome actions.  This occupies the
+   left-side gap before the compact metrics column rather than creating a
+   second, much taller search surface above the catalogue. */
+.dashboard-page .dashboard-hero-search {
+  display: block;
+  flex: 0 0 auto;
+  align-self: stretch;
+  width: min(100%, 620px);
+  margin-top: 15px;
+}
+
+.dashboard-page .dashboard-hero-search input {
+  height: 39px;
+  border-radius: 9px;
+  box-shadow: inset 0 1px color-mix(in srgb, var(--nf-bg-surface) 64%, transparent);
+}
+
+.dashboard-page .metrics-block {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.dashboard-page .metrics-block > p {
+  margin: 0 0 5px;
+  font-size: var(--nf-font-ui);
+  line-height: 18px;
+}
+
+.dashboard-page .metrics-block h3 {
+  margin: 1px 0 4px;
+  font-size: var(--nf-font-section);
+  line-height: 20px;
+}
+
+.dashboard-page .metric-grid {
+  flex: 0 0 204px;
+  grid-template-rows: 98px 98px;
+  gap: 8px;
+}
+
+.dashboard-page .metric-card {
+  min-height: 0;
+  padding: 10px 12px;
+}
+
+.dashboard-page .metric-card h4 {
+  font-size: var(--nf-font-ui);
+}
+
+.dashboard-page .metric-card strong {
+  font-size: var(--nf-font-display);
+  line-height: 30px;
+  margin-top: 4px;
+  font-family: "Songti SC", "STSong", "NSimSun", Georgia, serif;
+}
+
+.dashboard-page .metric-card p {
+  margin-top: 4px;
+  font-size: var(--nf-font-meta);
+  line-height: 16px;
+}
+
+/* The source QVBoxLayout gives the wrapped word-count card six fewer pixels
+ * to its value label and a 17px line height to its two-line detail.  Preserve
+ * that layout result rather than equalising all four browser cards. */
+.dashboard-page .metric-card:nth-child(3) strong {
+  line-height: 28px;
+}
+
+.dashboard-page .metric-card:nth-child(3) p {
+  line-height: 15px;
+}
+
+.dashboard-page .section-heading + .filter-surface {
+  margin-top: 5px;
+}
+
+.dashboard-page .filter-top-row {
+  gap: 14px;
+}
+
+.dashboard-page .filter-summary-row {
+  min-height: 19px;
+  justify-content: flex-end;
+}
+
+.dashboard-page .filter-surface-compact {
+  display: grid;
+  gap: 4px;
+  min-height: 0;
+  padding-block: 10px;
+}
+
+.dashboard-page .filter-surface-compact .library-summary {
+  flex-basis: auto;
+}
+
+.dashboard-page .search-field input {
+  height: var(--nf-control-height-relaxed);
+  padding-inline: 12px;
+  border-radius: 10px;
+  font-size: var(--nf-font-body);
+}
+
+.dashboard-page .library-summary {
+  flex: 0 0 248px;
+  gap: 2px;
+  font-size: var(--nf-font-ui);
+  line-height: 18px;
+}
+
+.dashboard-page .library-summary small {
+  font-size: var(--nf-font-ui);
+  line-height: 18px;
+}
+
+.dashboard-page .filter-row {
+  gap: 10px;
+  margin-top: 2px;
+}
+
+.dashboard-page .filter-chip {
+  min-height: var(--nf-control-height-dense);
+  padding-inline: 10px;
+  border-radius: 9px;
+  font-size: var(--nf-font-meta);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.dashboard-page .project-detail {
+  min-height: 300px;
+  margin-top: 4px;
+}
+
+.dashboard-page .detail-title h2 {
+  font-family: "Songti SC", "STSong", "NSimSun", Georgia, serif;
+  font-size: var(--nf-font-page);
+  line-height: 32px;
+}
+
+.dashboard-page .detail-title .status-badge {
+  min-height: var(--nf-control-height);
+}
+
+.dashboard-page .project-detail .button-row {
+  margin-top: 10px;
+}
+
+.dashboard-page .project-detail .button-row + .detail-meta {
+  margin-top: 10px;
+}
+
+.dashboard-page .project-detail .detail-meta {
+  font-size: var(--nf-font-body);
+  line-height: 20px;
+}
+
+.dashboard-page .filter-surface,
+.dashboard-page .jobs-surface {
+  padding: 14px 16px;
+}
+
+.dashboard-page .project-detail .detail-body {
+  margin-top: 10px;
+}
+
+/* Enhanced filter chip transitions */
+.dashboard-page .filter-chip {
+  position: relative;
+  overflow: hidden;
+  transition: transform 180ms cubic-bezier(.22, .61, .36, 1),
+              border-color 180ms ease,
+              background 180ms ease,
+              color 180ms ease,
+              box-shadow 180ms ease;
+}
+
+.dashboard-page .filter-chip::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--nf-accent-primary) 15%, transparent);
+  transform: translate(-50%, -50%);
+  transition: width 300ms ease, height 300ms ease;
+  pointer-events: none;
+}
+
+.dashboard-page .filter-chip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--nf-shadow) 10%, transparent);
+}
+
+.dashboard-page .filter-chip:hover::before {
+  width: 120%;
+  height: 120%;
+}
+
+.dashboard-page .filter-chip:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.dashboard-page .filter-chip.is-active {
+  animation: filter-chip-activate 250ms cubic-bezier(.22, .61, .36, 1);
+}
+
+@keyframes filter-chip-activate {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-page .filter-chip {
+    transition: none;
+  }
+  .dashboard-page .filter-chip:hover {
+    transform: none;
+    box-shadow: none;
+  }
+  .dashboard-page .filter-chip:hover::before {
+    width: 0;
+    height: 0;
+  }
+  .dashboard-page .filter-chip:active {
+    transform: none;
+  }
+  .dashboard-page .filter-chip.is-active {
+    animation: none;
+  }
+}
+
+/* Enhanced project card hover effects */
+.dashboard-page .project-card {
+  position: relative;
+  transition: transform 200ms cubic-bezier(.22, .61, .36, 1),
+              border-color 200ms ease,
+              box-shadow 200ms ease,
+              background 200ms ease;
+}
+
+.dashboard-page .project-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  border-radius: 17px 17px 0 0;
+  background: linear-gradient(90deg,
+    var(--nf-accent-primary),
+    var(--nf-accent-light));
+  opacity: 0;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: opacity 200ms ease, transform 250ms cubic-bezier(.22, .61, .36, 1);
+}
+
+.dashboard-page .project-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    circle at top right,
+    color-mix(in srgb, var(--nf-accent-primary) 8%, transparent) 0%,
+    transparent 60%
+  );
+  opacity: 0;
+  transition: opacity 200ms ease;
+  pointer-events: none;
+}
+
+.dashboard-page .project-card:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--nf-accent-primary) 70%, transparent);
+  box-shadow: 0 18px 32px color-mix(in srgb, var(--nf-shadow) 14%, transparent);
+}
+
+.dashboard-page .project-card:hover::before {
+  opacity: 1;
+  transform: scaleX(1);
+}
+
+.dashboard-page .project-card:hover::after {
+  opacity: 1;
+}
+
+.dashboard-page .project-card:active {
+  transform: translateY(-1px) scale(0.99);
+}
+
+.dashboard-page .project-card.is-selected {
+  border-color: color-mix(in srgb, var(--nf-accent-primary) 75%, transparent);
+  background: color-mix(in srgb, var(--nf-bg-hover-secondary) 50%, var(--nf-bg-surface));
+}
+
+.dashboard-page .project-card.is-selected::before {
+  opacity: 1;
+  transform: scaleX(1);
+}
+
+.dashboard-page .project-card h3 {
+  transition: color 200ms ease;
+}
+
+.dashboard-page .project-card:hover h3 {
+  color: var(--nf-accent-primary-pressed);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-page .project-card {
+    transition: none;
+  }
+  .dashboard-page .project-card::before,
+  .dashboard-page .project-card::after {
+    transition: none;
+  }
+  .dashboard-page .project-card:hover {
+    transform: none;
+  }
+  .dashboard-page .project-card:active {
+    transform: none;
+  }
+  .dashboard-page .project-card:hover h3 {
+    color: var(--nf-text-heading);
+  }
+  .dashboard-page .project-progress span {
+    animation: none;
+  }
+  .dashboard-page .job-card {
+    transition: none;
+  }
+  .dashboard-page .job-card:hover {
+    transform: none;
+    box-shadow: none;
+  }
+}
+
+/* Progress bar shimmer — matches PySide6 indeterminate progress pulse */
+.dashboard-page .project-progress span {
+  animation: progress-shimmer 2s ease-in-out infinite;
+  background-size: 200% 100%;
+  background-image: linear-gradient(
+    90deg,
+    var(--nf-accent-primary) 0%,
+    var(--nf-accent-light) 50%,
+    var(--nf-accent-primary) 100%
+  );
+}
+
+@keyframes progress-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Job card hover — subtle lift matching project card behavior */
+.dashboard-page .job-card {
+  transition: transform 180ms var(--nf-motion-ease, cubic-bezier(.22, .61, .36, 1)),
+              box-shadow 180ms ease,
+              border-color 180ms ease;
+}
+
+.dashboard-page .job-card:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--nf-accent-primary) 35%, transparent);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--nf-shadow) 9%, transparent);
+}
+
+/* Section heading bottom margin — tighter spacing per PySide6 source */
+.dashboard-page .section-heading {
+  margin-top: 2px;
+}
+
+.dashboard-page .section-heading + .project-grid {
+  margin-top: 6px;
+}
+
+.dashboard-page .section-heading + .jobs-surface {
+  margin-top: 6px;
+}
+
+/* Project detail card — smooth open animation */
+.dashboard-page .project-detail {
+  animation: detail-slide-in 220ms cubic-bezier(.22, .61, .36, 1) both;
+}
+
+@keyframes detail-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Search field — refined focus ring matching PySide6 input behavior */
+.dashboard-page .dashboard-hero-search input {
+  transition: border-color 180ms ease,
+              box-shadow 180ms ease,
+              background 180ms ease;
+}
+
+.dashboard-page .dashboard-hero-search input:focus {
+  background: var(--nf-bg-input, #fff);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--nf-accent-primary) 14%, transparent),
+              inset 0 1px color-mix(in srgb, var(--nf-accent-primary) 20%, transparent);
+}
+
+/* Jobs toolbar — clear button row */
+.jobs-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  padding-bottom: 8px;
+}
+
+.button-quiet {
+  border-color: transparent;
+  background: transparent;
+  font-weight: 400;
+  font-size: var(--nf-font-body);
+  min-height: 32px;
+  padding: 0 12px;
+}
+
+.button-quiet:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--nf-border-default) 40%, transparent);
+  background: var(--nf-bg-control);
+}
+
+.button-quiet:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Job decision panel — paused task awaiting user input */
+.job-decision-panel {
+  display: grid;
+  gap: 8px;
+  min-width: 180px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--nf-accent-primary) 30%, transparent);
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--nf-accent-primary) 5%, var(--nf-bg-surface));
+}
+
+.job-decision-panel .section-kicker {
+  color: var(--nf-accent-primary-pressed);
+}
+
+.job-decision-options {
+  display: grid;
+  gap: 6px;
+}
+
+.job-decision-btn {
+  min-height: 34px;
+  font-size: var(--nf-font-body);
+  text-align: center;
+}
+
+/* ============================================================
+ * Provider status section (通路点检)
+ * ============================================================ */
+.provider-status-section {
+  display: grid;
+  gap: 16px;
+}
+
+/* ============================================================
+ * Workspace status panel (案头近况 · 工坊所在)
+ * mirrors dashboard_page.py workspace_panel (Surface "panel")
+ * ============================================================ */
+.workspace-status-panel {
+  padding: 20px 22px;
+  border: 1px solid var(--nf-border-default);
+  border-radius: 12px;
+  background: var(--nf-bg-surface);
+}
+
+.workspace-status-panel h3 {
+  margin: 0;
+  color: var(--nf-text-heading);
+  font-size: var(--nf-font-label);
+  font-weight: 600;
+}
+
+.workspace-status-panel > p {
+  margin: 6px 0 0;
+  color: var(--nf-text-muted-soft);
+  font-size: var(--nf-font-body);
+}
+
+.workspace-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 26px;
+  margin-top: 14px;
+}
+
+.workspace-status-row span {
+  color: var(--nf-text-secondary);
+  font-size: var(--nf-font-body);
+  line-height: 1.5;
+}
+
+.workspace-status-row strong {
+  color: var(--nf-text-heading);
+  font-weight: 600;
+}
+
+.provider-group {
+  padding: 14px 16px;
+  border: 1px solid var(--nf-border-default);
+  border-radius: 12px;
+  background: var(--nf-bg-surface);
+}
+
+.provider-group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.provider-group-header h4 {
+  margin: 0;
+  font-size: var(--nf-font-label);
+  font-weight: 600;
+}
+
+.provider-state-label {
+  margin-left: auto;
+  font-size: var(--nf-font-ui);
+  color: var(--nf-text-secondary);
+}
+
+.provider-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.provider-dot.is-ready {
+  background: var(--nf-status-success, #34d399);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--nf-status-success, #34d399) 50%, transparent);
+}
+
+.provider-dot.is-offline {
+  background: var(--nf-text-tertiary, #6b7280);
+}
+
+.provider-models-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.provider-model-card {
+  padding: 10px 12px;
+  border: 1px solid var(--nf-border-subtle);
+  border-radius: 9px;
+  background: var(--nf-bg-control);
+}
+
+.model-card-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.model-name {
+  font-size: var(--nf-font-body);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-dot.dot-green {
+  background: var(--nf-status-success, #34d399);
+  box-shadow: 0 0 5px color-mix(in srgb, var(--nf-status-success, #34d399) 40%, transparent);
+}
+
+.status-dot.dot-yellow {
+  background: var(--nf-status-warning, #fbbf24);
+  box-shadow: 0 0 5px color-mix(in srgb, var(--nf-status-warning, #fbbf24) 40%, transparent);
+}
+
+.status-dot.dot-red {
+  background: var(--nf-status-danger, #f87171);
+  box-shadow: 0 0 5px color-mix(in srgb, var(--nf-status-danger, #f87171) 40%, transparent);
+}
+
+.model-status-meta {
+  display: block;
+  font-size: var(--nf-font-ui);
+  color: var(--nf-text-secondary);
+  margin-bottom: 6px;
+}
+
+.model-cap-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.model-cap-row small {
+  font-size: var(--nf-font-micro);
+  color: var(--nf-text-tertiary);
+  margin-right: 6px;
+}
+
+.cap-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.cap-dot.cap-on {
+  background: var(--nf-status-success, #34d399);
+}
+
+.cap-dot.cap-off {
+  background: var(--nf-border-default);
+}
+
+/* ============================================================
+ * Project card quick actions (阅卷/续写/蓝图/图谱/档案)
+ * ============================================================ */
+.project-card .card-next-action {
+  display: block;
+  margin-top: 6px;
+  font-size: var(--nf-font-ui);
+  color: var(--nf-text-tertiary);
+}
+
+.project-card-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.project-card:hover .project-card-actions,
+.project-card:focus-within .project-card-actions {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.project-card-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: var(--nf-font-ui);
+  color: var(--nf-text-secondary);
+  background: var(--nf-bg-control);
+  border: 1px solid var(--nf-border-subtle);
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+  user-select: none;
+}
+
+.project-card-action-btn:hover {
+  color: var(--nf-accent-primary);
+  border-color: color-mix(in srgb, var(--nf-accent-primary) 40%, transparent);
+  background: color-mix(in srgb, var(--nf-accent-primary) 8%, var(--nf-bg-control));
+}
+
+/* Project card hover scale animation */
+@media (prefers-reduced-motion: no-preference) {
+  .project-card {
+    transition: transform 160ms ease, box-shadow 160ms ease;
+  }
+
+  .project-card:hover {
+    transform: scale(1.015);
+    box-shadow: 0 4px 16px color-mix(in srgb, var(--nf-shadow-color, #000) 12%, transparent);
+  }
+}

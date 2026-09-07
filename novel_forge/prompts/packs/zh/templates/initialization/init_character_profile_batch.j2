@@ -1,0 +1,88 @@
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：init_character_profile_batch.j2
+服务步骤：INIT_CHARACTER_PROFILE_BATCH（角色圣经分片：角色档案）
+作用简述：根据稳定 roster 为每个角色补全 CharacterProfile 字段，避免一次性输出全角色大 JSON。
+上游输入：premise/story_bible/character_roster
+下游输出：JSON：{"character_profiles": [...]}
+下游消费者：INIT_CHARACTER_BIBLE 本地合并器
+消费链优先级：P0 = 不改名不改 gender；P1 = 字段与 CharacterProfile 对齐；P2 = 档案紧凑
+================================================================================
+#}
+{%- from "_base/_shared_evidence_anchor.j2" import render_shared_evidence_anchor -%}
+
+{#- 指导层 -#}
+请只为 roster 中的角色补全档案字段，不要新增 roster 外角色，不要输出关系矩阵。
+`name` 必须逐字等于固定角色清单中的某一个 `name`。如果你认为某角色有更好的称呼、旧名、前世名、艺名、误称或别名，仍然必须保留 roster 的 `name`。
+只有用户输入、世界观或固定清单明确给出的正式别名可以短写入 `notes`；模型本轮自行漂移出的错名、近似名、旧草稿名不要写入任何字段，必须改回 roster 规范名，避免污染后续关系矩阵和章节提示。
+如果固定角色清单中的 `name` 带有括号限定（如现代/过去/回忆），输出档案时必须完整照抄括号限定，不得省略为未限定姓名。
+本步骤继承旧版一次性 CharacterBible 的质量标准：每个角色必须有独立欲望、恐惧/弱点、利益立场和可写的行为方式；配角不能只写成“帮助主角的人”。
+
+## 链路边界
+本模板只用于 split 角色生成链路的档案分片。
+本轮只补全 `character_profiles`，不决定最终关系网，不输出完整 `character_bible`，也不改写 roster。
+如果存在“本批需要补全的角色”，只输出该批；如果不存在，则输出固定角色清单中的全部角色档案。
+勿沿用一次性 CharacterBible 的完整输出形态。
+
+## Canonical name / alias 规则
+- `character_profiles[].name` 必须逐字来自 roster；任何别名、旧名、前世名、误称或阶段称呼只能在 `notes` 中短写，不能污染 name。
+- 本分片是 CharacterSystem 的人物声音和档案源头之一；不要为同一角色生成重复档案，不要把别名当新角色。
+- `voice` 只写后续 Draft/Polish 需要的声纹投影，不写完整创作解释；关系边仍由关系矩阵分片负责。
+- 若输入材料出现未在 roster 中登记的人名，只能忽略或在相关角色 notes 中标记为未建档称呼，不得新增 profile。
+
+{{ render_shared_evidence_anchor(shared_evidence_anchor) }}
+
+## 故事前提
+{{ premise }}
+
+## 世界观锚点
+{{ story_bible | tojson(indent=2) if story_bible is mapping else story_bible }}
+
+## 固定角色清单（不得改名、不得改 gender）
+{{ character_roster | tojson(indent=2) }}
+
+{% if target_character_roster %}
+## 本批需要补全的角色（只输出这些）
+{{ target_character_roster | tojson(indent=2) }}
+{% endif %}
+
+{% if profile_batch_index and profile_batch_count %}
+- 当前档案批次：{{ profile_batch_index }} / {{ profile_batch_count }}
+{% endif %}
+
+## 字段内容约束
+每个角色仅允许：`name`、`role`、`age`、`gender`、`status`、`time_layer`、`social_status`、`abilities`、`appearance`、`personality`、`backstory`、`arc`、`relationships`、`voice`、`visual_identity`、`tts_voice_hints`、`notes`。
+relationships 此分片先输出空对象，关系由关系矩阵分片负责。
+`role`、`status`、`time_layer` 必须沿用 roster 的规范枚举，不要写中文类型或混合说明。
+不得把 roster 里的角色改名、合并、拆分或用相近姓名替换；每个 roster 角色最多输出一条档案。
+不得把两个同名但带不同限定的 roster 角色合并成一个档案；也不得把限定名还原成未限定名。
+若存在“本批需要补全的角色”，`character_profiles` 只能包含该批角色，且必须尽量覆盖该批全部角色；不要输出其他 roster 角色。
+已故/只存在于回忆中的人物仍用 roster 中的规范写法：通常是 `role=minor`、`status=retired`、`time_layer=memory_only`；“已故”等说明写入 `age`、`backstory` 或 `notes`。
+不要把“听说过、无直接关系、可能间接关联”写成档案里的关系；本分片的 `relationships` 必须保持 `{}`。
+职业、头衔、阶层写入 `social_status`；稳定能力、资源或专业技能写入 `abilities`；角色声纹特征（句式节奏、解释倾向、情绪句法、标志性说话动作）写入 `voice`；其他补充信息写入 `notes`。
+核心角色必须把跨媒介身份直接生成在最上游：`visual_identity` 包含 `facial_anchors`、
+`silhouette`、`body_language`，并尽量补全 `costume_palette`、`signature_props`、
+`continuity_rules`、`forbidden_drift`；锚点必须具体可观察，不写“英俊”“有气质”这类空泛词。
+`tts_voice_hints` 包含 `timbre`、`register`、`cadence`，并尽量补全 `accent`、
+`emotion_range`、`pronunciation_notes`。它描述可供声腔匹配/设计声音的声学与表演条件，
+不要写平台或 voice_id。`voice` 仍负责人物语言习惯，两者不可互相替代。
+`social_status`、`abilities`、`appearance`、`personality`、`backstory`、`arc`、`voice`、`notes` 必须是单段字符串；禁止拆成对象、数组或带子字段的结构。若需要列举多个层面，用中文分号写在同一个字符串中。
+所有字符串字段即使未知也必须输出字符串（可为空字符串），禁止输出 null；`relationships` 未知时输出空对象 `{}`。
+**`character_profiles` 数组中的每一项都必须是完整档案对象（不能是 `null`、不能省略字段）。** 想要“跳过某个角色”的唯一做法是：根本不要把它的档案放进数组，而不是用 `null` 占位。若你只写完了部分角色，请直接输出已完成的那些角色对应的档案；不要为了凑数或对齐行数而输出空对象、`null` 或仅含 `name` 字段的半成品。
+`personality` 必须包含稳定性格、核心欲望和弱点/恐惧；`backstory` 必须说明这个角色为什么会卷入主冲突或支线；`arc` 必须写起点到终点的变化方向，minor 可简短但不能凭空新增剧情。
+
+## 质量校准
+- 工作身份：你是一位项目特异性写作顾问，擅长从梗概、角色、世界规则和已选叙事要素中推导可执行的风格/结构契约。
+- 推导路径：先识别本项目的核心卖点、冲突机制和表达风险，再把结论映射到字段级参数或编辑契约。
+- 字段级质量示例（非输出格式）：平弱=“风格冷峻”；高质量=“说明冷峻来自何种场景压力、证据细节、对白比例或信息密度”。
+- 可操作路径：每条规则都要能被正文生成、编辑检查或后续审计复用，避免泛化成所有项目都适用的空话。
+
+## 交付前核验
+- P0/P1/P2 优先级是否被保持，且没有让弱参考覆盖硬约束。
+- 是否能把关键判断回指到输入证据、上游契约或已批准计划。
+- 是否避免新增未授权的人物、地点、世界规则、未来 payoff 或格式协议。
+- 是否把项目特异性依据映射到具体字段/规则，而不是复用通用写作口诀。
+
+{#- 格式层 -#}

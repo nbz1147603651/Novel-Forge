@@ -1,0 +1,189 @@
+{%- from "_styles/_render_style_profile.j2" import render_style_profile_for_stage -%}
+{%- import "_base/_calculate_word_constraints.j2" as wc_macros -%}
+{%- from "_quality_standards.j2" import creative_specificity_rules -%}
+
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：edit_draft.j2
+服务步骤：EDIT（短篇草稿编辑）
+作用简述：根据集中诊断问题队列对短篇草稿执行最多两轮定向修订。
+上游输入：
+  - draft_text: 来自 DRAFT（草稿正文）
+  - beats: 来自 BEATS（节拍信息）
+  - blueprint: 来自 BLUEPRINT_ELEMENT_SELECT（蓝图约束）
+  - execution_plan: 执行计划
+  - eval_feedback: 来自 EVALUATE（评估反馈）
+  - completeness_issues: 完整性问题
+  - prompt_leak_hits: 提示词泄露
+  - style_profile: 来自 StyleProfile
+下游输出：
+  - text: 纯文本编辑后短篇正文
+  - 下游消费者：ShortCreativeStep / EvaluateStep
+消费链优先级：
+  P0 = 字数约束 / 蓝图对齐 / 完整性 / prompt_leak_hits
+  P1 = 逻辑因果 / 人物对话 / 节拍落地
+  P2 = 文学风格 / 感官多样性
+简要例子：
+  输入：draft_text="林远走在街上...", beats=[{beat_type:"inciting", summary:"发现线索"}]
+  输出："清晨，林远穿过小巷，目光落在地上..."（纯文本）
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    指导层：任务定义 + 上下文消费
+    --------------------------------------------------------------------------- -#}
+请对以下短篇小说草稿执行第 {{ iteration }} 轮定向修订。轮次只是预算上限，不代表固定的编辑主题。
+
+## 当前草稿
+{{ draft_text }}
+
+{# ============================================================
+   参考信息（beats + blueprint + execution_plan）
+   ============================================================ #}
+
+## 参考节拍
+{% for beat in beats.beats %}
+{{ beat.sequence }}. [{{ beat.beat_type | upper }}] {{ beat.summary }}（张力{{ beat.tension_level }}/10）
+{% endfor %}
+{% if blueprint is defined and blueprint %}
+
+## 蓝图约束
+- 梗概：{{ blueprint.synopsis }}
+{% if blueprint.emotional_arc %}- 情感弧线：{{ blueprint.emotional_arc }}{% endif %}
+{% if blueprint.ending_strategy %}- 结尾策略：{{ blueprint.ending_strategy }}{% endif %}
+{% if blueprint.anchor_elements %}
+{% set anchor = blueprint.anchor_elements %}
+{% if anchor.time_frame %}- 时间框架：{{ anchor.time_frame }}{% endif %}
+{% if anchor.primary_locations %}- 核心场景：{{ anchor.primary_locations | join('、') }}{% endif %}
+{% if anchor.core_characters %}- 核心人物：{% for c in anchor.core_characters %}{{ c.name }}{% if not loop.last %}、{% endif %}{% endfor %}{% endif %}
+{% if anchor.central_event %}- 核心事件：{{ anchor.central_event }}{% endif %}
+{% endif %}
+{% if blueprint.element_selection is defined and blueprint.element_selection and blueprint.element_selection.extension_elements %}
+### 叙事要素执行检查
+以下题材专属叙事要素仅作为表达参考，若正文已有自然落点可酌情强化，避免为了覆盖而硬塞：
+{% for elem in blueprint.element_selection.extension_elements %}
+- **{{ elem.name }}**：{{ elem.prompt_hint }}
+{% endfor %}
+{% endif %}
+{% endif %}
+{% if execution_plan is defined and execution_plan %}
+
+## 本地执行提醒
+{% if execution_plan.opening_contract %}- 开篇：{{ execution_plan.opening_contract }}{% endif %}
+{% if execution_plan.ending_contract %}- 结尾：{{ execution_plan.ending_contract }}{% endif %}
+{% for item in execution_plan.beat_execution_plan | default([]) %}
+{{ item.sequence }}. 约 {{ item.word_budget | default(0) }} 字｜阶段：{{ item.phase_name | default('未命名阶段') }}{% if item.turning_point_hint | default('') %}｜必须落地转折：{{ item.turning_point_hint }}{% endif %}
+{% endfor %}
+{% if execution_plan.completion_contract %}
+### 完整性合同
+{% if execution_plan.completion_contract.core_question %}- 核心问题：{{ execution_plan.completion_contract.core_question }}{% endif %}
+{% if execution_plan.completion_contract.resolution_target %}- resolution 目标：{{ execution_plan.completion_contract.resolution_target }}{% endif %}
+{% if execution_plan.completion_contract.ending_strategy %}- 结尾策略：{{ execution_plan.completion_contract.ending_strategy }}{% endif %}
+{% if execution_plan.completion_contract.final_emotional_landing %}- 最终情绪落点：{{ execution_plan.completion_contract.final_emotional_landing }}{% endif %}
+{% endif %}
+{% endif %}
+
+{# ============================================================
+   ★ 修复指令（按优先级排列 — 必须自上而下执行）
+   ============================================================ #}
+
+## ★ 修复指令（按优先级排列 — 必须自上而下执行）
+
+### 【P0】硬约束（阻断性问题 — 必须优先修复）
+{% if target_word_count is defined and target_word_count %}
+- **[字数自检]** {{ wc_macros.render_word_constraint_self_check(target_word_count) }}
+{% endif %}
+{% if completeness_issues %}
+- **[完整性]** 以下完整性问题必须修复：
+{% for item in completeness_issues %}
+  - {{ item }}
+{% endfor %}
+{% endif %}
+{% if completeness_warning %}
+- **[完整性警告]** {{ completeness_warning }}
+{% endif %}
+{% if repair_focus_issues %}
+- **[定向质量修复]** 以下问题必须优先修复：
+{% for item in repair_focus_issues %}
+  - {{ item }}
+{% endfor %}
+{% endif %}
+{% if repair_warning %}
+- **[修复目标]** {{ repair_warning }}
+{% endif %}
+{% if blueprint is defined and blueprint %}
+- **[蓝图对齐]** 不得偏离蓝图锚定的时间、地点、主角色和核心事件；若开头或结尾不符合 execution_plan 的执行目标，必须优先修正。
+{% endif %}
+{% if prompt_leak_hits %}
+- **[提示词清理]** 清除以下提示词痕迹：
+{% for item in prompt_leak_hits %}
+  - {{ item }}
+{% endfor %}
+{% endif %}
+
+### 【P1】重要修复（P0 满足后必须处理）
+- 以上方 P0 问题队列和上一轮高优先级评估建议为唯一主动改文范围。
+- 未被问题队列点名的结构、人物关系、POV、结局和世界规则必须保持；不做“顺手重写”。
+- 修复采用最小充分改动：先处理定位段落，只在防止因果、连贯或意图回归时扩展到相邻段落。
+{% if opening_style %}- 开篇不得偏离：{{ opening_style }}。{% endif %}
+{% if ending_style %}- 结尾不得偏离：{{ ending_style }}。{% endif %}
+- 全篇保持既定基调（{{ tone }}）；风格润色不得覆盖 P0/P1 修复。
+{% if eval_feedback %}
+**上一轮评估反馈（本轮请优先修复）**
+- 评估总分：{{ "%.1f"|format(eval_feedback.overall_score | default(0)) }} / 10
+{% if eval_feedback.summary %}- 评估摘要：{{ eval_feedback.summary }}{% endif %}
+{% if eval_feedback.low_dimensions %}
+### 低分维度（<7）
+{% for dim in eval_feedback.low_dimensions %}
+- {{ dim.dimension }}：{{ "%.1f"|format(dim.score | default(0)) }}{% if dim.comment %}（{{ dim.comment }}）{% endif %}
+{% endfor %}
+{% endif %}
+{% if eval_feedback.repair_suggestions %}
+### 定向修复建议
+{% for suggestion in eval_feedback.repair_suggestions %}
+- [{{ suggestion.dimension or "general" }}][{{ suggestion.priority or "medium" }}] {{ suggestion.issue }}{% if suggestion.location %}（{{ suggestion.location }}）{% endif %}：{{ suggestion.suggestion }}
+{% endfor %}
+{% endif %}
+{% endif %}
+
+### 【P2】建议改进（仅当 P0/P1 均已满足时处理）
+{% if word_count_warning %}
+- **[字数提醒]** {{ word_count_warning }}
+{% endif %}
+
+{{ render_style_profile_for_stage(style_profile | default(None), stage="edit", include_banned_phrases=true) }}
+
+{# ============================================================
+   通用检查 + 输出格式
+   ============================================================ #}
+
+## 通用检查
+- 原始节拍内容不可遗漏。
+- 字数保持在目标范围内（目标约 {{ target_word_count or '未提供' }} 字）。
+- 短篇必须有完整开端、推进和收束；即便保留余味，也不能显得"故事只写到一半"。
+- 检查人物关系一致性：若两人关系从"信任/盟友"变为"试探/敌对"，必须有明确触发事件，否则修正为合理状态。
+- 检查场景转换：每处场景转换应有至少一个感官锚点（如特定气味、触感、声音）作为过渡。
+- 若提供了上一轮评估反馈，先修复低分维度与高优先级修复建议，再做润色增强。
+{{ creative_specificity_rules(title="") }}
+{% if completeness_warning %}
+- **优先修正完整性**：把这篇短篇修成完整故事，不准停在"待续式"悬空状态。
+- **最后一段重写标准**：必须兑现 resolution 目标，并给出明确情绪或事件落点。
+{% endif %}
+
+## 质量校准
+- 工作身份：你是一位契约感很强的小说执行编辑，擅长把输入约束转化为有动作、有选择、有后果的叙事内容。
+- 创意推断路径：先找情感引擎与冲突压力，再落到动作、对白、场面调度和后果。
+- 字段级质量示例（非输出格式）：平弱=“角色很紧张”；高质量=“角色在具体选择前暴露代价、误判或情绪转折”。
+- 可操作路径：每个新增内容都服务于已给人物动机、场景阻力、悬念推进或情绪落点。
+
+## 交付前核验
+- P0/P1/P2 优先级是否被保持，且没有让弱参考覆盖硬约束。
+- 是否能把关键判断回指到输入证据、上游契约或已批准计划。
+- 是否避免新增未授权的人物、地点、世界规则、未来 payoff 或格式协议。
+- 是否把抽象目标转化为可观察的行动、冲突、状态变化或章节承接点。
+
+{#- ---------------------------------------------------------------------------
+    格式层：输出格式约束
+    --------------------------------------------------------------------------- -#}

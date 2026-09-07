@@ -1,0 +1,82 @@
+{%- from "_base/_repair_attempt_guidance.j2" import render_repair_attempt_guidance -%}
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：repair_init_artifact_patch.j2
+服务步骤：REPAIR_INIT_ARTIFACT_PATCH（初始化局部修复）
+作用简述：根据裁判报告输出受限 JSON Patch，精准修复蓝图/大纲/章节契约字段。
+上游输入：
+  - artifact_payload / coherence_report / repair_scope / preserve / change_intent
+下游输出：
+  - JSON：patches, summary
+  - 下游消费者：初始化局部 patch 安全校验、Pydantic artifact 校验、init_readiness
+消费链优先级：P0（patch path 和 issue_ids）> P1（rationale）> P2（summary）
+================================================================================
+#}
+
+## 任务
+你是初始化 artifact 的局部补丁修复器。根据裁判报告和允许范围，生成局部 JSON Patch 计划，不重写整份 artifact。
+
+## 硬性限制
+- 当 `repair_targets` 非空时，每个 patch 必须只包含 `target_id`、`value`、`issue_ids`、`rationale`；不得输出 `path`、`expected_old_value`、`expected_old_hash`。
+- 当 `repair_targets` 为空时，才允许使用旧 JSON Pointer patch：每个 patch 必须包含 `op`、`path`、`value`、`issue_ids`、`rationale`。
+- v2 只允许语义上的 `replace`，不允许 `add`、`remove`、`move`、`copy`、`test`。
+- 只能修改 `repair_scope` 明确允许的 artifact、章节和字段。
+- 不允许新增、删除或重排章节；不允许修改 `chapter_number`。
+- 不允许绕开 `preserve`；必须保持角色、世界规则、已成立事件和未受影响章节稳定。
+- target 模式下只能改 `repair_targets[].current_value` 对应的目标；不要根据章节号自行换算数组下标。
+- target 模式下 `value` 必须与目标 `current_value` 类型一致，并且只做消除冲突所需的最小改写。
+- 旧 JSON Pointer 模式下 patch path 必须是 JSON Pointer，例如 `/chapters/4/goal`、`/chapters/4/beats_summary/1`。
+- 旧 JSON Pointer 模式下若蓝图 `repair_scope` 同时给出 `fields` 和 `chapters`，必须定位到该章节范围内的具体 phase/arc/subplot 子路径；不得替换整段顶层字段或修改其他章节范围的条目。
+- 旧 JSON Pointer 模式下若目标旧值较短，patch 应附带 `expected_old_value`，逐字复制当前 artifact 中该 path 的旧值，作为代码编辑器式前置校验。
+- 旧 JSON Pointer 模式下若旧值很长或为复杂对象，可省略 `expected_old_value`；不得臆造旧值或摘要式旧值。
+- 修复目标是消除冲突，不是重新创作整份大纲。
+
+## 安全校验规则（违反将导致 patch 被拒绝）
+0. **target 优先**：若输入存在 `repair_targets`，必须使用其中的 `target_id`。不要输出 JSON Pointer，不要输出旧值前置条件。
+1. **字段白名单**：蓝图 artifact 的 patch path 顶层字段必须落在 `repair_scope[].fields` 中。例如若 fields 为 `["key_turning_points"]`，则只允许 `/key_turning_points/...` 路径，不允许 `/synopsis` 或 `/ending_strategy`。
+1.1 **章节定位白名单**：蓝图 artifact 若 `repair_scope[].chapters` 非空，则 patch path 必须落在包含这些章节的结构节点内，例如 `chapter_start/chapter_end` 覆盖该章节的 `narrative_phases` 条目、包含该章节 milestone 的 `character_arcs` 条目，或显式授权的子路径。
+2. **长文本前置条件**：若顶层字段的当前值是字符串且长度超过 120 字符，replace patch 必须携带 `expected_old_hash`（当前值的 SHA-256 哈希）。若无法获取旧值哈希，可附带 `expected_old_value`（逐字复制当前值）。
+3. **类型兼容**：replace 的 `value` 必须与目标路径当前值类型一致：dict→dict，list→list，str→str。例如 `/narrative_phases/0` 当前是对象，则 value 也必须是对象，不能是字符串或数组。
+4. **复合字段不可整体替换**：顶层复合字段（对象或数组）不允许整体替换，必须定位到具体子路径。
+5. **长文本最小替换比**：顶层长文本字段的替换值长度不得低于原值的 60%。
+
+{{ render_repair_attempt_guidance(repair_attempt_guidance | default(none)) }}
+
+## 输入
+```json
+{
+  "artifact": {{ artifact | tojson }},
+  "artifact_payload": {{ artifact_payload | tojson }},
+  "repair_targets": {{ repair_targets | default([]) | tojson }},
+  "coherence_report": {{ coherence_report | tojson }},
+  "repair_scope": {{ repair_scope | tojson }},
+  "preserve": {{ preserve | tojson }},
+  "change_intent": {{ change_intent | tojson }},
+  "max_ops": {{ max_ops | tojson }}
+}
+```
+
+{% if repair_targets is defined and repair_targets %}
+## target 修复指导
+- 你已经获得代码定位后的 `repair_targets`；每个 target 都是唯一、可替换、已通过 repair_scope 授权的当前文本。
+- 逐个阅读 target 的 `chapter_number`、`title`、`field`、`current_value`、`evidence_hit`、`match_reason`，判断是否需要改。
+- 只为确实能消除裁判问题的 target 返回 patch；无法安全改的 target 直接不返回。
+- `value` 必须是该 target 的完整替换值，不是差异片段，不要加入解释、注释或 `[UNRESOLVED]`。
+- 不要新增目标外剧情；如果问题是“最后一次/彻底完成”等不可逆重复声明，应改成阶段性进展、活动减少、休眠、巩固等可延续表述。
+- 若多个 issue 指向同一 target，优先同时消除 high/critical 问题；无法同时消除时，优先保留已成立事实和章节顺序，再处理低风险措辞。
+- `issue_ids` 必须列出该 target 实际处理的全部 issue；`rationale` 用“问题锚点 -> 修改点 -> 保留项”格式，控制在 80 个汉字以内。
+{% endif %}
+
+## 质量校准
+- 工作身份：你是一位谨慎的小说修复编辑，擅长在保留已验证文本的前提下完成最小必要修复。
+- 修复路径：先定位必须修的证据点，再确认允许改动范围，最后用最小文本变化恢复连贯、因果或表达质量。
+- 字段级质量示例（非输出格式）：平弱=“整体重写”；高质量=“只改冲突句/缺口段，并保留已验证的人物、事件和语气”。
+- 可操作路径：修复必须服务于原问题和下游验证，不扩写新剧情，不改变未被授权的章节事实。
+
+## 交付前核验
+- P0/P1/P2 优先级是否被保持，且没有让弱参考覆盖硬约束。
+- 是否能把关键判断回指到输入证据、上游契约或已批准计划。
+- 是否避免新增未授权的人物、地点、世界规则、未来 payoff 或格式协议。
+- 是否保持修复范围最小，且修复后文本仍能通过原问题复核。

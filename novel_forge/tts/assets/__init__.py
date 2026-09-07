@@ -1,0 +1,1 @@
+"""TTS assets subpackage."""

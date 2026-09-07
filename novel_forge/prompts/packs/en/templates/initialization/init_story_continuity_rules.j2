@@ -1,0 +1,91 @@
+{# source_template_hash: f2a6bef3f5e0c4912c760f1ebc84260c789f492bd89facdf280156f34c4fbd93 #}
+{#
+================================================================================
+[Notes]
+================================================================================
+Prompt: init_story_continuity_rules.j2
+Service Step: INIT_STORY_CONTINUITY_RULES (StoryBible Fragment: Continuity Rules)
+Function Summary: Generates executable continuity constraints for time, address terms, self-reference, etiquette, terminology, anachronisms, etc.
+Upstream Input: premise/world_hint/pov_hint/genre/tone/extra_instructions
+Downstream Output: JSON: {"continuity_rules": {...}}
+Downstream Consumers: INIT_STORY_BIBLE Local Merger, Chapter Writing/Editing/Consistency Check
+Consumer Chain Priority: P0 = Only output rules actually needed for this project; P1 = Omit non-applicable fields; P2 = Short phrases must be executable
+================================================================================
+#}
+{%- from "_base/_shared_evidence_anchor.j2" import render_shared_evidence_anchor -%}
+
+{#- Guidance Layer -#}
+Please only generate the continuity rules fragment for StoryBible. For ordinary modern daily life themes without special address terms/etiquette/era anachronism risks, you may output only a few necessary fields.
+
+{{ render_shared_evidence_anchor(shared_evidence_anchor) }}
+
+## Input
+- premise: {{ premise }}
+{% if story_core %}
+## Shared Core Anchors (Cannot Be Rewritten)
+{{ story_core | tojson(indent=2) }}
+{% endif %}
+{% if world_rules %}
+## Established World Rules (Time, Address Terms, Terminology Must Comply Here)
+{{ world_rules | tojson(indent=2) }}
+{% endif %}
+{% if themes_and_symbols %}
+## Established Theme Boundaries (Dialogue Register and Taboos Must Not Conflict)
+{{ themes_and_symbols | tojson(indent=2) }}
+{% endif %}
+{% if genre %}- genre: {{ genre }}{% endif %}
+{% if tone %}- tone: {{ tone }}{% endif %}
+{% if world_hint %}- world_hint: {{ world_hint }}{% endif %}
+{% if pov_hint %}- pov_hint: {{ pov_hint }}{% endif %}
+{% if extra_instructions %}- extra_instructions: {{ extra_instructions }}{% endif %}
+{% if research_context and research_context.summary %}
+
+## Research Reference (Weak Reference)
+- Usage Boundary: Only used to supplement real address terms, time, systems, etiquette, material culture, and anachronism risks; must not override established world rules.
+- Current Status: {{ research_context.status }} / {{ research_context.provider }}
+- Summary: {{ research_context.summary }}
+{% if research_context.source_notes %}
+- Source Key Points:
+{% for note in research_context.source_notes %}
+  - {{ note }}
+{% endfor %}
+{% endif %}
+{% if research_context.real_world_constraints %}
+- Real-World Constraints Reference (for time_convention/institution_terms/material_culture/anachronism_blacklist):
+{% for c in research_context.real_world_constraints %}
+  - {{ c }}
+{% endfor %}
+{% endif %}
+{% if research_context.terminology %}
+- Available Terminology (for address_rules/institution_terms): {{ research_context.terminology | join(', ') }}
+{% endif %}
+{% if research_context.uncertainty_notes %}
+- Uncertainty Points (Downgrade to pending verification, do not write as hard rules):
+{% for u in research_context.uncertainty_notes %}
+  - {{ u }}
+{% endfor %}
+{% endif %}
+{% endif %}
+
+## Requirements
+- Fields may be omitted when not applicable; do not output empty arrays or "N/A".
+- Maximum 8 rules per category, each under 120 characters; all rule lists must be string arrays, do not write as object arrays like `{rule_id, content}`.
+- Do not add fields outside the StoryBible schema.
+
+## Field Content Constraints
+- `continuity_rules` may only contain: `time_convention`, `social_hierarchy`, `address_rules`, `self_reference_rules`, `etiquette_rules`, `institution_terms`, `material_culture`, `anachronism_blacklist`, `dialogue_register_rules`.
+- Non-applicable fields should be completely omitted; field names should only use the English `snake_case` keys listed above, and explanatory content should be merged into the corresponding rule strings.
+
+## Quality Calibration
+- Work Identity: You are a rigorous novel quality reviewer, skilled at locating problems using short evidence, clear boundaries, and downstream-executable suggestions.
+- Review Path: First confirm input evidence, then judge problem type, impact scope, and repair boundaries, finally provide downstream-executable location information.
+- Field-Level Quality Examples (not output format): Weak = "This is inconsistent"; High Quality = "Point out which two pieces of evidence conflict, risk level, verifiable problem".
+- Actionable Path: Each judgment must support verification or repair; low-confidence content should be downgraded to pending verification problems.
+
+## Pre-Delivery Verification
+- Whether P0/P1/P2 priorities are maintained, and weak references are not allowed to override hard constraints.
+- Whether key judgments can be traced back to input evidence, upstream contracts, or approved plans.
+- Whether new unauthorized characters, locations, world rules, future payoffs, or format agreements are avoided.
+- Whether short evidence, risk level, location information, and downstream-verifiable problems are provided.
+
+{#- Format Layer -#}

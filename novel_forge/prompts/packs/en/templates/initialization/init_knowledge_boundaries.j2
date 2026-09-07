@@ -1,0 +1,127 @@
+{# source_template_hash: db755f19be837cca0b765343a78efc874b3e4106fa9fdfb7781e34ce2812e32b #}
+{#
+================================================================================
+[NOTES]
+================================================================================
+Prompt: init_knowledge_boundaries.j2
+Service Step: INIT_KNOWLEDGE_BOUNDARIES (Initialize Character Knowledge Boundaries)
+Summary: Based on character and world-building settings, generate knowledge
+         boundaries for each character at the start of the story, including
+         known facts, suspicions, misconceptions, hidden information, and
+         sensory access limitations. Used for limited POV information
+         constraints and knowledge ledger initialization.
+Upstream Inputs:
+  - character_bible: Output from INIT_CHARACTER_BIBLE (character profiles)
+  - story_bible: Output from INIT_STORY_BIBLE (world-building settings)
+Downstream Outputs:
+  - JSON: characters list, each containing knowledge_boundaries
+  - Downstream Consumers:
+    * story_kernel.knowledge_ledger: Converts knowledge boundaries to ledger entries
+    * narrative_state.entity_registry: Writes sensory_access_rules to entity records
+    * DRAFT_CHAPTER / WAVE_CHAPTER: Consumes knowledge boundaries to constrain POV visibility
+    * knowledge_boundary_audit: Audits chapters for hidden knowledge leakage
+Consumption Chain Priority:
+  P0 = known_facts / misbeliefs / secrets_kept accuracy (directly impacts POV leak determination)
+  P1 = suspected plausibility / sensory_access_rules physical feasibility
+  P2 = Entry granularity and deduplication
+Brief Example:
+  Input: character_bible={characters:[{name:"Lin Yuan",...}]}, story_bible={era:"near-future",...}
+  Output: {"characters":[{"character_id":"char_xxx","name":"Lin Yuan","knowledge_boundaries":{"known_facts":["..."],"suspected":["..."],"misbeliefs":["..."],"secrets_kept":["..."],"sensory_access_rules":["..."]}}]}
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer: Task and Input
+    --------------------------------------------------------------------------- -#}
+
+Based on the following character profiles and world-building settings, generate **knowledge boundaries** for each character at the start of the story.
+
+## What Are Knowledge Boundaries
+
+This work employs limited-perspective narration — each character can only know information obtainable through **their own perception, being told by others, or reasonable inference**.
+Knowledge boundaries describe the information state a character already holds **before the first page of the story turns**, which determines:
+
+- What facts the character can naturally mention, reference, or act upon in the narrative
+- What information the character **should not know** (if it appears in the text, it constitutes information leakage)
+- Under what conditions the character's **misconceptions** will be revealed (creating tension for future plot)
+- The character's **sensory access limitations** — information physically impossible to obtain (e.g., conversations through walls, actions in sealed rooms)
+
+## World-Building Settings
+{{ story_bible | tojson(indent=2) if story_bible is mapping else story_bible }}
+
+## Character Profiles
+{{ character_bible | tojson(indent=2) if character_bible is mapping else character_bible }}
+
+{#- ---------------------------------------------------------------------------
+    Field Specifications and Constraints
+    --------------------------------------------------------------------------- -#}
+
+## Field Specifications
+
+The final result is organized as a top-level `characters` list; each character entry corresponds to one character in `character_bible` and contains their `knowledge_boundaries`.
+
+Generate `knowledge_boundaries` for **each character** in `character_bible`, containing the following five dimensions:
+
+### known_facts (Confirmed Information)
+Information the character firmly believes to be true. Sources include: personal experiences, reliable information from others, common-sense world knowledge.
+- Each entry should be a concise factual statement
+- Include common knowledge related to the character's identity, profession, and background
+- Include key events the character has already experienced before the story begins
+- Example: "Lin Yuan knows his memories have been rewritten," "Lin Yuan works as a Level Three Reclaimer at the Memory Administration Bureau"
+
+### suspected (Suspicions)
+Information the character is aware of but not yet certain about.
+- Each entry should be the character's reasonable speculation based on existing clues
+- Confidence level is lower than known_facts, but sufficient to influence character behavior
+- Example: "Lin Yuan suspects certain childhood memories have been tampered with"
+
+### misbeliefs (Misconceptions)
+Information the character incorrectly believes — objectively false, but the character takes it as truth.
+- Each misconception should be supported by the world-building or character background (why the character would believe this)
+- Misconceptions are an important source of plot tension; design them carefully
+- Example: "Lin Yuan believes all his memories before joining the bureau are authentic"
+
+### secrets_kept (Hidden Information)
+Information the character actively chooses not to let others know.
+- Include facts the character knows but is unwilling to share
+- Include information the character unconsciously possesses but would deliberately hide
+- Example: "Lin Yuan hides his ability to perceive residual traces of deleted memories"
+
+### sensory_access_rules (Sensory Access Limitations)
+The character's information acquisition limitations at the physical/perceptual level. These are **hard constraints**, not dependent on the character's will.
+- Describe the range of information the character **cannot** obtain through their own senses
+- Consider physical distance, spatial isolation, sensory capability limits
+- Example: "Cannot see actions in the next room," "Cannot hear conversations in a sealed room," "Cannot perceive others' true inner thoughts"
+- If the character has special abilities (e.g., extrasensory perception), note the ability boundaries: "Can perceive emotional fluctuations but cannot read specific thoughts"
+
+{#- ---------------------------------------------------------------------------
+    Quality Calibration
+    --------------------------------------------------------------------------- -#}
+
+## Quality Calibration
+- Working Identity: You are a narrative information architect, skilled at delineating reasonable information boundaries for each character under limited-perspective narration.
+- Planning Inference Path: First lock in P0 hard constraints (known_facts and misbeliefs must be consistent with world-building), then allocate P1 (suspicions and secrets_kept should have plot functions), finally use P2 to supplement sensory limitations.
+- Field-Level Quality Examples (not output format): Weak = "knows many things"; High Quality = "knows his Level Three clearance at the Memory Administration Bureau only allows access to cases rated A and below".
+- Actionable Path: Each knowledge boundary entry should be directly referenceable and verifiable by subsequent chapter POV audits.
+
+## Core Principles
+- **Information Consistency**: known_facts must be consistent with the world-building in story_bible and the character's backstory
+- **Misconception Plausibility**: misbeliefs must be supported by character background; they cannot be baseless errors
+- **Concealment Motivation**: secrets_kept should have reasonable concealment motives (self-protection, protecting others, avoiding conflict, etc.)
+- **Sensory Physicality**: sensory_access_rules must be hard physical/perceptual constraints, not psychological preferences
+- **Non-Omniscience Principle**: Unless the character isset as omniscient (set as omniscient), each character should have a large amount of unknown information
+- **Mutual Exclusion Check**: Character A's secrets_kept should not appear in Character B's known_facts (unless there is a reasonable information transmission channel)
+- **Entry Granularity**: Each knowledge entry should be an atomic fact; do not combine multiple independent pieces of information
+
+## Pre-Delivery Verification
+- Whether P0/P1/P2 priorities are maintained, and no weak references override hard constraints.
+- Whether key judgments can be traced back to input evidence, upstream contracts, or approved plans.
+- Whether unauthorized characters, locations, world rules, future payoffs, or format agreements are avoided.
+- Whether character fields and knowledge boundary fields remain stratified: character identity fields belong to the character entry itself and should not be written inside `knowledge_boundaries`.
+- Whether abstract goals are transformed into observable actions, conflicts, state changes, or chapter continuation points.
+- Whether each character's knowledge boundaries match their identity, profession, and background story.
+- Whether misconceptions and secrets_kept leave room for revelation in future plot development.
+
+{#- ---------------------------------------------------------------------------
+    System contract injected by PromptBuilder
+    --------------------------------------------------------------------------- -#}

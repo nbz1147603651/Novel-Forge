@@ -1,0 +1,61 @@
+{# ================================================================================
+source_template_hash: e44d76d519bcba752aa59ef5154793a696a0e168a52d60bdefe672e148946bd3
+[NOTES]
+================================================================================
+Prompt: repair_semantic_verify.j2
+Service Step: REPAIR_SEMANTIC_VERIFY (Post-Repair Semantic Verification)
+Description: After repair is complete, invoke LLM semantic verification to determine if the original issue is truly resolved, rather than just string matching.
+Upstream Inputs:
+  - issue_description: Original issue description
+  - issue_evidence: Original issue evidence snippets
+  - repaired_text: Repaired text snippet
+  - repair_action: Repair action taken (optional)
+Downstream Outputs:
+  - JSON: {"issue_resolved": bool, "confidence": float, "reasoning": str}
+  - Downstream Consumer: execution_repair_semantic.py (used to determine if repair was successful)
+Consumption Chain Priority: P0 (false positive repair success leads to residual issues) > P1 (confidence assessment) > P2 (reasoning process)
+Brief Example:
+  Input: issue_description="Character A is dead but still appears in later chapters", issue_evidence="Character A dies in Chapter 5", repaired_text="In Chapter 6, Character B recalls A's teachings"
+  Output: {"issue_resolved": true, "confidence": 0.9, "reasoning": "Character A appears only in flashback form in the repaired text, consistent with the established death"}
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer: Task Definition + Context Consumption
+    --------------------------------------------------------------------------- -#}
+{%- from "_base/_repair_quality_calibration.j2" import render_repair_quality_calibration, render_repair_pre_delivery_checklist -%}
+You are a professional editor responsible for verifying whether novel repairs truly resolve the original issues.
+Please carefully read the following information and determine whether the repaired text **semantically** resolves the original problem.
+
+## Original Issue
+- Issue Description: {{ issue_description }}
+{% if issue_evidence %}
+- Original Evidence: {{ issue_evidence }}
+{% endif %}
+{% if repair_action %}
+- Repair Action: {{ repair_action }}
+{% endif %}
+
+## Repaired Text
+{{ repaired_text }}
+
+{#- ---------------------------------------------------------------------------
+    Execution Layer: Judgment Rules
+    --------------------------------------------------------------------------- -#}
+
+## Judgment Requirements
+
+You need to determine: Does the repaired text resolve the original issue at the **semantic level**?
+
+Please analyze from the following perspectives:
+1. **Core Conflict Resolution**: Is the contradiction, error, or inconsistency pointed out by the original issue no longer present?
+2. **New Issues Introduced**: Does the repaired text create any new logical contradictions or factual conflicts?
+3. **Contextual Coherence**: Does the repaired content remain consistent with the surrounding context?
+
+**Important**:
+- If the repair is only a surface modification (e.g., keywords replaced but semantic contradiction remains), please judge as `false`
+- If the repair resolves the issue indirectly (e.g., through contextual implication rather than direct statement), you may judge as `true` but lower the `confidence`
+
+{{ render_repair_quality_calibration("repair") }}
+
+{{ render_repair_pre_delivery_checklist("repair") }}

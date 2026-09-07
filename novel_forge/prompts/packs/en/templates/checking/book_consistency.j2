@@ -1,0 +1,305 @@
+{# ================================================================================
+source_template_hash: aa1d472773575f6b50f0b74ba0ecd4b703869d5265a39146fc190283284726d7
+[NOTES]
+================================================================================
+Prompt: book_consistency.j2
+Service Step: BOOK_CONSISTENCY (Full-Book Consistency Audit)
+Function Summary: Performs global diagnosis of completed long-form novel chapters, outputs evidence location, global findings, and repair queue candidates.
+                This stage does not directly execute repairs; repair queue execution is a separate entry point.
+Upstream Inputs:
+  - analysis_mode: Audit mode (summary/full_text)
+  - location_strictness: Location strictness (strict/balanced/loose)
+  - world_setting / world_rules: World-building settings
+  - character_profiles_compact / character_bible_names: Character profiles
+  - arc_summary: Narrative arc structure
+  - story_theme: Core theme
+  - conflict_hint / world_hint: Conflict/world-building supplementary notes
+  - chapter_summaries: Chapter summary list
+  - chapter_texts: Full chapter text (full_text mode)
+  - chapter_issue_pool: Issue panel issue pool
+  - audit_slices: Volume/blueprint phase/turning point/character arc/subplot/foreshadowing/motif slices
+  - canon_characters / canon_relationships: Canon status
+  - outline_summary: Outline summary
+  - prompt_hint: Additional audit requirements
+Downstream Outputs:
+  - JSON: {"issues", "repair_plan", "summary", "consistency_score"}
+  - Downstream Consumer: Global Audit Library / Repair Queue Executor (enters auto-repair only after precision gate passes)
+Consumption Chain Priority: P0 (timeline contradictions/character life-death conflicts) > P1 (world-building drift/narrative drift)
+              > P2 (name inconsistency/character state continuity)
+Brief Example:
+  Input: analysis_mode="summary", chapter_summaries=[{"chapter_number": 5, "key_events": ["discovery of secret letter"]}]
+  Output: {"issues": [...], "consistency_score": 8.5}
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer: Task Definition + Context Consumption
+    --------------------------------------------------------------------------- -#}
+Please perform a full-book consistency audit on the following completed long-form novel chapters, and output a verifiable issue list and repair queue candidate plan.
+
+## Stage Boundary
+- This stage is only responsible for discovering consistency issues, providing evidence, location, and candidate repair directions; do not claim to have fixed any body text.
+- `repair_plan` is only a candidate ranking for the repair queue, not an execution command. All issues must first be confirmed via local anchors, semantic recall, or targeted verifier before entering the independent repair queue execution.
+- For issues with insufficient evidence, impossible to locate, or requiring multi-chapter simultaneous judgment, please lower `confidence`, and explain the chapter comparison points that need verification in `description`; do not inflate issues to pad the repair plan.
+
+## Judgment Responsibility
+- Semantic judgment is your responsibility: whether it is a genuine contradiction, a common narrative term mistaken for an entity, or a surface conflict caused by flashback/dream/re-telling, must be decided by you based on textual evidence.
+- Local procedures are only responsible for JSON format validation, chapter/paragraph number normalization, deduplication, counting, aggregation, and downstream transmission; do not rely on local rules to judge truth/falsity for you.
+- If an issue requires downstream chapter-by-chapter verification, please write the points to be verified into `verification_questions`, and the handoff instructions into `handoff_notes`, so the downstream model knows what to compare.
+
+{% if active_audit_dimension %}
+## Current Dimension Execution Contract
+- active_audit_dimension={{ active_audit_dimension }}
+- This audit only covers this dimension; do not duplicate audit other dimensions for coverage.
+- When outputting issues, you must fill in `dimension="{{ active_audit_dimension }}"`.
+- If discovered issues depend on other dimension conclusions, please explain the dependency in `verification_questions` and `handoff_notes`; do not overestimate confidence.
+{% if dimension_focus %}
+{{ dimension_focus | tojson(indent=2) }}
+{% endif %}
+{% if dimension_audit_bundle | default({}) %}
+### DimensionAuditBundle
+The following objects are the only audit work orders for this round; `out_of_scope` dimensions are only used to avoid boundary crossing, not for supplementary audit.
+{{ dimension_audit_bundle | tojson(indent=2) }}
+{% endif %}
+{% if dimension_ledger_context %}
+### Completed Dimensions/Previous Slice Summary
+The following summary is the rolling ledger of dependent dimensions or previous slices of the same dimension, serving only as judgment background, not indicating that the current dimension has reached final ruling.
+{{ dimension_ledger_context | tojson(indent=2) }}
+{% endif %}
+{% endif %}
+
+{% if shared_evidence_anchor %}
+## Shared Evidence Anchor
+{{ shared_evidence_anchor | tojson(indent=2) }}
+All audit dimensions must use this as the common basis; dimension-specific context is only used to supplement judgment, not to override anchor facts.
+{% endif %}
+
+## Audit Mode
+- analysis_mode={{ analysis_mode | default("summary") }}
+- location_strictness={{ location_strictness | default("balanced") }}
+- max_issues_per_chunk={{ max_issues_per_chunk | default(12) }}
+
+{% if audit_slices %}
+## Global Audit Slices
+Description:
+- You must prioritize these slices for global diagnosis, rather than re-doing chapter-by-chapter audits.
+- volume / blueprint_phase / turning_point are responsible for arc judgments across consecutive chapters.
+- promise_thread / plot_thread / motif may be non-consecutive slices; focus on checking whether promises, subplots, and motifs are broken or drifted.
+- When outputting issues, if the slice can be determined, please preserve the slice clue in issue_id or description; the program will re-normalize to global_findings.
+
+{% for sl in audit_slices %}
+- slice_id={{ sl.slice_id }} | kind={{ sl.slice_kind }} | chapters={{ sl.chapters | join(',') }} | boundary={{ sl.boundary_chapters | join(',') }} | focus={{ sl.focus_dimensions | join(',') }}
+{% endfor %}
+{% endif %}
+
+{% if semantic_evidence_context %}
+## Semantic Recall Evidence
+The following content comes from semantic retrieval and can only serve as candidate recall; it can only be used as auto-repair basis after being supported by chapter text, paragraph anchors, or targeted verifier.
+{{ semantic_evidence_context | tojson(indent=2) }}
+{% endif %}
+
+{% if prompt_hint %}
+## Additional Audit Requirements
+{{ prompt_hint }}
+{% endif %}
+{% if audit_chunk_notice %}
+## Context Chunk Description
+{{ audit_chunk_notice }}
+{% endif %}
+{% if world_setting or world_rules %}
+## World-Building Settings
+{% if world_setting %}
+{{ world_setting }}
+{% endif %}
+{% if world_rules %}
+### Hard Rules (Violations Count as Errors)
+{% for rule in world_rules %}
+- {{ rule }}
+{% endfor %}
+{% endif %}
+{% endif %}
+
+{% if character_profiles_compact %}
+## Core Character Profiles
+{% for cp in character_profiles_compact %}
+- **{{ cp.name }}**{% if cp.get('gender') %} ({{ cp.gender }}){% endif %}{% if cp.get('role') %}, {{ cp.role }}{% endif %}{% if cp.get('backstory') %}: {{ cp.backstory }}{% elif cp.get('personality') %}: {{ cp.personality }}{% elif cp.get('arc') %}: {{ cp.arc }}{% endif %}
+{% endfor %}
+{% elif character_bible_names %}
+## Character Setting List
+{{ character_bible_names | join(', ') }}
+{% endif %}
+
+{% if arc_summary %}
+## Narrative Arc Structure
+{{ arc_summary }}
+{% endif %}
+{% if story_theme %}
+## Core Themes and Narrative Propositions
+{{ story_theme }}
+{% endif %}
+{% if conflict_hint %}
+## Internal and External Conflict Definitions (Criteria for Auditing Narrative Drift)
+{{ conflict_hint }}
+{% endif %}
+{% if world_hint %}
+## World-Building Supplementary Notes
+{{ world_hint }}
+{% endif %}
+
+{% if memory_enhancement_context %}
+## Memory Enhancement Context (From Historical Chapter Memory)
+{{ memory_enhancement_context }}
+{% endif %}
+
+## Chapter Summaries
+{% for ch in chapter_summaries %}
+### Chapter {{ ch.chapter_number }}
+{% if ch.summary %}- Summary: {{ ch.summary }}{% endif %}
+{% if ch.key_events %}- Key Events: {{ ch.key_events | join('; ') }}{% endif %}
+{% endfor %}
+
+{% if analysis_mode == "full_text" and chapter_texts %}
+## Full Chapter Text (With Paragraph Numbering)
+Description:
+- Each paragraph is marked with `[Pnumber]`, where the number is the paragraph number (starting from 1).
+- You must output issues that can be located to paragraph numbers as much as possible (paragraph_index / paragraph_span).
+- If a chapter is too long and gets truncated, the field `truncated=true` indicates that the chapter is not the full text.
+
+{% for ch in chapter_texts %}
+### Chapter {{ ch.chapter_number }}
+- paragraph_count={{ ch.paragraph_count }}
+- source_chars={{ ch.source_chars }}
+- truncated={{ ch.truncated }}
+{{ ch.numbered_text }}
+
+{% endfor %}
+{% endif %}
+
+{% if chapter_issue_pool %}
+## Issue Panel Issue Pool (From Chapter Coherence/Causality Reports)
+Description:
+- These are existing issue panel entries, containing chapter_number + lane + index anchors.
+- When outputting issues, if they can be aligned to this issue pool, please fill in linked_issue_refs for precise subsequent repair.
+- `lane` only allows `continuity` or `causal`.
+
+{% for item in chapter_issue_pool %}
+- [ch={{ item.chapter_number }} | lane={{ item.lane }} | idx={{ item.index }}]
+  type={{ item.issue_type }} | severity={{ item.severity }}
+  location={{ item.location }}
+  summary={{ item.summary }}
+{% endfor %}
+{% endif %}
+
+## Current Canon Status
+{% if canon_characters %}
+### Character Status
+{% for name, info in canon_characters.items() %}
+- {{ name }}: {% if info.alive is defined %}{% if info.alive %}Alive{% else %}Deceased (Chapter {{ info.death_chapter }}){% endif %}{% endif %}{% if info.location %}, location={{ info.location }}{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if canon_relationships %}
+### Character Relationships
+{% for rel in canon_relationships %}
+- {{ rel.character_a }} ↔ {{ rel.character_b }}: {{ rel.relationship_type }}{% if rel.description %} ({{ rel.description }}){% endif %}
+{% endfor %}
+{% endif %}
+
+{% if outline_summary %}
+## Outline Summary
+{{ outline_summary }}
+{% endif %}
+
+{% if character_bible_names %}
+## Character Setting List
+{{ character_bible_names | join(', ') }}
+{% endif %}
+
+## Audit Dimensions
+1. Global Timeline Arc (timeline_arc)
+2. Promise and Foreshadowing Fulfillment (promise_payoff)
+3. Character Arc Evolution (character_arc)
+4. Plot Thread Liveness (plot_thread_liveness)
+5. Motif Distribution and Semantic Drift (motif_distribution)
+6. Tension Curve (tension_curve)
+7. World Rule Integrity (world_rule_integrity)
+8. Cross-Chapter Cross-Validation (cross_chapter_validation)
+
+{% if active_audit_dimension %}
+The effective audit dimension for this call is only: {{ active_audit_dimension }}. The complete dimension list above is only the full-book audit table of contents, not the output scope for this call.
+{% endif %}
+
+## Forbidden Element Judgment Calibration
+- Forbidden elements only audit "specific expressions explicitly listed in the plan/issue pool/rules" or highly templated sensory/physical reactions; do not treat common narrative functional words as forbidden words.
+- "Voice" as a common noun or dialogue tag is not a violation; expressions like "voice lowered," "voice steady," "voice hoarse," "he said" should not be reported individually. Only explicitly hard-banned phrases or mechanically reused specific expressions should be reported.
+- Prioritize reporting specific phrases and templated reactions, such as "heartbeat like drums," "ringing in ears," "echoing in ears," "blood roaring," "cold sweat in palms," "icy fingertips," "chill down the spine," etc.
+- If it is truly necessary to report a forbidden element, use issue_type `forbidden_element_violation`, and evidence must provide specific short evidence from the original text; do not just write single words like "voice" or "smell."
+
+## Entity and State Judgment Calibration
+- Do not treat common time words, action words, emotional words, or narrative functional words as entities, such as "beginning," "tomorrow," "waiting," "night," "voice," "gaze," etc. Only report when the text explicitly uses them as characters, places, organizations, items, or proper concepts.
+- Short words surrounded by quotes are not necessarily props or entities; first judge whether they are titles, titles, objects, dialogue fragments, or common emphasis in context.
+- State contradictions such as life/death, relationships, and location must distinguish between actual occurrences, flashbacks, dreams, rumors, archival records, metaphorical statements, and character misunderstandings. When unable to distinguish, downgrade to suspected/low confidence, and list in downstream verification issues.
+
+## Cross-Chapter Cross-Validation Instructions
+You must perform cross-chapter comparative analysis on the following dimensions to identify cross-chapter contradictions:
+- **Timeline Cross-Validation**: Compare time markers across chapters (year, month, season, date, time period), detect time sequence contradictions, time jumps, and time rewinds. For example: Chapter 5 says "lunar December," but Chapter 8 says "March," with no transition in between.
+- **Character State Cross-Validation**: Compare character states across chapters (life/death, location, identity, relationship, knowledge), detect state contradictions. For example: In Chapter 10, character A is already dead, but in Chapter 15, character A appears again without reasonable explanation.
+- **Item/Prop Tracking**: Track key items (tokens, weapons, manuals, valuables) across chapters for their appearances and circulation, detect items appearing or disappearing out of nowhere. For example: The jade pendant obtained in Chapter 3 suddenly becomes a bronze mirror in Chapter 7.
+- **Foreshadowing Redemption Verification**: Check whether foreshadowing, suspense, and promises laid out in earlier chapters are responded to or reasonably explained in subsequent chapters. For example: The "mysterious envelope" mentioned in Chapter 2 is never mentioned again in the next 20 chapters.
+- **Causality Cross-Validation**: Check whether cross-chapter event causality chains are complete, and whether causes and effects are reasonably connected. For example: The "assassination attempt" in Chapter 6 has no reflection in the results in Chapter 9.
+
+Chapter Number Listing Requirements for Cross-Chapter Issues:
+- Each cross-chapter issue must list all chapter numbers involved (chapters_involved), at least 2 chapters.
+- primary_chapter should select the chapter where the issue is most obvious or most needs fixing.
+- The description should explicitly point out the specific chapter comparison of the contradiction, such as "Chapter 5 calls X female, but Chapter 12 calls X male."
+- evidence_pairs should list cross-chapter evidence pairs: each item must contain at least chapter_number, evidence, and claim. Do not provide one-sided evidence only.
+## Handoff Format for Upstream/Downstream
+- `evidence`: The shortest key original text evidence for the current primary_chapter.
+- `evidence_pairs`: Cross-chapter comparison evidence array for verification stage review; single-chapter issues can be empty arrays.
+- `verification_questions`: Write as questions the downstream model can directly answer, e.g., "Is the sentence in Chapter 6 a flashback rather than present time?"
+- `handoff_notes`: Explain why you think it needs fixing, the points most likely to be misjudged during verification, and the fix boundaries. This is not the main text fix instruction.
+- Only set confidence to 0.7 or higher when `evidence_pairs` and `verification_questions` can support downstream judgment.
+
+## Localization and Repair Output Requirements
+1. Each issue must specify the clear chapter(s) involved (chapters_involved, primary_chapter).
+2. If localization to a paragraph is possible, provide paragraph_index (1-based) and location (e.g., "paragraph 12").
+3. For issues eligible for the repair queue, provide:
+   - fix_mode: `repair_continuity` / `repair_causal` / `manual_patch`
+   - fix_action: `replace` / `insert` / `delete` / `rewrite`
+4. If the issue can be mapped to "Issue Panel Issue Pool", return linked_issue_refs (multiple allowed):
+   - chapter_number: Chapter number
+   - lane: continuity or causal
+   - index: Issue index (0-based)
+5. Evidence should be short original text excerpts (not lengthy restatements).
+6. issue_id must be stable and concise (e.g., `ch12_timeline_01`).
+7. This call outputs at most {{ max_issues_per_chunk | default(12) }} issues; prioritize critical/warning, verifiable, localizable, and repairable issues. Low-value duplicates go into summary instead of exhaustive listing.
+
+{% if location_strictness == "strict" %}
+## Localization Strictness (strict)
+- Prioritize reporting issues that can be precisely localized to paragraph and repaired.
+- Issues that cannot be localized to paragraph should be avoided; if reporting is necessary, note location="chapter-level (precise localization impossible)" and confidence<=0.35.
+{% elif location_strictness == "loose" %}
+## Localization Strictness (loose)
+- Allow reporting of chapter-level issues, but still strive to provide localizable paragraphs.
+{% else %}
+## Localization Strictness (balanced)
+- Balance between coverage and localizability; prioritize issues that can be localized to paragraph.
+{% endif %}
+
+## Audit Result Field Requirements
+- `issues`: Only include verifiable, localizable, and transferable issues; each field's meaning follows the "Issue Field Semantics" and "Localization and Repair Output Requirements" above.
+- `repair_plan`: Candidate queue for repairs; each item contains chapter_number, issue_ids, priority, strategy, not indicating any modifications to the main text.
+- `summary`: Overview of overall consistency risks for this batch; low-value duplicates can be consolidated here.
+- `consistency_score`: 0-10 points, deducted based on issue severity and coverage; maintain high scores when no clear issues exist.
+
+## Quality Calibration
+- Role: You are a rigorous novel quality reviewer, skilled at using short evidence, clear boundaries, and downstream-executable suggestions to localize issues.
+- Review path: First confirm input evidence, then judge issue type, impact scope, and fix boundaries, finally provide downstream-executable localization information.
+- Field-level quality examples (not output format): Weak = "this is incoherent"; High-quality = "point out which two pieces of evidence conflict, risk level, verifiable issues".
+- Actionable path: Every judgment must support verification or repair; low-confidence content is demoted to pending verification issues.
+
+## Pre-Delivery Verification
+- Are P0/P1/P2 priorities maintained without weak references overriding hard constraints?
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans?
+- Are unauthorized additions of characters, locations, world rules, future payoffs, or format agreements avoided?
+- Are short evidence, risk levels, localization information, and downstream-verifiable questions provided?

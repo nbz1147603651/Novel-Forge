@@ -1,0 +1,156 @@
+{#- 因果链验证 — VALIDATE_CAUSAL 任务的模板 -#}
+{# ================================================================================
+【备注】
+================================================================================
+提示词：causal_validate.j2
+服务步骤：VALIDATE_CAUSAL（因果验证）
+作用简述：对章节正文进行因果链深度审核，输出因果验证报告（支持全量/点验两种模式）。
+上游输入：
+  - causal_link：来自 BRIDGE_CHAPTER 的因果链锚定
+  - chapter_bridge：来自 BRIDGE_CHAPTER 的桥接契约
+  - chapter_number：章节编号
+  - character_notes：角色备注
+  - previous_chapter_ending：来自上一章 Persist 的末尾文本
+  - chapter_text / numbered_chapter_text：待验证的正文
+  - recheck_mode：是否为点验模式
+  - prior_issues：上一轮问题列表
+  - repaired_issue_types：本次修复涉及的问题类型
+  - must_resolve_summaries：必须解决的阻断归档问题
+  - must_resolve_issue_ids：必须点验的问题 ID
+下游输出：
+  - JSON：因果验证结果，输出契约由 Builder 注入
+  - 下游消费者：CausalRepairStep（用于因果修复）
+消费链优先级：P0（事件凭空发生/因果矛盾）> P1（决策动机缺失/转折铺垫不足）
+              > P2（causal_link 明确列出的悬念管理）
+简要例子：
+  输入：recheck_mode=true, prior_issues=[{"issue_type": "opening_causal_gap", "severity": "high"}]
+  输出：{"causal_score": 9.0, "issues": []}
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    指导层：任务定义 + 上下文消费
+    --------------------------------------------------------------------------- -#}
+{%- from "checking/_causal_core.j2" import causal_context, causal_checks, causal_issue_field_rules, causal_must_resolve -%}
+{% if recheck_mode %}
+请对以下章节正文进行**修复效果验证**（非全面重审）。
+
+{{ causal_context(causal_link, chapter_bridge, chapter_number, character_notes, previous_chapter_ending | default('')) }}
+{{ numbered_chapter_text | default(chapter_text) }}
+
+{{ causal_must_resolve(must_resolve_summaries) }}
+{% if must_resolve_issue_ids %}
+## 必须点验的 issue_id
+{% for issue_id in must_resolve_issue_ids %}
+- {{ issue_id }}
+{% endfor %}
+若其中任一问题仍未解决，输出的对应 issue 必须保留同一个 issue_id。
+{% endif %}
+{% if prior_issues %}
+## 本轮修复目标问题（仅用于点验）
+{% for item in prior_issues %}
+- [{{ item.severity | default('medium') }}] {{ item.issue_type | default('unknown') }}{% if item.issue_id %} id={{ item.issue_id }}{% endif %}：{{ item.summary | default('') }}{% if item.location %}（{{ item.location }}）{% endif %}
+  {% if item.repair_focus %}修复重点：{{ item.repair_focus }}{% endif %}
+  {% if item.postconditions %}
+  验收条件：
+  {% for condition in item.postconditions %}
+  - [{{ condition.validator_id }}] {{ condition.description }}{% if condition.evidence_hint %}（证据提示：{{ condition.evidence_hint }}）{% endif %}
+  {% endfor %}
+  {% endif %}
+{% endfor %}
+{% endif %}
+
+{% if repaired_issue_types %}
+## 本次修复涉及的问题类型
+{% for t in repaired_issue_types %}
+- {{ t }}
+{% endfor %}
+请优先验证上述类型，其余类型不主动扩检。
+{% endif %}
+
+## 验证任务说明
+{% if patch_only_repair %}
+本轮修复仅使用了**窄窗口补丁（patch）**，未进行整章重写。
+请只检查补丁触及区域及其邻接段落，不必重新全文审计。
+{% endif %}
+
+本轮不是全文重新审计，而是**针对上述已修复问题的点验**。请完成：
+
+{% if recheck_policy %}
+## 复审边界策略
+- 核心目标：先确认 prior_issues 是否已修复。
+- 扫描范围：{{ recheck_policy.scan_scope }}
+- 已解决规则：{{ recheck_policy.solved_issue_rule }}
+- 未解决规则：{{ recheck_policy.unresolved_issue_rule }}
+- 回归规则：{{ recheck_policy.regression_rule }}
+{% if recheck_policy.allow_new_issue_scan %}
+- 新问题只允许报告：{{ recheck_policy.new_issue_severities | join("/") }} 级别且由本轮修复直接引入的问题。
+{% endif %}
+{% endif %}
+
+1. **逐条核实**：对"阻断归档问题"中的每条，在正文中找到对应段落，判断问题是否已被消除。
+
+   按问题类型判断"已消除"的标准：
+
+   | 问题类型 | 必须满足，方可判定为已消除 |
+   |---------|------------------------|
+   | `event_without_cause` | 正文中明确写出了**发出者→传递渠道→接收场景**，三者缺一则视为未解决；不能因"有改动"就认为已消除 |
+   | `unmotivated_decision` | 正文中有内心活动或情境压力支撑决策，决策不再显得突兀 |
+   | `opening_causal_gap` | 开头段落与上一章结尾存在可感知的叙事衔接，读者无需自行联想 |
+   | `missing_causal_transition` | 转折处有前置铺垫（细节/对话/心理），转折不再突兀 |
+   | `causal_contradiction` | 矛盾点已被修正，不再与历史因果链冲突 |
+   | 其他类型 | 问题描述的核心断裂已在正文中有所交代 |
+
+   **重要：只报告未解决的问题**
+   - 如果某条问题已被修复（正文中已消除断裂），**不要**将其放入 `issues` 数组
+   - 已解决的问题仅在 `summary` 字段中一句话提及即可
+   - `issues` 数组应只包含：① 仍未解决的问题 ② 修复引入的回归问题 ③ 全局守卫扫描发现的新 critical/high 问题
+   - 如果所有问题都已解决，`issues` 数组应为空 `[]`
+
+2. **回归检查**：检查修复操作是否引入了**直接相关的新问题**（如修改某段落后造成与上下文的新矛盾），仅报告与本次修复区域直接相关的 **critical 或 high** 级别问题。
+3. **不扩大范围**：不要对修复未涉及的段落做全面检查，不主动寻找修复前已存在的其他问题。
+4. **禁止自创新问题**：只输出上述核实结果和回归问题。不要报告与本次修复无关的新发现。非目标问题由后续全量评估负责。
+5. **严重程度一致**：若目标问题仍然存在，以原始 severity 报告，不得升级也不得降级。
+6. **身份保持**：若 prior_issue 仍存在，必须在输出问题里原样填写它的 `issue_id`；若已解决，则不要再次输出该问题。
+{% if recheck_strategy | default('targeted_with_global_guard') == 'targeted_with_global_guard' %}
+7. **全局守卫扫描**：在完成上述点验后，快速通读全文，仅报告修复后新出现的 **critical 或 high** 级别结构性问题（如核心人物动机断裂、事件因果完全无法解释）。不要报告 medium 以下的问题，不要重报修复前已存在的问题。
+{% endif %}
+
+评分以"修复后该章是否达到可继续创作的质量基线"为标准，而非追求满分。
+
+{% else %}
+请对以下章节正文进行**章内因果链深度审核**。
+
+{{ causal_context(causal_link, chapter_bridge, chapter_number, character_notes, previous_chapter_ending | default('')) }}
+{% if has_previous_chapter is defined and not has_previous_chapter %}
+## 无上一章因果承接模式
+- 本章没有可审查的上一章尾声；不要因为缺少上一章事件延续、opening_causal_gap 或 previous_event 呼应而扣分。
+- 仍必须审查章内重大事件、角色决策、关键转折、信息传递来源和悬念管理是否有因果支撑。
+- 若第 1-4 段内部发生突兀事件，可以按章内 `event_without_cause` / `missing_causal_transition` 报告，但不得要求补“上一章结尾承接”。
+{% endif %}
+{{ numbered_chapter_text | default(chapter_text) }}
+
+{{ causal_must_resolve(must_resolve_summaries) }}
+{% if must_resolve_issue_ids %}
+## 必须点验的 issue_id
+{% for issue_id in must_resolve_issue_ids %}
+- {{ issue_id }}
+{% endfor %}
+{% endif %}
+{{ causal_checks() }}
+
+{% endif %}
+## 因果问题字段规则
+{{ causal_issue_field_rules(include_memory_fields=false) }}
+
+## 质量校准
+- 工作身份：你是一位严谨的小说质量审校员，擅长用短证据、明确边界和下游可执行建议定位问题。
+- 审校路径：先确认输入证据，再判断问题类型、影响范围和修复边界，最后给下游可执行的定位信息。
+- 字段级质量示例（非输出格式）：平弱=“这里不连贯”；高质量=“指出哪两处证据冲突、风险等级、可验证问题”。
+- 可操作路径：每条判断都要能支持复核或修复，低置信度内容降级为待验证问题。
+
+## 交付前核验
+- P0/P1/P2 优先级是否被保持，且没有让弱参考覆盖硬约束。
+- 是否能把关键判断回指到输入证据、上游契约或已批准计划。
+- 是否避免新增未授权的人物、地点、世界规则、未来 payoff 或格式协议。
+- 是否给出短证据、风险等级、定位信息和下游可验证的问题。

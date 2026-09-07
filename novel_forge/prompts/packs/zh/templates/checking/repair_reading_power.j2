@@ -1,0 +1,177 @@
+{%- from "_quality_standards.j2" import creative_specificity_rules -%}
+{%- from "_base/_artifact_source_contract.j2" import render_artifact_source_contract -%}
+{%- from "_base/_repair_attempt_guidance.j2" import render_repair_attempt_guidance, render_repair_self_check -%}
+{%- from "_base/_repair_quality_calibration.j2" import render_repair_quality_calibration, render_repair_pre_delivery_checklist -%}
+
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：repair_reading_power.j2
+服务步骤：REPAIR_READING_POWER（追读力修复）
+作用简述：只修复阅读驱动力问题：上章钩子回应、本章微兑现、章尾钩子。
+          不重新规划主事件，不引入新 POV 或后续章节揭秘。
+上游输入：
+  - chapter_text：待修正文
+  - typed_issues / issue_types：追读力问题
+  - expected_hook / expected_payoffs / previous_hook_description
+  - stage_cards.source：ChapterSourceSlice，含禁揭示边界
+  - stage_cards.quality / stage_cards.repair / stage_cards.style 局部派生卡
+下游输出：
+  - TEXT：修复后的完整正文
+消费链优先级：
+  P0 = prev_hook_unfulfilled / hook_missing / hook_too_weak
+  P1 = payoff_missing / outline_mismatch / 已验证风格声纹保持
+  P2 = 字数边界
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    指导层
+    --------------------------------------------------------------------------- -#}
+
+{% set cards = stage_cards | default({}) %}
+{% set source = cards.source | default({}) %}
+{% set source_contract = source.chapter_contract | default({}, true) %}
+{% set quality = cards.quality | default({}) %}
+{% set contract = source_contract if source_contract else (cards.contract | default({})) %}
+{% set plan_card = cards.plan | default({}) %}
+{% set bridge_card = cards.bridge | default({}) %}
+{% set repair = cards.repair | default({}) %}
+{% set style = cards.style | default({}) %}
+{% set editorial = cards.editorial | default({}) %}
+{% set knowledge = cards.knowledge | default({}) %}
+{% set cognitive_constraints = contract.cognitive_constraints | default([]) %}
+
+请对第 {{ chapter_number }} 章进行追读力定向修复。
+
+{{ render_artifact_source_contract(source, title="## Source Artifact 边界（P0）", mode="repair") }}
+
+## ticket/window 规则
+- 先看 typed_issues、expected_hook、expected_payoffs、previous_hook_description 与正文证据窗口。
+- 只修钩子、微兑现、信息节奏相关 ticket，不自由重写整章，不用宏观创作规划补新增剧情。
+- 钩子只能制造疑问、压力或阶段性回应，不能新增后续答案、确认式揭示或契约外事件。
+
+## 阅读力目标
+{% if previous_hook_description %}- 上章钩子：{{ previous_hook_description }}{% endif %}
+{% if expected_hook %}- 预期章尾钩子：{{ expected_hook }}{% endif %}
+{% if expected_payoffs %}- 预期微兑现：{{ expected_payoffs }}{% endif %}
+{% if quality.chapter_hook %}- 当前钩子方向：{{ quality.chapter_hook }}{% endif %}
+{% if quality.in_chapter_payoffs %}- 章内兑现方向：{{ quality.in_chapter_payoffs | join('；') }}{% endif %}
+{% if quality.force_resolve_suspense %}- 必须回应悬念：{{ quality.force_resolve_suspense | join('；') }}{% endif %}
+{% if bridge_card.pending_questions %}- 桥接悬念：{{ bridge_card.pending_questions | join('；') }}{% endif %}
+
+{% if contract.required_events or contract.forbidden_changes or contract.forbidden_progressions or contract.future_leak_risks or contract.exit_state_targets or plan_card.closing_contract or cognitive_constraints %}
+## 不可破坏的章节边界
+{% if contract.required_events %}- 必达事件：{{ contract.required_events | join('；') }}{% endif %}
+{% if contract.forbidden_changes %}- 禁止变化：{{ contract.forbidden_changes | join('；') }}{% endif %}
+{% if contract.forbidden_progressions %}- 禁止提前推进：{{ contract.forbidden_progressions | join('；') }}{% endif %}
+{% if contract.future_leak_risks %}- 未来泄露风险：{{ contract.future_leak_risks | join('；') }}{% endif %}
+{% if contract.exit_state_targets %}- 出口目标：{{ contract.exit_state_targets | join('；') }}{% endif %}
+{% if plan_card.closing_contract %}- 结尾契约：{{ plan_card.closing_contract }}{% endif %}
+{% if cognitive_constraints %}
+- 认知揭示边界已在 Source Artifact 中完整列出；钩子可以制造疑问和误导，但不得把未来真相、身份或秘密提前确认、坐实或公开解释。
+{% endif %}
+{% endif %}
+
+{% if repair.do_not_introduce %}## 不得引入
+{{ repair.do_not_introduce | join('；') }}
+{% endif %}
+{% if character_whitelist_note %}{{ character_whitelist_note }}{% endif %}
+{% if knowledge.character_cards or knowledge.chapter_ops %}
+## 角色知识边界（修复时不得破坏）
+- 钩子、微兑现和信息节奏只能改变读者可见信息；角色认知必须通过正文内观察、对话或事件获得。
+{% for kb in knowledge.character_cards %}
+{% set changes = kb.chapter_promised_changes | default([]) %}
+- {{ kb.character }}{% if kb.is_pov %}（当前 POV）{% endif %}：已知={{ kb.known_facts | default([]) | join('；') or '无特殊已知事实' }}；怀疑={{ kb.suspicions | default([]) | join('；') or '无' }}；误信={{ kb.misbeliefs | default([]) | join('；') or '无' }}{% if changes %}；本章认知变化={{ changes | map(attribute='target_text') | list | join('；') }}{% endif %}
+{% endfor %}
+{% endif %}
+{% if forbidden_elements %}修辞硬禁：{{ forbidden_elements | join('；') }}{% endif %}
+{% if forbidden_elements_soft %}修辞软禁：{{ forbidden_elements_soft | join('；') }}{% endif %}
+{% if intentional_callbacks %}允许回环：{{ intentional_callbacks | join('；') }}{% endif %}
+
+{% set style_modules = style.modules | default([]) %}
+{% set style_banned = style.banned_phrases | default([]) %}
+{% set editorial_voices = editorial.character_voices | default([]) %}
+{% if style.summary | default('') or style_modules or style_banned or editorial_voices %}
+## 风格与声纹保持（P1，不覆盖追读力 ticket）
+- 本节只用于让钩子、微兑现和信息节奏修补贴回原文语感；不得为了风格新增后续答案、重大事件、角色认知或关系结论。
+{% if style.summary | default('') %}- 风格概述：{{ style.summary }}{% endif %}
+{% if style.dialogue_ratio | default('') or style.pace_mode | default('') %}- 对话/节奏：{{ style.dialogue_ratio | default('') }} / {{ style.pace_mode | default('') }}{% endif %}
+{% if style.emotional_style | default('') or style.environment_ratio | default('') or style.info_density | default('') %}- 情绪/环境/信息密度：{{ style.emotional_style | default('') }} / {{ style.environment_ratio | default('') }} / {{ style.info_density | default('') }}{% endif %}
+{% for module in style_modules %}
+- {{ module.name | default('风格模块') }}：{{ module.rules | default([]) | join('；') }}
+{% endfor %}
+{% if style_banned %}- 项目级禁用短语：{{ style_banned | join('、') }}{% endif %}
+{% if editorial_voices %}
+- 对白声纹参考（只用于被修窗口，禁止照抄样例）：
+{% for item in editorial_voices %}
+  - {{ item.character | default('角色') }}：{{ item.sentence_profile | default('') }}；情绪句法={{ item.emotion_syntax | default('') }}{% if item.sample_lines | default([]) %}；样例={{ item.sample_lines[:2] | join(' / ') }}{% endif %}{% if item.taboo_patterns | default([]) %}；禁用={{ item.taboo_patterns | join('、') }}{% endif %}
+{% endfor %}
+{% endif %}
+{% endif %}
+
+{% if memory_guidance %}
+## 历史追读力修复指导
+{% if memory_guidance.strategy_recommendation %}
+- 推荐策略：{{ memory_guidance.strategy_recommendation.preferred_strategy }}（{{ memory_guidance.strategy_recommendation.reason }}，置信度 {{ memory_guidance.strategy_recommendation.confidence }}）
+{% if memory_guidance.strategy_recommendation.warning %}- 风险提醒：{{ memory_guidance.strategy_recommendation.warning }}{% endif %}
+{% endif %}
+{% if memory_guidance.matched_issues %}
+- 相似历史问题：
+{% for match in memory_guidance.matched_issues %}
+  - 第{{ match.chapter | default(match.chapter_number) }}章 / {{ match.issue_type }}：{{ match.summary }}{% if match.lesson_learned %}；经验：{{ match.lesson_learned }}{% endif %}{% if match.failure_pattern %}；失败模式：{{ match.failure_pattern }}{% endif %}
+{% endfor %}
+{% endif %}
+{% if memory_guidance.recommended_strategies %}- 可借鉴策略：{{ memory_guidance.recommended_strategies | join('；') }}{% endif %}
+{% if memory_guidance.avoid_strategies %}- 避免策略：{{ memory_guidance.avoid_strategies | join('；') }}{% endif %}
+{% if memory_guidance.success_rate is defined and memory_guidance.success_rate is not none %}- 历史成功率：{{ memory_guidance.success_rate }}{% if memory_guidance.total_attempts is defined %}（样本 {{ memory_guidance.total_attempts }} 次）{% endif %}{% endif %}
+{% if memory_guidance.warning %}- 跨章提醒：{{ memory_guidance.warning }}{% endif %}
+{% endif %}
+
+{{ render_repair_attempt_guidance(repair_attempt_guidance | default(none)) }}
+
+## 待修问题
+{% if structured_issues_block | default('') %}
+{{ structured_issues_block }}
+{% else %}
+{% for issue_type, issues_list in typed_issues.items() %}
+{% if issues_list %}
+### {{ issue_type }}
+{% for issue in issues_list %}
+- [Issue {{ issue.issue_id | default('未提供', true) }}] [{{ issue.severity }}] {{ issue.summary }}{% if issue.location %}（{{ issue.location }}）{% endif %}{% if issue.evidence %}；证据：{{ issue.evidence }}{% endif %}{% if issue.fix_suggestion %}；建议：{{ issue.fix_suggestion }}{% endif %}
+{% if issue.postconditions %}
+  验收：{% for condition in issue.postconditions %}{{ condition.description }}{% if not loop.last %}；{% endif %}{% endfor %}
+{% endif %}
+{% endfor %}
+{% endif %}
+{% endfor %}
+{% endif %}
+
+## 正文
+{{ chapter_text }}
+
+## 修复规则
+1. prev_hook_unfulfilled：在前半章用具体动作、发现、对话或结果回应上一章钩子。
+2. payoff_missing：在自然位置补一个信息、关系、能力、资源、认可、情绪或线索类微兑现。
+3. hook_missing / hook_too_weak：只改章尾必要段落，让结尾形成具体、可追踪、可点击的下一章驱动力。
+4. outline_mismatch：让钩子方向回到预期类型，但不推翻本章主事件。
+5. information_pacing_slow / information_pacing_stagnant：补一处新线索、关系确认、局势变化或阶段性答案；不要用说明腔空补信息。
+6. main_plot_surface / main_plot_stalled：让主线目标、阻力、结果或角色认知有一处可见推进，不改本章主事件结局。
+7. tension_depressed：强化关键段落压力、代价、期待或章尾承接压力，但不要新增计划外大事件。
+8. character_drive_weak：让核心角色做出带动机的选择、试探、拒绝或承担后果的行动。
+9. revelation_over_budget：把超预算重大揭示后移、拆分或降级为阶段性线索。
+10. 修复后字数保持在 {{ word_count_min }}-{{ word_count_max }} 之间。
+11. 禁止新增计划外 POV、禁出角色、后续章节答案、额外重大事件或大段注水。
+12. 不写解释、报告、JSON 或修复说明；正文必须完整。
+{{ creative_specificity_rules(title="") }}
+
+{{ render_repair_self_check("reading_power") }}
+
+{{ render_repair_quality_calibration("repair") }}
+
+{{ render_repair_pre_delivery_checklist("repair") }}
+
+{#- ---------------------------------------------------------------------------
+    格式层
+    --------------------------------------------------------------------------- -#}

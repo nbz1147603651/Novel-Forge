@@ -1,0 +1,104 @@
+{# source_template_hash: acdf6a626fe1cc848f54662abe6159d287a088a36dbf976f321e8164242e4422 #}
+{#
+================================================================================
+【REMARKS】
+================================================================================
+Prompt: plan_chapter_contracts.j2
+Service Step: PLAN_CHAPTER_CONTRACTS (Chapter-by-Chapter Contract Planning)
+Function Summary: Decompose the narrative contract for the entire book into executable contracts for the current input chapter.
+Upstream Inputs:
+  - narrative_contract: Narrative contract for the entire book
+  - outline: Chapter outline, may contain contract_batch for batch specification
+Downstream Outputs:
+  - JSON: chapter_contracts list, containing entry_state_requirements, required_events,
+    allowed_changes, forbidden_changes, required_progressions, allowed_progressions,
+    forbidden_progressions, completion_criteria, future_leak_risks, etc.
+  - Downstream Consumers: PLAN_CHAPTER / ADJUDICATE_CONTRACT_COMPLETION / State Adjudicator
+Consumption Chain Priority: P0 (must occur/remain/prohibit per chapter) > P1 (promise/relationship/item/knowledge ops) > P2 (sources)
+================================================================================
+#}
+
+## Task
+Decompose the narrative contract into executable contracts for the current input chapter.
+
+If the chapter outline contains `contract_batch`, only generate contracts for chapters whose `chapter_numbers` match those listed in `outline.chapters`; do not fill in other chapters that are not provided.
+
+## Source Artifact Generation Boundaries
+- This template generates the core payload of `ChapterContractIndexArtifact`; each chapter contract will be sliced into `ChapterSourceSlice` by downstream.
+- Each chapter contract only allows output of current chapter execution objectives, entry/exit states, knowledge changes, forbidden progressions, completion criteria, and entity reference clues.
+- Do not copy character bibles, world-setting bibles, or entire-book creation plans; for characters, only use canonical names/entity reference clues and chapter-relevant states.
+- Aliases, old names, or misnames must not be recreated in chapter contracts; if necessary to reference, only write the chapter-specific appellation risk of registered entities.
+- If `outline.entity_catalog.allowed_entities` is non-empty, all character/entity references must come from that catalog: use `entity_id` for structured ID fields, use `canonical_name` for natural language names; aliases can only be used for input recognition, not as output specification names.
+- Characters, items, locations, organizations, or concepts that cannot be confirmed in `outline.entity_catalog` must not be written into `pov_character_id`, `*_character_ids`, `item_ops.entity_id`, `relationship_ops`, `cognitive_constraints.cognitive_subjects`, or `cognitive_constraints.character_knowledge_coverage` keys; for entities that are genuinely needed for this chapter's narrative/outline and appearing for the first time, they must first be written into the corresponding candidate fields: characters in `new_character_candidates`, groups/organizations in `new_group_candidates` or `new_organization_candidates`, locations in `new_location_candidates`, items in `new_item_candidates`, concepts in `new_concept_candidates`, or unclassifiable entities in `new_entity_candidates`. When natural language operation fields like `knowledge_ops` in the same chapter need to reference them, they must use the same canonical name as the candidate.
+- Before delivery, self-verify all natural language character names, `cognitive_subjects`, `character_knowledge_coverage` keys, and evidence text: do not output misspelled names that differ by only one character from catalog canonical names; when unable to uniquely confirm, leave empty or rewrite as constraints without unregistered entities.
+- Forbidden reveals, knowledge boundaries, and promise fulfillment order should only be expressed in `cognitive_constraints`, `knowledge_ops`, `future_leak_risks`, `forbidden_progressions`, not scattered in free-form descriptions.
+- If subsequent chapter context is used to judge boundaries, only write auditable constraints like "this chapter must not confirm/fulfill in advance", do not write subsequent highlight scenes.
+
+## Field Content Constraints
+- Each object in `chapter_contracts[]` only allows these English `snake_case` fields: `chapter_number`, `title`, `entry_state_requirements`, `required_events`, `allowed_changes`, `forbidden_changes`, `promise_ops`, `relationship_ops`, `item_ops`, `knowledge_ops`, `cognitive_constraints`, `new_character_candidates`, `new_entity_candidates`, `new_group_candidates`, `new_collective_candidates`, `new_organization_candidates`, `new_location_candidates`, `new_item_candidates`, `new_concept_candidates`, `exit_state_targets`, `required_progressions`, `allowed_progressions`, `forbidden_progressions`, `completion_criteria`, `future_leak_risks`, `pov_character_id`, `involved_character_ids`, `required_character_ids`, `support_character_ids`, `cast_plan`, `emotional_plan`, `scene_design_goals`, `source`; supplementary explanations should be merged into existing fields.
+- All *_requirements, *_events, *_changes, *_progressions, *_criteria, *_risks, *_targets fields must be JSON arrays; write [] if no content.
+- `pov_character_id`, `involved_character_ids`, `required_character_ids`, `support_character_ids`, `cast_plan`, `emotional_plan`, `scene_design_goals` must be inherited chapter-by-chapter from the input chapter outline, do not rewrite entity_id; if compression is needed, only compress the text of emotional/scene goals, not the IDs.
+- `promise_ops`, `relationship_ops`, `item_ops`, `knowledge_ops`, `cognitive_constraints` can only be object arrays or []; `cognitive_constraints` must come from input `outline.init_claim_constraints`, preserving `claim_id`, `cognitive_object`, `cognitive_level`, `action_level`, `reader_awareness`, `cognitive_chapter`, `public_reveal_chapter`, `foreshadow_chapters`, do not freely add or rewrite strong semantics; however, `cognitive_subjects` and `character_knowledge_coverage` keys must be normalized to canonical characters according to `outline.entity_catalog`, leave empty when mapping cannot be confirmed, do not copy unregistered names.
+- `knowledge_ops` field semantics are fixed: `character`/`knower`/`actor` write the canonical character who obtains, suspects, misunderstands, or conceals the knowledge; `entity_id` writes that character's ID; `subject`/`fact`/`target`/`knowledge`/`knowledge_name`/`value`/`object` writes the knowledge proposition or fact being known, not character/organization entities. Do not register knowledge propositions like "someone's betrayal truth", "some system's internal division", "some identity confirmation" as new entities.
+- If input `contract_scaffold` contains `contract_budget`, must control quantity according to that chapter's budget:
+  - `required_progressions` and `required_events` together express the same set of hard progressions, do not duplicate or expand.
+  - Outline details exceeding budget can only be merged into one more general item or omitted, cannot be transferred to `allowed_changes`/`allowed_progressions` for soft degradation.
+  - `source` must be fixed as `"plan_chapter_contracts"`; do not copy the scaffold's local source markers.
+
+## Splitting Principles
+- Each chapter contract should only write the minimum execution constraints for "must occur/must remain/must prohibit", avoid writing as detailed plot drafts.
+- Each chapter `entry_state_requirements` 2-4 items, `required_events` 1-3 items, `allowed_changes`/`forbidden_changes` each 1-4 items, `exit_state_targets` 1-4 items; if `contract_budget` is lower, follow the budget.
+- **forbidden_changes cross-chapter deduplication (critical)**: Long-term prohibitions (e.g., "before reversal, prohibit revealing X truth") should only be declared once in the chapter before the reversal node, subsequent chapters inherit through `narrative_contract`, must not repeat the same prohibition chapter by chapter. Adjacent chapters' `forbidden_changes` must not have verbatim identical entries; if semantically duplicate, merge into one or change to reference upstream contract. If input provides adjacent chapter `forbidden_changes` summary, the `forbidden_changes` generated in this round must not have verbatim duplicates with already declared entries in the summary.
+- **Complete, executable cognitive constraints**: `outline.init_claim_constraints` is already the complete lightweight projection for the current chapter. Never take a local top-N prefix, rank items locally, or merge different `claim_id` values. You may shorten wording, but must preserve every constraint's per-character coverage, cognitive/action levels, and chapter anchors. Upstream splits chapter batches under context pressure; this step must not make semantic omissions.
+- Each chapter must write plot progression boundaries:
+  - `required_progressions`: Events/knowledge/relationships/promises/hooks that must actually progress this chapter, 2-5 items; if `contract_budget.hard_required_limit` exists, must not exceed it.
+  - `allowed_progressions`: Content this chapter is allowed to touch, set up, or lightly push but not necessarily complete, 1-5 items; if `contract_budget.soft_allowed_limit` exists, must not exceed it.
+  - `forbidden_progressions`: Future nodes this chapter is prohibited from revealing early, completing early, or triggering, 1-5 items.
+  - `completion_criteria`: Observable criteria for judging this chapter's completion, 1-4 items; if `contract_budget.state_target_limit` exists, must not exceed it.
+  - `future_leak_risks`: Future plot capital most likely to be prematurely consumed by this chapter, 1-5 items.
+- `promise_ops`, `relationship_ops`, `item_ops`, `knowledge_ops` maximum 3 items each; each `description` should be within 40 Chinese characters.
+- `relationship_ops` can only write person-to-person social, emotional, hostile, cooperative relationships; props, files, concepts, organizations should be written into `item_ops` or `knowledge_ops`.
+- If each chapter has entries in `outline.init_claim_constraints` corresponding to that chapter, they must be written into `cognitive_constraints`; if that constraint changes a character's informed status, simultaneously write into `knowledge_ops`, but `knowledge_ops` cannot replace `cognitive_constraints`.
+- Cognitive constraints only allow text compression, cannot change `internal` to `revealed`, cannot advance `public_reveal_chapter`, cannot write reader-known as character-known.
+- Each chapter can write `new_character_candidates`, for upstream pre-adjudication of "characters that may need filing":
+  - Only include characters entering observable plot for the first time in this chapter and may affect subsequent continuity.
+  - Do not include existing characters' stage states, parenthetical situations, disguise names, job/function tags, group names, props, or knowledge items.
+  - `importance` can only be major / supporting / minor / incidental; `should_consider_profile` should only be true when worth automatic filing.
+- Each chapter can write `new_group_candidates`, `new_organization_candidates`, `new_location_candidates`, `new_item_candidates`, `new_concept_candidates`, or `new_entity_candidates`, for upstream pre-adjudication of "new entities genuinely needed by outline/narrative":
+  - Only include entities first undertaking observable narrative functions in this chapter and cannot be uniquely confirmed from `outline.entity_catalog`.
+  - Candidate objects should at least write `name` or corresponding type name (e.g., `group_name`, `location_name`, `item_name`, `concept_name`), can write `entity_type`, `aliases`, `brief`.
+  - Do not write typos, existing entity aliases, generic scene words, emotional states, or one-time rhetoric as new candidates; when unable to judge, rewrite as constraints without entity names.
+- If the same foreshadowing progresses across multiple chapters, earlier chapters write "clue/misrecognition/suspicion", later chapters write "confirmation/reversal/fulfillment", do not copy the same key line.
+- Future chapters can only use functional summaries, e.g., "reserve prop resonance climax to specified later chapter", do not write specific trigger methods, dialogue, or complete scenes of subsequent highlights into current chapter contracts.
+- If outline/contract_batch provides subsequent chapter context, it is only used to judge this chapter's boundaries; current chapter must not execute future payoffs beyond this chapter's window.
+- Output should be compact and complete; when content is too long, compress each item's text, do not truncate JSON.
+
+## Input
+Narrative Contract:
+{{ narrative_contract }}
+
+Chapter Outline:
+{{ outline }}
+
+{% if outline_research_grounding %}
+Outline Research Grounding (reference reminders, not hard settings):
+{{ outline_research_grounding | tojson(indent=2) }}
+
+Research Grounding Usage Boundaries:
+- Only treat `global_notes`, `chapter_notes`, `fact_risks`, `terminology` as writing reminders and factual risk reminders.
+- Do not rewrite chapter outline, narrative contract, character IDs, entity catalog, or upstream/downstream hard constraints due to research reminders.
+- If research conflicts with StoryBible / Blueprint / Outline, prioritize StoryBible / Blueprint / Outline, and transform research issues into low-intrusion reminders in `future_leak_risks` or `completion_criteria` that can be audited; do not add unauthorized settings.
+- For speculative, fantasy, otherworldly themes, only extract inspiration and terminology references, do not enforce real-world constraints.
+{% endif %}
+
+## Quality Calibration
+- Work Identity: You are a long-form narrative architect, skilled at decomposing story assets intohandoff, verifiable, not overly spoiler-laden execution plans.
+- Planning Inference Path: First lock P0 hard constraints, then allocate P1 progression rhythm, finally use P2 style/theme to complement the presentation layer.
+- Field-Level Quality Examples (not output format): Weak = "progress relationship"; High-Quality = "clarify who acts for what, how the relationship changes, how the next link connects".
+- Actionable Paths: Plan items should be directly checkable by subsequent writing/auditing, avoid only giving abstract wishes or theme slogans.
+
+## Pre-Delivery Verification
+- Are P0/P1/P2 priorities maintained, and not let weak references override hard constraints?
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans?
+- Are unauthorized new characters, locations, world rules, future payoffs, or format agreements avoided?
+- Are abstract goals transformed into observable actions, conflicts, state changes, or chapter continuity points?

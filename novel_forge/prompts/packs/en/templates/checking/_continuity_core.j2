@@ -1,0 +1,214 @@
+{# source_template_hash: 5aad5efa1508961900097009a13d76c420ee3436f2b09dae19e4418ac29c6a86 #}
+{#- Shared Continuity Check Core Module — used by both continuity_eval and critic_continuity -#}
+
+{% macro continuity_context(chapter_bridge, chapter_plan, chapter_state_packet) %}
+{% set scene_intents = chapter_plan.scene_intents | default([]) %}
+{% set character_profiles = chapter_state_packet.character_profiles | default([]) %}
+{% set previous_exit_state = chapter_state_packet.previous_exit_state | default(none) %}
+{% set continuity_context_brief = chapter_state_packet.continuity_context_brief | default('') %}
+{% set must_carry_forward = chapter_state_packet.must_carry_forward | default([]) %}
+{% set active_relationships = chapter_state_packet.active_relationships | default([]) %}
+## Bridge Contract
+- Chapters: from_chapter={{ chapter_bridge.from_chapter | default('') }} → to_chapter={{ chapter_bridge.to_chapter | default('') }}
+- Time/Location/POV: {{ chapter_bridge.opening_time | default('') }} / {{ chapter_bridge.opening_location | default('') }} / {{ chapter_bridge.opening_pov | default('') }}
+- Transition Mode: {{ chapter_bridge.transition_mode | default('') }}
+- Emotional Carryover: {{ chapter_bridge.emotional_carryover | default('') }}
+- Action Handoff: {{ chapter_bridge.action_handoff | default('') }}
+{% if chapter_bridge.causal_link | default(none) %}
+- Causal Link: {{ chapter_bridge.causal_link }}
+{% endif %}
+- Summary: {{ chapter_bridge.bridge_summary | default('') }}
+
+## Planning Contract
+- Opening Contract: {{ chapter_plan.opening_contract | default('') }}
+- Closing Contract: {{ chapter_plan.closing_contract | default('') }}
+- Emotional Arc: {{ chapter_plan.emotional_arc | default('') }}
+{% if chapter_plan.required_state_transitions | default([]) %}
+- Required State Transitions: {{ chapter_plan.required_state_transitions | join('; ') }}
+{% endif %}
+{% if chapter_plan.key_revelations | default([]) %}
+- Key Revelations: {{ chapter_plan.key_revelations | join('; ') }}
+{% endif %}
+{% if chapter_plan.foreshadowing_plan | default([]) %}
+- Foreshadowing Plan: {{ chapter_plan.foreshadowing_plan | join('; ') }}
+{% endif %}
+{% if scene_intents %}
+- Scene Milestones:
+{% for s in scene_intents %}
+  - {{ s.summary | default('') }}{% if s.required_outcome | default('') %} (Required: {{ s.required_outcome }}){% endif %}{% if s.exit_target_state | default('') %} (Exit State: {{ s.exit_target_state }}){% endif %}{% if s.required_characters | default([]) %} (Planned Characters: {{ s.required_characters | join(', ') }}){% endif %}
+{% endfor %}
+{%- set ns = namespace(all_chars=[]) -%}
+{%- for s in scene_intents -%}
+  {%- for c in s.required_characters | default([]) -%}
+    {%- if c not in ns.all_chars -%}{%- set ns.all_chars = ns.all_chars + [c] -%}{%- endif -%}
+  {%- endfor -%}
+{%- endfor -%}
+{% if ns.all_chars %}
+- Planned Character Appearances This Chapter: {{ ns.all_chars | join(', ') }} (Named characters appearing outside this plan are considered unexpected introductions)
+{% endif %}
+{% endif %}
+{% if chapter_plan.relationship_evolution | default([]) %}
+- Relationship Evolution: {{ chapter_plan.relationship_evolution | join('; ') }}
+{% endif %}
+
+## Character Authority Reference (Gender/Pronouns/Identity Per This)
+{% if character_profiles %}
+{% for p in character_profiles %}
+- **{{ p.name | default('') }}**: {{ p.role | default('') }}{% if p.gender | default('') %}, {{ p.gender }}, pronoun "{% if p.gender == 'female' %}she{% elif p.gender == 'male' %}he{% else %}{{ p.gender }}{% endif %}"{% endif %}{% if p.backstory | default('') %}, identity background: {{ p.backstory }}{% endif %}
+{% endfor %}
+{% else %}
+(No character profiles available)
+{% endif %}
+
+## Chapter Context
+{% if continuity_context_brief %}
+- Continuity Summary: {{ continuity_context_brief }}
+{% endif %}
+- Previous Chapter Ending: {{ chapter_state_packet.previous_chapter_ending | default('None') }}
+- Must Carry Forward: {{ must_carry_forward | join(', ') if must_carry_forward else 'None' }}
+{% if previous_exit_state %}
+- Previous Chapter Exit: Time={{ previous_exit_state.time_marker | default('') }}, Location={{ previous_exit_state.location | default('') }}, POV={{ previous_exit_state.pov | default('') }}, Emotional State={{ previous_exit_state.emotional_state | default('') }}{% if previous_exit_state.open_questions | default([]) %}, Unresolved={{ previous_exit_state.open_questions | join(', ') }}{% endif %}
+{% endif %}
+{% if chapter_state_packet.narrative_state_projection | default(none) %}
+- Authoritative State Projection: {{ chapter_state_packet.narrative_state_projection }}
+{% endif %}
+{% if chapter_state_packet.chapter_contract | default(none) %}
+- Chapter Execution Contract: {{ chapter_state_packet.chapter_contract }}
+{% endif %}
+{% if active_relationships and not continuity_context_brief %}
+- Character Relationships:
+{% for rel in active_relationships %}
+{% set trust_value = rel.trust | default(0.5, true) | float %}
+{% set tension_value = rel.tension | default(0.5, true) | float %}
+{% set dependency_value = rel.dependency | default(none, true) %}
+{% set trust_label = 'High' if trust_value >= 0.7 else ('Low' if trust_value <= 0.3 else 'Medium') %}
+{% set tension_label = 'High' if tension_value >= 0.7 else ('Low' if tension_value <= 0.3 else 'Medium') %}
+  - {{ rel.characters | default([]) | join(' ↔ ') }}: {{ rel.public_status | default('') }} (Trust={{ trust_label }}; Tension={{ tension_label }}{% if dependency_value is not none %}{% set dependency_num = dependency_value | float %}; Dependency={{ 'High' if dependency_num >= 0.7 else ('Low' if dependency_num <= 0.3 else 'Medium') }}{% endif %}){% if rel.last_shift_event | default('') %}; Recent Change={{ rel.last_shift_event }}{% endif %}
+{% endfor %}
+{% endif %}
+{% endmacro %}
+
+{% macro continuity_checks() %}
+## Check Scope (Whitelist Mode)
+
+**You only check the following 5 items; everything else is excluded from review**:
+1. Opening Handoff Quality (whether the bridge contract is implemented)
+2. Character/Location/POV Boundary State Consistency (whether cross-chapter state changes have foreshadowing)
+3. Bridge Data Consistency (whether bridge conflicts with previous chapter's exit state)
+4. Must Carry Forward Implementation (whether planned information is reflected in the narrative)
+5. Chapter End Handoff (whether ending matches closing_contract)
+
+The following structural issues are already covered by local prescreening (do not actively expand your review; if prescreening provides evidence, verify whether it still applies):
+`location_jump` · `custody_break` · `pov_jump` · `bridge_contract_not_followed`
+
+The following are NOT continuity issues: prompt leakage, repetitive sentences, forbidden imagery, intra-chapter POV intrusion, address expressions, illegal time scales, local style and rhetorical preferences. Do not add these as new continuity issues.
+
+---
+
+## Item-by-Item Check Criteria
+
+### 1. Opening Handoff Quality (check only paragraphs 1-3)
+**Trigger Conditions (mark `bridge_contract_not_followed` if ANY is met, critical, ≤ 6 points)**:
+- `action_handoff` describes a specific transfer process, but the main text skips this process in paragraphs 1-3
+- Opening time/location/POV directly contradicts the bridge contract (not subtle implication, but direct conflict)
+
+**Non-triggering situations**:
+- Scene shifts but establishes continuity through character senses/memories
+- Time jumps have clear transition markers (e.g., "three days later," "the next morning")
+
+### 2. Character/Location/POV Boundary State Consistency (check only cross-chapter boundaries)
+**Trigger Conditions (mark `character_state_break` if met, high)**:
+- Character exhibits emotions/abilities/cognition in the text that contradict the previous chapter ending or character profile
+- State changes lack prior foreshadowing (e.g., from "extreme fear" at previous chapter end to "calm command" in this chapter, with no transition)
+- Hard cuts in location or POV from previous chapter/bridge contract without transition explanations in the text
+
+**Non-triggering situations**:
+- Character state changes have clear triggering events (dialogue/actions/environmental changes)
+- State changes occur within the same chapter with process description
+
+### 3. Bridge Data Consistency
+**Trigger Conditions (mark `bridge_contract_not_followed` if met, high/critical)**:
+- bridge.from_chapter's chapter number doesn't match the previous chapter's exit state
+- bridge is missing key fields for handoff such as opening_pov/opening_location
+- Bridge contract and text opening conflict simultaneously, making it impossible for readers to determine where this chapter picks up
+
+**Non-triggering situations**:
+- Only expression differs, but the same time/location/action handoff is recognizable to readers
+- Ordinary address forms, wording, or local factual errors appearing within the chapter
+
+### 4. Must Carry Forward Implementation (check item by item)
+**Trigger Conditions (mark `missing_carry_forward` if certain information is completely unmentioned and critical to narrative logic, high)**:
+- Information explicitly required by the plan has no appearance whatsoever in the entire chapter
+- Core intent of information is lost (not literal matching, but narrative function missing)
+
+**Non-triggering situations**:
+- Information appears in adapted or merged form, but core intent is preserved
+- Information is non-critical and doesn't affect subsequent narrative logic
+
+### 5. Chapter End Handoff (check only last 2-3 paragraphs)
+**Trigger Conditions (mark `closing_contract_missing` if ending is completely unrelated to closing_contract, medium)**:
+- Ending doesn't leave a handoff point consistent with the plan (suspense/action/emotion)
+- Ending direction completely deviates from the plan
+
+**Non-triggering situations**:
+- Ending achieves the same narrative function in different ways
+- Handoff point is implicit in dialogue or action, not explicitly stated
+
+---
+
+## Hard Issues (any one results in ≤ 6 points)
+Explicit cross-chapter contradictions · Amnesia-style information jumps · Relationship groundless jumps · Opening/ending contract hard breaks
+
+## Scoring
+- 9-10: Only minor polish space
+- 7-8.5: Minor bridging issues, doesn't affect reading
+- 5-6.5: Obvious gaps, needs targeted fixes
+- ≤ 4.5: Hard contradictions, readers immediately lose immersion
+{% endmacro %}
+
+{% macro prescreen_and_prior(local_prescreen_issues, local_check_note, prior_issues) %}
+{% set local_prescreen_issues = local_prescreen_issues | default([]) %}
+{% set local_check_note = local_check_note | default('') %}
+{% set prior_issues = prior_issues | default([]) %}
+{% if local_prescreen_issues %}
+## ⚡ Local Prescreening Issues
+{% for issue in local_prescreen_issues %}
+{{ loop.index }}. [{{ issue.issue_type | default('') }}] Confidence {{ ((issue.confidence | default(0)) * 100) | int }}%: {{ issue.summary | default('') }}
+   Evidence: {{ issue.evidence | default('') }}
+{% endfor %}
+High-confidence issues (≥ 85%) can be confirmed directly; low-confidence issues need judgment combined with main text narrative logic.
+{% if local_check_note %}{{ local_check_note }}{% endif %}
+{% endif %}
+
+{% if prior_issues %}
+## ⚠️ Historical Issue Verification
+The following issues have been submitted for fixes; determine one by one whether resolved:
+{% for issue in prior_issues %}
+{{ loop.index }}. [{{ issue.issue_type | default('') }}] ({{ issue.severity | default('') }}){% if issue.issue_id | default('') %} id={{ issue.issue_id }}{% endif %}{% if issue.repair_surface | default('') %} surface={{ issue.repair_surface }}{% endif %} — {{ issue.summary | default('') }}
+   {% if issue.evidence | default('') %}Evidence: {{ issue.evidence }}{% endif %}
+   {% if issue.repair_focus | default('') %}Repair Focus: {{ issue.repair_focus }}{% endif %}
+   {% if issue.missing_anchors | default([]) %}
+   Need to Anchor Back:
+   {% for anchor in issue.missing_anchors | default([]) %}
+   - {{ anchor.source | default('') }} / {{ anchor.role | default('') }}: {{ anchor.text | default('') }}
+   {% endfor %}
+   {% endif %}
+   {% if issue.postconditions | default([]) %}
+   Repair Acceptance Conditions:
+   {% for condition in issue.postconditions | default([]) %}
+   - [{{ condition.validator_id | default('') }}] {{ condition.description | default('') }}{% if condition.evidence_hint | default('') %} (Evidence Hint: {{ condition.evidence_hint }}){% endif %}
+   {% endfor %}
+   {% endif %}
+{% endfor %}
+Resolved issues are removed from issues; unresolved ones are retained with reasons. If a prior_issue remains unresolved, when outputting issues you must preserve its `issue_id`, and explain in evidence or diagnostic_note which postconditions were not met.
+{% endif %}
+
+{% if must_resolve_summaries | default([]) %}
+## 🚨 Blocking Archive Issues·Item-by-Item Verification (Must Be Resolved)
+The following are severe issues that may persist after multiple rounds of fixes; please verify item by item in the main text whether completely eliminated:
+{% for summary in must_resolve_summaries | default([]) %}
+- {{ summary }}
+{% endfor %}
+If any of the above still exists in the fixed main text, please report it in issues with its original severity (critical or high) as is, do not downgrade.
+{% endif %}
+{% endmacro %}

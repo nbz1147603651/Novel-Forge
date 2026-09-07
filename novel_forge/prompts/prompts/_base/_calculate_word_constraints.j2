@@ -1,0 +1,71 @@
+{#- 字数约束计算宏 — base 模块 -#}
+{#- 提取 target_word_count × 0.85 / 1.15 的字数区间计算逻辑 -#}
+
+{#-
+  === 宏模块：字数约束计算与渲染 ===
+  文件类型：宏模块（macro module）
+  作用简述：计算字数上下限区间（target × 0.85/1.15），并渲染为不同场景下的字数约束提示（硬约束版、编辑自检版）。
+
+  定义的宏及参数：
+  1. calculate_word_constraints(target_word_count: int) → namespace(min_words=int, max_words=int)
+     - 计算目标字数 ±15% 的区间
+  2. render_word_constraint_hard(target_word_count, label="本章目标", is_hard_constraint=True)
+     - 渲染硬约束版字数提示，输出形如 "本章目标 **3000 字**（★ 硬约束：必须控制在 2550-3450 字之间）"
+  3. render_word_constraint_self_check(target_word_count)
+     - 渲染编辑后自检字数提示，输出形如 "编辑完成后自检字数：若低于 X 字则补足..."
+
+  使用方式：
+  - 被 writing/draft_chapter.j2, writing/edit_chapter.j2 等模板通过 {% import %} 调用
+-#}
+
+{#-
+  计算字数上下限区间。
+
+  参数：
+    - target_word_count: 目标字数
+
+  返回：namespace(min_words=int, max_words=int)
+-#}
+{% macro calculate_word_constraints(target_word_count) %}
+{%- set _min = (target_word_count * 0.85) | int -%}
+{%- set _max = (target_word_count * 1.15) | int -%}
+{{ namespace(min_words=_min, max_words=_max) }}
+{% endmacro %}
+
+{#-
+  渲染字数约束提示（硬约束版）。
+
+  适用于 draft_chapter 等需要明确字数区间的场景。
+
+  参数：
+    - target_word_count: 目标字数
+    - label: 标签前缀（默认 "本章目标"）
+    - is_hard_constraint: 是否标记为硬约束（默认 True）
+
+  输出：形如 "本章目标 **3000 字**（★ 硬约束：必须控制在 2550-3450 字之间）。"
+-#}
+{% macro render_word_constraint_hard(target_word_count, label="本章目标", is_hard_constraint=True) %}
+{%- if target_word_count is defined and target_word_count -%}
+{%- set _min = (target_word_count * 0.85) | int -%}
+{%- set _max = (target_word_count * 1.15) | int -%}
+{{ label }} **{{ target_word_count }} 字**{% if is_hard_constraint %}（★ 硬约束：必须控制在 {{ _min }}-{{ _max }} 字之间，超出视为不合格）{% else %}（建议 {{ _min }}-{{ _max }} 字）{% endif %}
+{%- endif %}
+{% endmacro %}
+
+{#-
+  渲染字数自检提示（编辑版）。
+
+  适用于 edit_chapter 等编辑后自检场景。
+
+  参数：
+    - target_word_count: 目标字数
+
+  输出：形如 "编辑完成后自检字数：若低于 2550 字则补足过程/动作/对话细节，若高于 3450 字则压缩重复解释与低信息密度段。"
+-#}
+{% macro render_word_constraint_self_check(target_word_count) %}
+{%- if target_word_count is defined and target_word_count -%}
+{%- set _min = (target_word_count * 0.85) | int -%}
+{%- set _max = (target_word_count * 1.15) | int -%}
+编辑完成后自检字数：若低于 {{ _min }} 字则补足过程/动作/对话细节，若高于 {{ _max }} 字则压缩重复解释与低信息密度段。
+{%- endif %}
+{% endmacro %}

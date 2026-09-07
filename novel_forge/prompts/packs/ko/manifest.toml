@@ -1,0 +1,8 @@
+locale = "ko"
+display_name = "한국어 (ko)"
+status = "draft"
+base_language = "ko"
+length_unit = "characters"
+source_revision = ""
+coverage_required = false
+templates_dir = "templates"

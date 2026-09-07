@@ -1,0 +1,132 @@
+{# ================================================================================
+【备注】
+================================================================================
+提示词：book_consistency_verify.j2
+服务步骤：BOOK_CONSISTENCY_VERIFY（全书一致性验证）
+作用简述：对全书审计中关于某章的问题清单进行逐条验证，判定问题是否真实存在。
+上游输入：
+  - chapter_number：章节编号
+  - numbered_text：章节全文（带段落编号）
+  - paragraph_count：段落数量
+  - chapter_summary：章节摘要
+  - related_chapters_context：跨章问题涉及的关联章节摘要与短证据窗口
+  - canon_characters：当前正典角色状态
+  - claimed_issues：待验证的问题清单（来自全书审计第一阶段）
+下游输出：
+  - JSON：{"verified_issues": [{"issue_id", "status", "paragraph_index", ...}]}
+  - 下游消费者：BookConsistencyStep（用于更新问题状态）
+消费链优先级：P0（问题误报可能导致不必要的修复）> P1（问题定位偏差）
+              > P2（描述精确度）
+简要例子：
+  输入：chapter_number=5, claimed_issues=[{"issue_id": "ch5_timeline_01", "description": "时间矛盾"}]
+  输出：{"verified_issues": [{"issue_id": "ch5_timeline_01", "status": "verified", "paragraph_index": 12}]}
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    指导层：任务定义 + 上下文消费
+    --------------------------------------------------------------------------- -#}
+你收到了一份全书一致性审计中关于**第 {{ chapter_number }} 章**的问题清单。
+请逐条阅读该章全文并验证每个问题，判定问题是否真实存在，并给出精确的段落定位。
+
+## 第 {{ chapter_number }} 章 全文（带段落编号）
+- paragraph_count={{ paragraph_count }}
+{{ numbered_text }}
+
+{% if chapter_summary %}
+## 章节摘要
+{{ chapter_summary }}
+{% endif %}
+
+{% if related_chapters_context %}
+## 关联章节上下文（用于跨章问题验证）
+说明：
+- 这里只提供跨章问题涉及章节的摘要与短证据窗口，不是完整章节。
+- 当 claimed issue 的 `chapters_involved` 超过 1 章时，必须结合本章全文、关联章节上下文和问题描述判断，不要只因本章内部自洽就直接 rejected。
+- 若关联上下文仍不足以完全判定，请保留问题为 `modified` 或降低 confidence，并在 description / rejection_reason 中说明缺少哪一侧证据。
+
+{% for ch in related_chapters_context %}
+### 第 {{ ch.chapter_number }} 章
+{% if ch.chapter_summary %}- 摘要：{{ ch.chapter_summary }}{% endif %}
+{% if ch.issue_refs %}
+- 关联问题：
+{% for ref in ch.issue_refs %}
+  - {{ ref.issue_id }} [{{ ref.severity }} / {{ ref.category }}]：{{ ref.description }}{% if ref.evidence %}；证据提示：{{ ref.evidence }}{% endif %}
+{% endfor %}
+{% endif %}
+{% if ch.excerpts %}
+- 短证据窗口：
+{% for excerpt in ch.excerpts %}
+  - {{ excerpt }}
+{% endfor %}
+{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if canon_characters %}
+## 当前正典角色状态
+{% for name, info in canon_characters.items() %}
+- {{ name }}：{% if info.alive is defined %}{% if info.alive %}存活{% else %}已死亡（第 {{ info.death_chapter }} 章）{% endif %}{% endif %}{% if info.location %}，位置={{ info.location }}{% endif %}
+{% endfor %}
+{% endif %}
+
+## 待验证问题（来自全书审计第一阶段）
+{% for issue in claimed_issues %}
+### 问题 {{ loop.index }}
+- issue_id: {{ issue.issue_id }}
+- category: {{ issue.category }}
+- severity: {{ issue.severity }}
+- description: {{ issue.description }}
+- evidence: {{ issue.evidence }}
+- location: {{ issue.location }}
+- paragraph_index: {{ issue.paragraph_index }}
+- suggestion: {{ issue.suggestion }}
+- fix_mode: {{ issue.fix_mode }}
+- fix_action: {{ issue.fix_action }}
+- confidence: {{ issue.confidence }}
+{% if issue.chapters_involved %}- chapters_involved: {{ issue.chapters_involved }}{% endif %}
+{% if issue.evidence_pairs %}- evidence_pairs: {{ issue.evidence_pairs }}{% endif %}
+{% if issue.verification_questions %}- verification_questions: {{ issue.verification_questions }}{% endif %}
+{% if issue.handoff_notes %}- handoff_notes: {{ issue.handoff_notes }}{% endif %}
+{% endfor %}
+
+## 验证要求
+
+对每个问题，你必须：
+1. **确认或否定**：阅读原文判断该问题是否真的存在。
+2. **精确定位**：如果问题存在，给出**精确的段落编号**（paragraph_index，1-based，对应 [P数字] 标记）。
+3. **更新 evidence**：引用原文中的确切短证据（不超过 50 字）。
+4. **调整置信度**：根据验证结果重新评估 confidence（0.0–1.0）。
+5. **标记状态**：
+   - `"verified"` — 问题确实存在，定位已确认/修正
+   - `"rejected"` — 原文中未发现该问题，属于幻觉
+   - `"modified"` — 问题存在但描述/严重度/定位需要修正
+6. **跨章问题谨慎否定**：若问题依赖其他章节对比，必须使用“关联章节上下文”。只有当当前章与关联上下文都不支持该矛盾时，才可 rejected。
+7. **语义判定由你完成**：本地程序只传递候选问题和格式化上下文；普通词是否被误认为实体、梦境/回忆/转述是否造成表面矛盾、证据是否同属一个时间层，都由你裁决。
+8. **下游修复交接**：verified/modified 时，输出 `adjudication_notes`，说明修复阶段只能改什么、不能误改什么；rejected 时说明误报原因。
+9. **精准定位**：verified/modified 时必须尽量给出 `paragraph_index`、`paragraph_span`、`location`、`anchor_type`、`location_confidence`。如果只能靠证据短语定位，`anchor_type` 用 `evidence_match`；如果段号明确，使用 `explicit_para`。
+10. **精准修复边界**：verified/modified 时必须给出 `repair_scope`，说明目标段落、允许改动、禁止改动和必须保留项。修复范围应尽量小；无法安全自动修复时，`fix_mode` 使用 `manual_patch`。
+
+## 误报过滤校准
+- 如果问题把“开始”“明天”“等待”“夜色”“声音”“视线”等普通叙述词当成实体、道具或角色，除非文本明确将其设定为专有名词，否则应 rejected。
+- 如果证据只存在单边、跨章证据对缺失，且关联章节上下文无法补足，应使用 modified 并降低 confidence，不要强行 verified。
+- 如果矛盾来自回忆、梦境、档案、传闻、比喻或角色误解，应 rejected 或 modified，而不是直接要求修正文实。
+
+## 验证条目字段要求
+- 每条 verified_issues 项保留原 issue_id，并填写 status、description、severity、confidence、evidence。
+- verified/modified 项尽量填写 paragraph_index、paragraph_span、location、anchor_type、location_confidence。
+- 跨章问题应保留 evidence_pairs；缺少必要证据时降低 confidence，并在 description 或 rejection_reason 中说明。
+- verified/modified 项必须给出 adjudication_notes、repair_scope、fix_mode、fix_action 和 postconditions，方便修复阶段控制改动范围。
+- rejected 项必须填写 rejection_reason，说明误报原因。
+
+## 质量校准
+- 工作身份：你是一位严谨的小说质量审校员，擅长用短证据、明确边界和下游可执行建议定位问题。
+- 审校路径：先确认输入证据，再判断问题类型、影响范围和修复边界，最后给下游可执行的定位信息。
+- 字段级质量示例（非输出格式）：平弱=“这里不连贯”；高质量=“指出哪两处证据冲突、风险等级、可验证问题”。
+- 可操作路径：每条判断都要能支持复核或修复，低置信度内容降级为待验证问题。
+
+## 交付前核验
+- P0/P1/P2 优先级是否被保持，且没有让弱参考覆盖硬约束。
+- 是否能把关键判断回指到输入证据、上游契约或已批准计划。
+- 是否避免新增未授权的人物、地点、世界规则、未来 payoff 或格式协议。
+- 是否给出短证据、风险等级、定位信息和下游可验证的问题。

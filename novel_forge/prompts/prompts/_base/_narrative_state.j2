@@ -1,0 +1,81 @@
+{% macro render_authoritative_state(canon_context=None, chapter_state_packet=None, chapter_contract=None) -%}
+{% set ns = namespace(auth=None, contract=chapter_contract | default(none), refs=None) %}
+{% if canon_context and canon_context.authoritative_narrative_state is defined %}
+{% set ns.auth = canon_context.authoritative_narrative_state %}
+{% endif %}
+{% if not ns.auth and chapter_state_packet and chapter_state_packet.authoritative_narrative_state is defined %}
+{% set ns.auth = chapter_state_packet.authoritative_narrative_state %}
+{% endif %}
+{% if not ns.contract and canon_context and canon_context.chapter_contract is defined %}
+{% set ns.contract = canon_context.chapter_contract %}
+{% endif %}
+{% if not ns.contract and chapter_state_packet and chapter_state_packet.chapter_contract is defined %}
+{% set ns.contract = chapter_state_packet.chapter_contract %}
+{% endif %}
+{% if canon_context and canon_context.entity_reference_graph is defined %}
+{% set ns.refs = canon_context.entity_reference_graph %}
+{% endif %}
+{% if not ns.refs and chapter_state_packet and chapter_state_packet.canon_context is defined and chapter_state_packet.canon_context.entity_reference_graph is defined %}
+{% set ns.refs = chapter_state_packet.canon_context.entity_reference_graph %}
+{% endif %}
+
+{% if ns.auth %}
+### LLM 已裁定叙事状态（P0 最高事实源）
+以下内容来自 `narrative_state/state_ledger.jsonl` 与投影文件，只能执行，不能被旧 Canon、creative report 或自由发挥覆盖。
+{% if ns.auth.recent_summaries %}
+**已裁定事实摘要**：
+{% for item in ns.auth.recent_summaries %}
+- {{ item }}
+{% endfor %}
+{% endif %}
+{% if ns.auth.facts_by_path %}
+**结构化状态路径**：
+{% for path, value in ns.auth.facts_by_path.items() %}
+- {{ path }} = {{ value }}
+{% endfor %}
+{% endif %}
+{% if ns.auth.pending_items %}
+**待定/延后事项**：
+{% for item in ns.auth.pending_items %}
+- {{ item.summary or item.candidate_id or item.pending_id }}{% if item.pending_reason %}（{{ item.pending_reason }}）{% endif %}
+{% endfor %}
+这些事项尚未被裁定为事实，不得提前写死结论；只能保持模糊、延后或等待正文证据。
+{% endif %}
+{% endif %}
+
+{% if ns.contract %}
+### 本章叙事契约（P0 执行边界）
+{% if ns.contract.entry_state_requirements %}
+**入口状态**：{{ ns.contract.entry_state_requirements | join('；') }}
+{% endif %}
+{% if ns.contract.required_events %}
+**必须事件**：{{ ns.contract.required_events | join('；') }}
+{% endif %}
+{% if ns.contract.allowed_changes %}
+**允许变化**：{{ ns.contract.allowed_changes | join('；') }}
+{% endif %}
+{% if ns.contract.forbidden_changes %}
+**禁止变化**：{{ ns.contract.forbidden_changes | join('；') }}
+{% endif %}
+{% if ns.contract.exit_state_targets %}
+**出口目标**：{{ ns.contract.exit_state_targets | join('；') }}
+{% endif %}
+{% endif %}
+
+{% if ns.refs %}
+### 实体/身份指代图（P0/P1 消歧）
+人物关系仍以人物关系网为准；这里仅用于消除别名、前世、误认、道具、概念和组织归属的混淆。
+{% if ns.refs.identity_links %}
+**身份/称谓链接（P0，不得混淆）**：
+{% for link in ns.refs.identity_links %}
+- {{ link.source }} --{{ link.link_type }}--> {{ link.target }}{% if link.time_layer %}（{{ link.time_layer }}）{% endif %}{% if link.description %}：{{ link.description }}{% endif %}
+{% endfor %}
+{% endif %}
+{% if ns.refs.context_links %}
+**道具/概念/组织关联（P1，作为创作锚点）**：
+{% for link in ns.refs.context_links %}
+- {{ link.source }} --{{ link.link_type }}--> {{ link.target }}{% if link.description %}：{{ link.description }}{% endif %}
+{% endfor %}
+{% endif %}
+{% endif %}
+{%- endmacro %}

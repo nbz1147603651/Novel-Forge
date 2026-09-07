@@ -1,0 +1,90 @@
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：init_story_continuity_rules.j2
+服务步骤：INIT_STORY_CONTINUITY_RULES（故事圣经分片：连续性规则）
+作用简述：生成时间、称谓、自称、礼制、术语、错位词等可执行连续性约束。
+上游输入：premise/world_hint/pov_hint/genre/tone/extra_instructions
+下游输出：JSON：{"continuity_rules": {...}}
+下游消费者：INIT_STORY_BIBLE 本地合并器、章节写作/编辑/一致性检查
+消费链优先级：P0 = 只输出本项目确实需要的规则；P1 = 不适用字段省略；P2 = 短句可执行
+================================================================================
+#}
+{%- from "_base/_shared_evidence_anchor.j2" import render_shared_evidence_anchor -%}
+
+{#- 指导层 -#}
+请只生成 StoryBible 的连续性规则分片。普通现代日常题材若无特殊称谓/礼制/时代错位风险，可只输出少量必要字段。
+
+{{ render_shared_evidence_anchor(shared_evidence_anchor) }}
+
+## 输入
+- premise: {{ premise }}
+{% if story_core %}
+## 共享核心锚点（不可改写）
+{{ story_core | tojson(indent=2) }}
+{% endif %}
+{% if world_rules %}
+## 已确定世界规则（时间、称谓、术语必须服从这里）
+{{ world_rules | tojson(indent=2) }}
+{% endif %}
+{% if themes_and_symbols %}
+## 已确定主题边界（对白语体与禁忌不得冲突）
+{{ themes_and_symbols | tojson(indent=2) }}
+{% endif %}
+{% if genre %}- genre: {{ genre }}{% endif %}
+{% if tone %}- tone: {{ tone }}{% endif %}
+{% if world_hint %}- world_hint: {{ world_hint }}{% endif %}
+{% if pov_hint %}- pov_hint: {{ pov_hint }}{% endif %}
+{% if extra_instructions %}- extra_instructions: {{ extra_instructions }}{% endif %}
+{% if research_context and research_context.summary %}
+
+## 资料检索参考（弱参考）
+- 使用边界：只用于补充真实称谓、时间、制度、礼制、物质文化和错位词风险；不得覆盖已确定世界规则。
+- 当前状态：{{ research_context.status }} / {{ research_context.provider }}
+- 摘要：{{ research_context.summary }}
+{% if research_context.source_notes %}
+- 来源要点：
+{% for note in research_context.source_notes %}
+  - {{ note }}
+{% endfor %}
+{% endif %}
+{% if research_context.real_world_constraints %}
+- 现实约束参考（用于 time_convention/institution_terms/material_culture/anachronism_blacklist）：
+{% for c in research_context.real_world_constraints %}
+  - {{ c }}
+{% endfor %}
+{% endif %}
+{% if research_context.terminology %}
+- 可用术语（用于 address_rules/institution_terms）：{{ research_context.terminology | join('、') }}
+{% endif %}
+{% if research_context.uncertainty_notes %}
+- 不确定点（降级为待验证，不写成硬规则）：
+{% for u in research_context.uncertainty_notes %}
+  - {{ u }}
+{% endfor %}
+{% endif %}
+{% endif %}
+
+## 要求
+- 字段不适用时可以省略，不要输出空数组或“不适用”。
+- 每类规则最多 8 条，每条 120 字以内；所有规则列表必须是字符串数组，不要写成 `{rule_id, content}` 等对象数组。
+- 不要添加 StoryBible schema 外字段。
+
+## 字段内容约束
+- `continuity_rules` 只能包含：`time_convention`、`social_hierarchy`、`address_rules`、`self_reference_rules`、`etiquette_rules`、`institution_terms`、`material_culture`、`anachronism_blacklist`、`dialogue_register_rules`。
+- 不适用字段完全省略；字段名只使用上方列出的英文 `snake_case` key，说明内容并入对应规则字符串。
+
+## 质量校准
+- 工作身份：你是一位严谨的小说质量审校员，擅长用短证据、明确边界和下游可执行建议定位问题。
+- 审校路径：先确认输入证据，再判断问题类型、影响范围和修复边界，最后给下游可执行的定位信息。
+- 字段级质量示例（非输出格式）：平弱=“这里不连贯”；高质量=“指出哪两处证据冲突、风险等级、可验证问题”。
+- 可操作路径：每条判断都要能支持复核或修复，低置信度内容降级为待验证问题。
+
+## 交付前核验
+- P0/P1/P2 优先级是否被保持，且没有让弱参考覆盖硬约束。
+- 是否能把关键判断回指到输入证据、上游契约或已批准计划。
+- 是否避免新增未授权的人物、地点、世界规则、未来 payoff 或格式协议。
+- 是否给出短证据、风险等级、定位信息和下游可验证的问题。
+
+{#- 格式层 -#}

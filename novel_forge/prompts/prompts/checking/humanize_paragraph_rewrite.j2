@@ -1,0 +1,83 @@
+{#
+===============================================================================
+【备注】
+===============================================================================
+提示词：humanize_paragraph_rewrite.j2
+任务类型：HUMANIZE_PARAGRAPH_REWRITE
+服务步骤：拟人化段落级定向改写（Humanize Paragraph-Level Rewrite）
+作用简述：对含不可精确替换 AI 痕迹的段落执行定向改写，仅去除 AI 生成痕迹，
+          保留原文叙事内容、因果关系和角色状态。
+上游输入：
+  - chapter_number：章节编号
+  - paragraphs：需要改写的段落列表，每项含 index 和 text
+  - pattern_hits：这些段落中检测到的 AI 痕迹列表
+  - style_profile（可选）：项目风格规范
+下游输出：
+  - TEXT：改写后的段落文本，段落之间以空行分隔
+  - 下游消费者：HumanizeScanStep / run_humanize_layer
+===============================================================================
+#}
+{%- from "_base/_cognitive_constraints.j2" import render_cognitive_constraints -%}
+
+{#- ---------------------------------------------------------------------------
+    指导层：AI 痕迹定向改写指导
+    --------------------------------------------------------------------------- -#}
+
+请对以下段落执行**定向 AI 痕迹去除**。你只能消除列出的 AI 生成痕迹，不得改变叙事内容。
+
+## 改写约束
+
+- **仅改写以下段落中标注的 AI 痕迹**，不新增、不删除情节点，不改变因果链。
+- 保留原文的 POV、时间标记、角色认知和叙事节奏。
+- 对话内容（「」/""/"" 内的文字）不可修改。
+- 不得引入新的 AI 写作模式（如三项列举、否定式并列、显著性通胀等）。
+- 改写后每个段落的字数与原段落偏差不超过 ±20%。
+- 如果某个 AI 痕迹在上下文中是合理的（如角色刻意使用的修辞、风格规范要求），保留不改。
+
+{% if humanize_context.world_rule_preservation | default([]) %}
+## 世界规则保真边界（P0）
+
+以下始终生效规则只用于防止去痕改写改变事实；不得为追求自然改写而删去规则代价、突破禁止行为或补造例外。
+{% for item in humanize_context.world_rule_preservation %}
+- [{{ item.rule_id }}] {{ item.content }}{% if item.forbidden_behavior | default([]) %}；禁止={{ item.forbidden_behavior | join('；') }}{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if humanize_context.cognitive_constraints | default([]) %}
+## 角色认知保真边界（P0）
+- 改写只能去除指定 AI 痕迹；不得把 `unknown/partial` 写成 `full`，不得把怀疑/内心认知改成确认或公开说破。
+{{ render_cognitive_constraints(humanize_context.cognitive_constraints) }}
+{% endif %}
+
+## 需要改写的段落
+
+{% for para in paragraphs %}
+### 段落 {{ para.index }}
+{{ para.text }}
+
+{% endfor %}
+
+## 这些段落中检测到的 AI 痕迹
+
+{% for hit in pattern_hits %}
+- **{{ hit.pattern_name }}**（{{ hit.category }}，{{ hit.severity }}）：{{ hit.evidence_quote }}
+{% endfor %}
+
+## 各痕迹的改写指导
+
+- **三项列举（rule_of_three）**：将机械的三项并列拆分为两项、或拆散为独立短句，使节奏更自然。
+- **破折号滥用（em_dash_overuse）**：将破折号插注改为逗号连接、独立成句、或括号注释，仅在对话打断处保留破折号。
+- **AI 高频词汇（ai_vocabulary）**：替换为小说叙事中更自然的同义表达。
+- **否定式并列（negative_parallelism）**：将"不是X而是Y"结构改为直接陈述或动作描写。
+- **其他模式**：按照 humanize_scan 中的改写示例处理。
+
+{% if style_profile %}
+## 项目风格参考
+
+改写时需保持与项目风格一致：
+{{ style_profile | tojson(indent=2) }}
+{% endif %}
+
+## 输出要求
+
+按段落顺序输出改写后的文本，段落之间以一个空行分隔。不要添加段落编号、标题或任何解释性文字——只输出纯文本。

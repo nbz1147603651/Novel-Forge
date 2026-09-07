@@ -1,0 +1,22 @@
+.voice-delivery-dialog { width: min(560px, calc(100vw - 48px)); min-height: 360px; padding: 22px 24px; border: 1px solid color-mix(in srgb, var(--nf-border-soft) 46%, transparent); border-radius: 17px; color: var(--nf-text-body); background: var(--nf-bg-dialog); box-shadow: 0 25px 65px color-mix(in srgb, var(--nf-shadow) 31%, transparent); animation: dialog-rise-in 180ms cubic-bezier(.22, .61, .36, 1); }
+.voice-delivery-dialog h2 { margin: 0; color: var(--nf-text-heading); font-family: Georgia, "Songti SC", serif; font-size: var(--nf-font-page-lg); }.voice-delivery-dialog header p { margin: 8px 0 0; color: var(--nf-text-secondary); font-size: var(--nf-font-label); line-height: 1.65; }
+.voice-delivery-config { display: grid; gap: 12px; margin-top: 20px; }.voice-delivery-checks { display: grid; gap: 10px; padding: 14px; border-radius: 10px; color: var(--nf-text-secondary); background: color-mix(in srgb, var(--nf-bg-control) 38%, var(--nf-bg-surface)); font-size: var(--nf-font-body); }.voice-delivery-config label { display: grid; gap: 6px; color: var(--nf-text-secondary); font-size: var(--nf-font-body); font-weight: 700; }.voice-delivery-config select { min-height: 36px; padding: 0 8px; border: 1px solid color-mix(in srgb, var(--nf-border-default) 26%, transparent); border-radius: 8px; color: var(--nf-text-body); background: var(--nf-bg-input-soft); font: inherit; }.voice-delivery-config .voice-delivery-option { grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 8px; min-height: 32px; padding: 0 2px; font-weight: 500; }.voice-delivery-option input { accent-color: var(--nf-accent-primary); }
+.voice-delivery-dialog footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; } .voice-delivery-dialog .operation-progress { margin-top: 16px; }
+@media (max-width: 640px) { .voice-delivery-dialog { width: min(100%, calc(100vw - 24px)); min-height: 0; padding: 20px; }.voice-delivery-dialog footer { flex-wrap: wrap; } }
+
+/* Command result notice */
+.voice-delivery-result { margin: 12px 0 0; padding: 8px 12px; border-left: 3px solid var(--nf-status-success, #2e7d32); color: var(--nf-status-success, #2e7d32); background: var(--nf-status-success-bg, #e8f5e9); font-size: var(--nf-font-ui); line-height: 1.45; border-radius: 0 6px 6px 0; animation: notice-slide-in 200ms cubic-bezier(.22, .61, .36, 1) both; }
+.voice-delivery-download { display: inline-flex; margin-top: 12px; text-decoration: none; }
+
+/* Honor reduced motion (design-tokens has global guard, this is explicit
+ * for local animations that should not run when the user prefers reduced
+ * motion). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

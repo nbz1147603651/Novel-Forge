@@ -1,0 +1,89 @@
+{# source_template_hash: 43094c2f76a45957fa3eab0f6903f7d59b22a5bfb83cb3a56051300fd109a092 #}
+{#
+================================================================================
+[Notes]
+================================================================================
+Prompt: init_character_profile_batch.j2
+Service Step: INIT_CHARACTER_PROFILE_BATCH (Character Bible Split: Character Profile)
+Brief Description: Complete CharacterProfile fields for each character based on stable roster to avoid outputting full character JSON at once.
+Upstream Input: premise/story_bible/character_roster
+Downstream Output: JSON: {"character_profiles": [...]}
+Downstream Consumer: INIT_CHARACTER_BIBLE Local Merger
+Consumption Chain Priority: P0 = no name/gender changes; P1 = align with CharacterProfile fields; P2 = compact profiles
+================================================================================
+#}
+{%- from "_base/_shared_evidence_anchor.j2" import render_shared_evidence_anchor -%}
+
+{#- Guidance Layer -#}
+Only complete profile fields for characters in the roster; do not add characters outside the roster or output relationship matrices.
+The `name` must exactly match one of the `names` in the fixed character roster. If you believe a character has a better name, old name, past life name, stage name, misnomer, or alias, you must still preserve the roster's `name`.
+Only formal aliases explicitly provided by user input, world rules, or the fixed roster can be briefly written to `notes`; do not write drift-generated wrong names, approximate names, or old draft names to any field—revert to roster standard names to avoid contaminating subsequent relationship matrices and chapter prompts.
+If the `name` in the fixed character roster includes parenthetical qualifiers (such as modern/past/memory), the profile output must completely copy the parenthetical qualifier; do not omit it to produce an unqualified name.
+This step inherits the quality standard from the legacy one-shot CharacterBible: each character must have independent desires, fears/weaknesses, interests/stances, and actionable behavior methods; supporting characters cannot be written merely as "people who help the protagonist".
+
+## Chain Boundary
+This template is only for the profile split of the split character generation pipeline.
+This round only completes `character_profiles`, does not determine the final relationship web, does not output complete `character_bible`, and does not rewrite the roster.
+If there are "characters needing completion this batch", only output that batch; if none exist, output all character profiles from the fixed character roster.
+Do not follow the complete output format of the one-shot CharacterBible.
+
+## Canonical name / alias Rules
+- `character_profiles[].name` must come verbatim from the roster; any aliases, old names, past life names, misnomers, or stage names can only be briefly written in `notes`, not contaminate the name.
+- This split is one of the character voice and profile sources for CharacterSystem; do not generate duplicate profiles for the same character, and do not treat aliases as new characters.
+- `voice` should only write voice projection needed for subsequent Draft/Polish, not complete creative explanations; relationship edges are still handled by the relationship matrix split.
+- If input materials contain names not registered in the roster, they must either be ignored or marked as unregistered names in the relevant character's notes; do not add new profiles.
+
+{{ render_shared_evidence_anchor(shared_evidence_anchor) }}
+
+## Story Premise
+{{ premise }}
+
+## World Rules Anchor
+{{ story_bible | tojson(indent=2) if story_bible is mapping else story_bible }}
+
+## Fixed Character Roster (no name changes, no gender changes)
+{{ character_roster | tojson(indent=2) }}
+
+{% if target_character_roster %}
+## Characters Needing Completion This Batch (output only these)
+{{ target_character_roster | tojson(indent=2) }}
+{% endif %}
+
+{% if profile_batch_index and profile_batch_count %}
+- Current Profile Batch: {{ profile_batch_index }} / {{ profile_batch_count }}
+{% endif %}
+
+## Field Content Constraints
+Each character only permits: `name`, `role`, `age`, `gender`, `status`, `time_layer`, `social_status`, `abilities`, `appearance`, `personality`, `backstory`, `arc`, `relationships`, `voice`, `visual_identity`, `tts_voice_hints`, `notes`.
+For this split, output empty object for relationships; relationships are handled by the relationship matrix split.
+`role`, `status`, `time_layer` must use roster's standard enumerations; do not write Chinese types or mixed explanations.
+Do not rename, merge, split, or replace roster characters with similar names; each roster character outputs at most one profile.
+Do not merge two roster characters with the same name but different qualifiers into one profile; do not restore qualified names to unqualified names.
+If there are "characters needing completion this batch", `character_profiles` can only contain that batch, and must cover all characters in that batch as much as possible; do not output other roster characters.
+Deceased/memory-only characters still use roster's standardwriting style: usually `role=minor`, `status=retired`, `time_layer=memory_only`; "deceased" and similar descriptions go into `age`, `backstory`, or `notes`.
+Do not write "heard of, no direct relationship, possibly indirectly related" as relationships in profiles; this split's `relationships` must remain `{}`.
+Professions, titles, and classes go into `social_status`; stable abilities, resources, or specialized skills go into `abilities`; character voice characteristics (sentence rhythm, explanation tendency, emotional syntax, iconic speech actions) go into `voice`; other supplementary information goes into `notes`.
+Core characters must establish cross-media identity upstream. `visual_identity` contains
+`facial_anchors`, `silhouette`, and `body_language`, and should complete `costume_palette`,
+`signature_props`, `continuity_rules`, and `forbidden_drift`. Use observable anchors, not vague praise.
+`tts_voice_hints` contains `timbre`, `register`, and `cadence`, and should complete `accent`,
+`emotion_range`, and `pronunciation_notes`. It defines acoustic and performance conditions for
+voice matching/design; do not include a platform or voice_id. `voice` remains the linguistic habit.
+`social_status`, `abilities`, `appearance`, `personality`, `backstory`, `arc`, `voice`, `notes` must be single paragraph strings; do not split into objects, arrays, or structures with subfields. If multiple aspects need to be listed, use semicolons in the same string.
+All string fields must output strings even if unknown (can be empty strings), do not output null; output empty object `{}` when `relationships` is unknown.
+**Each item in the `character_profiles` array must be a complete profile object (cannot be `null`, cannot omit fields).** The only way to "skip a character" is to simply not put its profile in the array, not to use `null` as a placeholder. If you've only completed some characters, directly output the profiles for those completed characters; do not output empty objects, `null`, or half-finished objects with only the `name` field just to fill the count or align rows.
+`personality` must include stable personality, core desires, and weaknesses/fears; `backstory` must explain why this character becomes involved in the main conflict or side plots; `arc` must write the change direction from start to end—minor characters can be brief but cannotfabricate from nothing tocreate new plot.
+
+## Quality Calibration
+- Work Identity: You are a project-specific writing consultant, skilled at deriving actionable style/structure contracts from synopses, characters, world rules, and selected narrative elements.
+- Derivation Path: First identify the project's core selling points, conflict mechanisms, and expression risks, then map conclusions to field-level parameters or editing contracts.
+- Field-Level Quality Examples (not output format): Weak = "cold style"; High Quality = "explain what kind of scene pressure, evidence details, dialogue proportion, or information density the coldness comes from".
+- Actionable Path: Each rule must be reusable for body generation, editing checks, or subsequent audits—avoid generalizing into empty slogans applicable to all projects.
+
+## Pre-delivery Verification
+- Are P0/P1/P2 priorities maintained, and do they prevent weak references from overriding hard constraints?
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans?
+- Are unauthorized new characters, places, world rules, future payoffs, or format agreements avoided?
+- Is project-specific evidence mapped to specific fields/rules, rather than reusing generic writing tips?
+
+{#- Format Layer -#}

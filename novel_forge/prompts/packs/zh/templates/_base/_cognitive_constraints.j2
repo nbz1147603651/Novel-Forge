@@ -1,0 +1,9 @@
+{# Canonical, compact, lossless cognitive-constraint prompt projection. #}
+{%- macro render_cognitive_constraints(items) -%}
+{% for item in items | default([]) %}
+{% set subjects = item.cognitive_subjects | default([]) %}
+{% set object = item.cognitive_object | default(item.claim_text | default(''), true) %}
+{% set coverage = item.character_knowledge_coverage | default({}) %}
+- claim_id={{ item.claim_id | default('') }}; cognitive_subjects={{ subjects | join('、') or '[]' }}; cognitive_object={{ object }}; cognitive_level={{ item.cognitive_level | default('unaware') }}; action_level={{ item.action_level | default('none') }}; reader_awareness={{ item.reader_awareness | default('unknown') }}; character_knowledge_coverage={% if coverage %}{% for character, level in coverage.items() %}{{ character }}={{ level }}{% if not loop.last %}, {% endif %}{% endfor %}{% else %}{}{% endif %}{% if item.cognitive_chapter | default(none) %}; cognitive_chapter={{ item.cognitive_chapter }}{% endif %}{% if item.public_reveal_chapter | default(none) %}; public_reveal_chapter={{ item.public_reveal_chapter }}{% endif %}{% if item.foreshadow_chapters | default([]) %}; foreshadow_chapters={{ item.foreshadow_chapters | join(',') }}{% endif %}
+{% endfor %}
+{%- endmacro %}

@@ -1,0 +1,21 @@
+{# source_template_hash: 7e26f324837eeb8e2674b9d32e897876cb495ec63cba28fce4fbf0cc2e3db170 #}
+{#- General Quality Standards Snippet -#}
+{#- Migrated to _base/_quality_standards.j2, this file retained for backward compatibility -#}
+{#- Usage: {% import "_quality_standards.j2" as qs %} {{ qs.pronoun_consistency(...) }} #}
+
+{% import "_base/_quality_standards.j2" as _base_qs %}
+
+{%- set forbidden_system_markers = _base_qs.forbidden_system_markers -%}
+{%- set pronoun_consistency = _base_qs.pronoun_consistency -%}
+{%- set self_reference_context_awareness = _base_qs.self_reference_context_awareness -%}
+{%- set sensory_diversity = _base_qs.sensory_diversity -%}
+{%- set dialogue_density = _base_qs.dialogue_density -%}
+{%- set dialogue_format = _base_qs.dialogue_format -%}
+{%- set anti_exposition_rules = _base_qs.anti_exposition_rules -%}
+{%- set anti_meta_narrative_rules = _base_qs.anti_meta_narrative_rules -%}
+{%- set creative_specificity_rules = _base_qs.creative_specificity_rules -%}
+{%- set traditional_time_marker_rules = _base_qs.traditional_time_marker_rules -%}
+{%- set webnovel_pacing_rules = _base_qs.webnovel_pacing_rules -%}
+{%- set imagery_repetition_ban = _base_qs.imagery_repetition_ban -%}
+{%- set paragraph_uniqueness = _base_qs.paragraph_uniqueness -%}
+{%- set emotional_craft_rules = _base_qs.emotional_craft_rules -%}

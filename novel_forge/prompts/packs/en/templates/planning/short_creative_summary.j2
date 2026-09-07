@@ -1,0 +1,115 @@
+{# ================================================================================
+source_template_hash: 915fdef34864c6e038f00488c6860c349fa3ac4263661029618c10505e09036e
+[NOTES]
+================================================================================
+Prompt: short_creative_summary.j2
+Service Step: SHORT_CREATIVE_SUMMARY (Short Story Creative Summary)
+Function Summary: Perform creative analysis on the final short story manuscript, extracting
+                  in-depth insights from three dimensions: structure, characters, and theme;
+                  evaluate blueprint/beat implementation; output creative report.
+Upstream Inputs:
+  - genre: genre
+  - tone: tone
+  - theme: theme
+  - length_target: target word count
+  - blueprint: from SHORT_BLUEPRINT (synopsis, emotional_arc, ending_strategy,
+                turning_points and other blueprint design intentions)
+  - beats: from SPEC_TO_BEATS (beat sequence)
+  - final_text: final short story manuscript body
+Downstream Outputs:
+  - JSON: {characters, narrative_analysis, thematic_analysis, creative_highlights,
+           improvement_suggestions, beat_fulfillment}
+  - Downstream Consumers: Memory system archive / user reading
+Consumption Chain Priority:
+  P0 = beat_fulfillment beat implementation check
+  P1 = creative_highlights highlight identification / improvement_suggestions improvement suggestions
+  P2 = thematic_analysis theme analysis
+Brief Example:
+  Input: final_text="...", blueprint={synopsis:"...", beats:[...]}
+  Output: {characters:[...], narrative_analysis:{...}, beat_fulfillment:[...]}
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer: Task Definition + Context Consumption
+    --------------------------------------------------------------------------- -#}
+
+Please perform creative analysis on the following short story manuscript, extracting in-depth insights from three dimensions: structure, characters, and theme.
+
+## Story Information
+- Genre: {{ genre }}
+- Tone: {{ tone }}
+{% if theme %}- Theme: {{ theme }}{% endif %}
+{% if length_target %}- Target Word Count: {{ length_target }}{% endif %}
+{% if blueprint %}
+
+## Blueprint Design Intentions
+- Synopsis: {{ blueprint.synopsis }}
+{% if blueprint.emotional_arc %}- Emotional Arc: {{ blueprint.emotional_arc }}{% endif %}
+{% if blueprint.ending_strategy %}- Ending Strategy: {{ blueprint.ending_strategy }}{% endif %}
+{% if blueprint.turning_points %}
+- Key Turning Points: {% for tp in blueprint.turning_points %}{{ tp.description }} ({{ tp.position_percent }}%){% if not loop.last %}; {% endif %}{% endfor %}
+{% endif %}
+{% endif %}
+
+## Beat Structure (Creative Intent)
+{% for beat in beats %}
+{{ beat.sequence }}. [{{ beat.beat_type | upper }}] {{ beat.summary }} (Tension {{ beat.tension_level }}/10)
+   Characters: {{ beat.characters_involved | join(', ') }}{% if beat.setting %} | Setting: {{ beat.setting }}{% endif %}
+{% endfor %}
+
+## Final Manuscript Body
+{{ final_text }}
+
+---
+
+## Analysis Requirements
+
+### 1. Character Analysis (characters)
+For each character with substantial actions in the body, extract:
+- `name`: character name
+- `role`: protagonist / supporting character / functional character
+- `arc_summary`: character arc summary (the character's change from state A to state B, 1-2 sentences)
+- `key_traits`: personality traits demonstrated through actions/dialogue (2-4 words)
+- `relationships`: relationships with other characters (e.g., `[{"target": "Xiao Bai", "type": "rival", "note": "from misunderstanding to reconciliation"}]`)
+
+### 2. Narrative Structure Analysis (narrative_analysis)
+- `pacing_assessment`: pacing assessment (tight/loose/balanced, 1-2 sentences)
+- `tension_curve`: alignment between actual tension curve and beat intentions (high / medium / low), with explanation
+- `structure_type`: actual structure type (e.g., "three-act structure," "circular narrative," "flashback," "stream of consciousness")
+- `turning_points`: list of key turning points, each containing `description` and `effectiveness` (high/medium/low)
+- `opening_hook`: effectiveness evaluation of the opening hook (1 sentence)
+- `ending_impact`: ending resolution impact evaluation (1 sentence)
+
+### 3. Theme Analysis (thematic_analysis)
+- `core_theme`: the story's core theme (1 sentence)
+- `theme_delivery`: how the theme is delivered (through plot/dialogue/imagery)
+- `symbolic_elements`: symbolic elements in the body (if any)
+- `emotional_resonance`: overall emotional resonance points (1-2 sentences)
+
+### 4. Creative Highlights and Suggestions
+- `creative_highlights`: 3-5 specific writing highlights (cite corresponding plot/scene functions, do not quote large passages from the original)
+- `improvement_suggestions`: 2-3 improvement suggestions (specific and actionable, prioritize pointing out areas where blueprint/beats were not fully realized)
+
+### 5. Beat Implementation Check (beat_fulfillment)
+For each beat, determine if it was effectively implemented in the body:
+- `sequence`: beat sequence number
+- `fulfilled`: true / false
+- `note`: brief explanation (how it was implemented / why it was not implemented)
+
+## Analysis Self-Check
+1. Character analysis must come from substantial actions in the body; do not fill in arcs for characters who are only mentioned.
+2. Narrative structure analysis must compare against blueprint and beat intentions; do not write generic evaluations only.
+3. Beat implementation check must cover each input beat item by item.
+
+## Quality Calibration
+- Working Identity: You are a creative strategist skilled in story pacing and emotional driving, capable of transforming input specifications into executable narrative materials.
+- Creative Inference Path: First locate the emotional engine and conflict pressure, then ground them in actions, dialogue, scene staging, and consequences.
+- Field-Level Quality Examples (not output format): Weak = "The character is very nervous"; High-Quality = "The character exposes cost, misjudgment, or emotional turning point before making a specific choice."
+- Actionable Path: Each new content element should serve the given character motivation, scene resistance, suspense advancement, or emotional landing point.
+
+## Pre-Delivery Verification
+- Are P0/P1/P2 priorities maintained, and no weak references overriding hard constraints.
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans.
+- Are unauthorized new characters, locations, world rules, future payoffs, or format agreements avoided.
+- Are abstract goals transformed into observable actions, conflicts, state changes, or chapter transition points.

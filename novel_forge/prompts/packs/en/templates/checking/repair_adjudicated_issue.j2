@@ -1,0 +1,85 @@
+{# source_template_hash: 7cdee4a2880eaeed984266614a8db9ea52596ed5b1485f5594c47b239d95401c #}
+{%- from "_quality_standards.j2" import creative_specificity_rules -%}
+{%- from "_base/_artifact_source_contract.j2" import render_artifact_source_contract -%}
+{%- from "_base/_repair_attempt_guidance.j2" import render_repair_attempt_guidance -%}
+{%- from "_base/_repair_quality_calibration.j2" import render_repair_quality_calibration, render_repair_pre_delivery_checklist -%}
+{#
+================================================================================
+[REMARKS]
+================================================================================
+Prompt: repair_adjudicated_issue.j2
+Service Step: REPAIR_ADJUDICATED_ISSUE (Adjudicated Issue Repair)
+Brief Description: Perform local repair on chapter body text according to repair requirements from LLM adjudicator, and return mergeable body paragraphs.
+Upstream Inputs:
+  - adjudicated_issue: Adjudicated issue and repair requirements
+  - stage_cards.source: ChapterSourceSlice, containing spoiler revelation boundaries (if provided by caller)
+  - chapter_contract: Chapter contract for this chapter
+  - current_state: Current hard facts state
+  - repair_context: Evidence window to be repaired
+  - chapter_text: Full chapter body text (used as fallback only)
+Downstream Output:
+  - TEXT: Repaired body paragraphs; full body can be returned but local paragraphs are preferred
+  - Downstream Consumer: Re-examination / Archival Process
+Consumption Chain Priority: P0 (Adjudicated Repair Requirements) > P1 (Contract and Hard Facts) > P2 (Original Style Preservation)
+================================================================================
+#}
+
+{% set cards = stage_cards | default({}) %}
+{% set source = cards.source | default({}) %}
+
+## Task
+Locally repair the body text based on repair requirements from the LLM adjudicator.
+
+{{ render_artifact_source_contract(source, title="## Source Artifact Boundaries (P0)", mode="repair") }}
+
+## ticket/window Rules
+- `adjudicated_issue.evidence_quotes` and `repair_context` are the primary basis for this repair.
+- Chapter contract, current hard facts state, and source are used for validation boundaries only, not for adding new plot facts.
+- Repair only the ticket/window; do not freely rewrite the entire chapter. If unable to locate, return the most relevant original text window instead of expanding.
+- `repair_kind="mapping"`, path corrections, target_id restructuring, and state slot issues are not body text repairs. When encountering such issues, return the relevant original text window as-is without rewriting the body.
+
+## 🔒 Prohibited Modification Areas
+1. **Paragraphs, facts, relationships, object ownership, and identity reveals not explicitly pointed out by the adjudicated issue**: Any content not covered by evidence_quotes or repair_instruction in adjudicated_issue must not be modified.
+2. **Existing hard facts that do not conflict with the current chapter contract**: If hard facts are not challenged by the adjudicated issue, keep them as-is.
+3. **Content that has passed adjudicator review**: Any content not marked as problematic in this adjudication is considered approved and must not be modified.
+
+## ✅ Permitted Modification Scope
+1. **Paragraphs involved in evidence_quotes of the adjudicated issue**: Use the evidence quotes in the adjudicated issue as precise anchors to locate specific positions requiring modification.
+2. **Modifications explicitly required by repair_instruction in the adjudicated issue**: Execute modifications strictly according to the description in repair_instruction.
+3. **Transitional paragraphs that must be adjusted to achieve the repair**: To ensure smooth flow after repair, necessary transitional statements may be adjusted, but not exceeding 20% of the original paragraph count.
+
+## ⚠️ Repair Strategy
+1. **Minimal Intervention Principle**: Modify only necessary parts; prefer local modification over full text rewrite.
+2. **Evidence Anchoring**: Use evidence_quotes to locate modification scope, ensuring each modification has adjudicator basis.
+3. **Style Preservation**: Maintain original style, rhythm, and character voice after repair.
+4. **Prioritize Output of Repaired Local Body Paragraphs**: Return only the body paragraphs from the modified window that need to be replaced back into the original text; do not output explanations or JSON; output in standard text format.
+5. **No Requirement to Re-output Entire Chapter**: If repair involves only one or two paragraphs, output only those one or two repaired paragraphs. If unable to reliably locate modification points, return the most relevant original text paragraphs as-is without expanding the chapter.
+6. **Memory as Auxiliary Only**: If memory hints are provided, they may only be used to maintain tone, continuity, and contextual consistency of repaired paragraphs. Memory summaries must not be used as body text evidence, and no new facts, character states, relationship changes, or repair targets may be added based on them.
+{{ creative_specificity_rules(title="") }}
+
+{{ render_repair_attempt_guidance(repair_attempt_guidance | default(none)) }}
+
+## Adjudicated Issue
+{#- adjudicated_issue contains verdict, rationale, evidence_quotes, repair_instruction, severity. LLM should use evidence_quotes to locate modification points and repair_instruction to guide specific modifications -#}
+{{ adjudicated_issue }}
+
+## Chapter Contract
+The following serves only as boundaries and validation conditions, not as a source of new facts.
+{{ chapter_contract }}
+
+## Current Hard Facts State
+{{ current_state }}
+
+{% if memory_repair_hints %}
+## Memory Assistance Hints (Not a Fact Source)
+The following content comes from memory retrieval and can only serve as contextual hints during repair. Hard facts are based on "Current Hard Facts State", chapter contract, adjudicated issue, and body text evidence.
+{{ memory_repair_hints }}
+{% endif %}
+
+## Body Text Window to Be Repaired
+The following is a local window extracted from the full chapter based on adjudicator evidence. Please repair only the body paragraphs directly related to the adjudicated issue within these windows.
+{{ repair_context | default(chapter_text) }}
+
+{{ render_repair_quality_calibration("repair") }}
+
+{{ render_repair_pre_delivery_checklist("repair") }}

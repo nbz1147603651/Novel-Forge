@@ -1,0 +1,82 @@
+{# source_template_hash: 76c5885722d0449521da7d4bc7aaa874fb1b32fe53869e74b92508ebb6df5006 #}
+{% macro render_authoritative_state(canon_context=None, chapter_state_packet=None, chapter_contract=None) -%}
+{% set ns = namespace(auth=None, contract=chapter_contract | default(none), refs=None) %}
+{% if canon_context and canon_context.authoritative_narrative_state is defined %}
+{% set ns.auth = canon_context.authoritative_narrative_state %}
+{% endif %}
+{% if not ns.auth and chapter_state_packet and chapter_state_packet.authoritative_narrative_state is defined %}
+{% set ns.auth = chapter_state_packet.authoritative_narrative_state %}
+{% endif %}
+{% if not ns.contract and canon_context and canon_context.chapter_contract is defined %}
+{% set ns.contract = canon_context.chapter_contract %}
+{% endif %}
+{% if not ns.contract and chapter_state_packet and chapter_state_packet.chapter_contract is defined %}
+{% set ns.contract = chapter_state_packet.chapter_contract %}
+{% endif %}
+{% if canon_context and canon_context.entity_reference_graph is defined %}
+{% set ns.refs = canon_context.entity_reference_graph %}
+{% endif %}
+{% if not ns.refs and chapter_state_packet and chapter_state_packet.canon_context is defined and chapter_state_packet.canon_context.entity_reference_graph is defined %}
+{% set ns.refs = chapter_state_packet.canon_context.entity_reference_graph %}
+{% endif %}
+
+{% if ns.auth %}
+### LLM-Ruled Narrative State (P0 Supreme Fact Source)
+The following content comes from `narrative_state/state_ledger.jsonl` and projection files; it can only be executed and cannot be overridden by old Canon, creative reports, or improvisation.
+{% if ns.auth.recent_summaries %}
+**Ruled Facts Summary**:
+{% for item in ns.auth.recent_summaries %}
+- {{ item }}
+{% endfor %}
+{% endif %}
+{% if ns.auth.facts_by_path %}
+**Structured State Paths**:
+{% for path, value in ns.auth.facts_by_path.items() %}
+- {{ path }} = {{ value }}
+{% endfor %}
+{% endif %}
+{% if ns.auth.pending_items %}
+**Pending/Delayed Items**:
+{% for item in ns.auth.pending_items %}
+- {{ item.summary or item.candidate_id or item.pending_id }}{% if item.pending_reason %} ({{ item.pending_reason }}){% endif %}
+{% endfor %}
+These items have not yet been ruled as facts; conclusions cannot be pre-determined; they must remain ambiguous, delayed, or wait for main text evidence.
+{% endif %}
+{% endif %}
+
+{% if ns.contract %}
+### This Chapter's Narrative Contract (P0 Execution Boundary)
+{% if ns.contract.entry_state_requirements %}
+**Entry State**: {{ ns.contract.entry_state_requirements | join('; ') }}
+{% endif %}
+{% if ns.contract.required_events %}
+**Required Events**: {{ ns.contract.required_events | join('; ') }}
+{% endif %}
+{% if ns.contract.allowed_changes %}
+**Allowed Changes**: {{ ns.contract.allowed_changes | join('; ') }}
+{% endif %}
+{% if ns.contract.forbidden_changes %}
+**Forbidden Changes**: {{ ns.contract.forbidden_changes | join('; ') }}
+{% endif %}
+{% if ns.contract.exit_state_targets %}
+**Exit Targets**: {{ ns.contract.exit_state_targets | join('; ') }}
+{% endif %}
+{% endif %}
+
+{% if ns.refs %}
+### Entity/Identity Reference Graph (P0/P1 Disambiguation)
+Character relationships should still be based on the character relationship network; this is only used to resolve confusion about aliases, past lives, misidentifications, props, concepts, and organizational affiliations.
+{% if ns.refs.identity_links %}
+**Identity/Name Links (P0, No Confusions)**:
+{% for link in ns.refs.identity_links %}
+- {{ link.source }} --{{ link.link_type }}--> {{ link.target }}{% if link.time_layer %} ({{ link.time_layer }}){% endif %}{% if link.description %}: {{ link.description }}{% endif %}
+{% endfor %}
+{% endif %}
+{% if ns.refs.context_links %}
+**Props/Concepts/Organization Associations (P1, Creative Anchors)**:
+{% for link in ns.refs.context_links %}
+- {{ link.source }} --{{ link.link_type }}--> {{ link.target }}{% if link.description %}: {{ link.description }}{% endif %}
+{% endfor %}
+{% endif %}
+{% endif %}
+{%- endmacro %}

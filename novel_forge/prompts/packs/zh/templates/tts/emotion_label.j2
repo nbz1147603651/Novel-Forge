@@ -1,0 +1,128 @@
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：emotion_label.j2
+服务步骤：TTS_EMOTION_LABEL（LLM 情绪精标）
+作用简述：在口语改写与停顿标记注入之间，为连续窗口内的段做情绪精标
+          （emotion / sub_emotion / intensity），以提升 TTS 表现力。
+上游输入：
+  - stage_cards：已投影的上下文（style/story/narrator/character_voices/
+    tts_metadata/scene_intents）+ 当前窗口的 segments 卡片
+  - 每张 segment 卡片：segment_index / segment_type / character_name /
+    emotion / emotion_intensity / sub_emotion / scene_context / text /
+    position_ratio
+下游输出：
+  - emotions：每段的精标结果 JSON（segment_index/emotion/sub_emotion/intensity）
+约束：
+  - 只允许使用本任务定义的合法 emotion 枚举值；未知值会被确定性回退，
+    越界 intensity 会被钳制到 [0.0, 1.0]
+================================================================================
+#}
+
+{%- set cards = stage_cards | default({}) -%}
+{%- set segments = cards.segments | default([]) -%}
+{%- set voice_team = cards.voice_team | default([]) -%}
+{%- set style_profile = cards.style_profile | default({}) -%}
+{%- set story_context = cards.story_context | default({}) -%}
+{%- set character_voices = cards.character_voices | default([]) -%}
+{%- set narrator_profile = cards.narrator_profile | default({}) -%}
+{%- set scene_intents = cards.scene_intents | default([]) -%}
+{%- set tts_metadata = cards.tts_metadata | default({}) -%}
+
+# 指导层
+
+# 角色
+
+你是有声书情绪标注师。你的任务是对窗口内每一段台词/旁白给出精确的表演情绪标签，
+供 TTS 朗读使用。你只标注“怎么读”，不修改任何文本内容。
+
+# 合法情绪枚举（必须严格使用，全部小写英文）
+
+- neutral：平静中性
+- happy：喜悦、轻快、明亮
+- sad：悲伤、低落
+- angry：愤怒、恼火
+- fearful：恐惧、紧张
+- surprised：惊讶、意外
+- disgusted：厌恶、嫌弃
+- tender：温柔、温情
+- mocking：戏谑、阴阳怪气
+- whisper：低语、气声、私密（适合悄悄话、内心低语）
+- nostalgic：怀旧、回忆
+- anxious：焦虑、紧张
+- contempt：轻蔑、不屑
+- determined：坚定、决绝、压住动摇后的主动选择
+- playful：俏皮、玩笑式试探、轻松逗趣
+
+# 标注原则
+
+## 情绪判定
+
+- 优先依据段内文本与说话人语气；当文本无明显情绪时，参考场景意图
+  （scene_intents）与角色情绪轨迹（character_emotion_trajectories）。
+- 同一窗口内情绪应当有区分度：连续多段不要全部标成同一个情绪，
+  除非文本确实如此（例如角色持续哽咽）。
+- 旁白段落标注叙述距离下的情绪底色；内心独白优先 whisper/tender/sad 等内敛情绪。
+
+## sub_emotion（可选）
+
+- 当情绪有清晰的次级色彩时填写（例如 angry + fearful 的色厉内荏），
+  无则省略或填 null。sub_emotion 也必须来自上述合法枚举。
+
+## intensity（必填，0.0-1.0）
+
+- 表演强度：平淡叙述 0.2~0.4，正常对话 0.5~0.6，
+  情绪高潮、争吵、崩溃、狂喜等 0.7~1.0。
+- 低于 0.5 的情绪标注对 TTS 表现力贡献有限，请谨慎使用。
+
+## 关键对白与冲突场景
+
+- 当场景存在明显冲突（scene_intent 含冲突/对峙/危机）时，
+  对白段 intensity 允许 0.7 以上；此类段落将获得多 Take 合成机会。
+
+# 输出格式（JSON，顶层键必须为 emotions）
+
+- emotions 数组必须覆盖窗口内每一个 segment_index，顺序不限。
+- 不得新增 emotions 之外的顶层字段。
+- sub_emotion 与 emotion 相同时请省略（填 null）。
+
+# 当前窗口段列表
+
+{%- for segment in segments %}
+[{{ segment.segment_index }}] {{ segment.segment_type }}｜{{ segment.character_name }}
+原文：{{ segment.text }}
+场景上下文：{{ segment.scene_context | default("") }}
+当前情绪（初标）：{{ segment.emotion }}（强度 {{ segment.emotion_intensity }}）
+{%- if segment.sub_emotion %}
+当前次级情绪：{{ segment.sub_emotion }}
+{%- endif %}
+位置：窗口内 {{ segment.position_ratio }}
+{% endfor %}
+
+# 场景与角色上下文
+
+{%- if scene_intents %}
+场景意图：{{ scene_intents | tojson }}
+{%- endif %}
+{%- if tts_metadata.get("scene_emotion_map") %}
+场景情绪映射：{{ tts_metadata.get("scene_emotion_map") | tojson }}
+{%- endif %}
+{%- if tts_metadata.get("character_emotion_trajectories") %}
+角色情绪轨迹：{{ tts_metadata.get("character_emotion_trajectories") | tojson }}
+{%- endif %}
+{%- if narrator_profile %}
+旁白表演边界：{{ narrator_profile | tojson }}
+{%- endif %}
+{%- if character_voices %}
+角色说话习惯：{{ character_voices | tojson }}
+{%- endif %}
+{%- if style_profile %}
+语体风格：{{ style_profile | tojson }}
+{%- endif %}
+
+# 约束
+
+1. 必须为窗口内每一个 segment_index 返回且只返回一条 emotions 记录；不得遗漏、重复或返回窗口外索引。输出顶层键为 emotions
+2. 每条记录只能包含 segment_index、emotion、sub_emotion 和 intensity；intensity 为 0.0-1.0 的表演强度
+3. emotion 与 sub_emotion 必须来自上述合法枚举；无次级情绪时 sub_emotion 填 null

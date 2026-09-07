@@ -1,0 +1,1318 @@
+/*
+ * Chapter Studio source parity.
+ *
+ * The PySide6 source keeps project selection, writing/decision modes, and
+ * compact tools inside a single controller strip.  This must remain separate
+ * from the broad shared CSS so this page can converge without changing button
+ * density on unrelated primary surfaces.
+ */
+.studio-page {
+  gap: 14px;
+}
+
+.studio-selector {
+  padding: 10px 16px 10px;
+  border-radius: 14px;
+}
+
+.studio-selector-leading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.studio-selector-leading h2 {
+  margin: 0;
+  color: var(--nf-text-heading);
+  font-size: var(--nf-font-section-sm);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.studio-selector-leading p {
+  display: none;
+}
+
+.studio-selector-leading .button {
+  flex: 0 0 auto;
+  min-height: 30px;
+  padding-inline: 10px;
+  font-size: var(--nf-font-ui);
+}
+
+.studio-selector-leading-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.studio-selector-navigation-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-inline-start: 8px;
+  border-inline-start: 1px solid color-mix(in srgb, var(--nf-border-default) 22%, transparent);
+}
+
+.studio-coauthor-trigger:not(:disabled) {
+  border-color: color-mix(in srgb, var(--nf-accent-primary) 35%, var(--nf-border-default));
+  color: var(--nf-accent-primary-pressed);
+  background: color-mix(in srgb, var(--nf-accent-primary) 8%, var(--nf-bg-surface));
+}
+
+.studio-coauthor-trigger.is-open:not(:disabled) {
+  border-color: color-mix(in srgb, var(--nf-accent-primary) 58%, transparent);
+  background: color-mix(in srgb, var(--nf-accent-primary) 14%, var(--nf-bg-surface));
+  font-weight: 700;
+}
+
+.studio-selector-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 0;
+  border: 0;
+  overflow: visible;
+}
+
+.studio-selector-controls > .studio-select-menu:first-child {
+  flex: 0 0 200px;
+  min-width: 0;
+}
+
+.studio-select-menu {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.studio-select-menu-label {
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-micro);
+}
+
+.studio-select-menu-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 30px;
+  gap: 12px;
+  padding: 0 8px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 27%, transparent);
+  border-radius: 7px;
+  color: var(--nf-text-body);
+  background: var(--nf-bg-input);
+  font: inherit;
+  font-size: var(--nf-font-ui);
+  line-height: 1.2;
+  text-align: left;
+  cursor: pointer;
+}
+
+.studio-select-menu-trigger:hover:not(:disabled),
+.studio-select-menu-trigger[aria-expanded="true"] {
+  border-color: color-mix(in srgb, var(--nf-accent-primary) 58%, var(--nf-border-default));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--nf-accent-primary) 12%, transparent);
+}
+
+.studio-select-menu-trigger > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.studio-select-menu-chevron {
+  flex: 0 0 auto;
+  color: var(--nf-text-muted);
+  font-size: 16px;
+  line-height: 0.8;
+  transition: transform 150ms ease;
+}
+
+.studio-select-menu-trigger[aria-expanded="true"] .studio-select-menu-chevron {
+  transform: rotate(180deg);
+}
+
+.studio-select-menu-options {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 5px);
+  left: 0;
+  display: grid;
+  width: max(100%, 220px);
+  max-height: min(320px, 45vh);
+  padding: 4px;
+  overflow-y: auto;
+  border: 1px solid color-mix(in srgb, var(--nf-accent-primary) 28%, var(--nf-border-default));
+  border-radius: 9px;
+  background: var(--nf-bg-panel);
+  box-shadow: 0 12px 24px color-mix(in srgb, #21130c 22%, transparent);
+}
+
+.studio-select-menu-options button {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 6px;
+  color: var(--nf-text-body);
+  background: transparent;
+  font: inherit;
+  font-size: var(--nf-font-ui);
+  text-align: left;
+  cursor: pointer;
+}
+
+.studio-select-menu-options button:hover,
+.studio-select-menu-options button:focus-visible {
+  outline: none;
+  background: color-mix(in srgb, var(--nf-accent-primary) 10%, transparent);
+}
+
+.studio-select-menu-options button.is-selected {
+  color: var(--nf-accent-primary);
+  background: color-mix(in srgb, var(--nf-accent-primary) 15%, transparent);
+  font-weight: 700;
+}
+
+.studio-select-menu-options small {
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-micro);
+}
+
+.studio-mode-control {
+  flex: 0 0 auto;
+  gap: 2px;
+  white-space: nowrap;
+}
+
+.studio-mode-control > span {
+  margin-right: 3px;
+  font-size: var(--nf-font-micro);
+  color: var(--nf-text-muted);
+}
+
+.studio-mode-control button {
+  min-height: 28px;
+  padding: 0 7px;
+  font-size: var(--nf-font-micro);
+}
+
+.studio-selector-tools {
+  display: flex;
+  justify-content: flex-start;
+  gap: 5px;
+  margin-top: 8px;
+  padding-top: 7px;
+  border-top: 1px solid color-mix(in srgb, var(--nf-border-default) 14%, transparent);
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.studio-selector-tools .button {
+  flex: 0 0 auto;
+  min-height: 27px;
+  padding-inline: 8px;
+  font-size: var(--nf-font-micro);
+}
+
+.studio-workbench {
+  gap: 12px;
+  min-height: 548px;
+}
+
+.studio-chapter-rail,
+.studio-memory {
+  padding: 16px 12px;
+  border-radius: 14px;
+}
+
+.studio-panel-heading {
+  padding: 0 5px 10px;
+}
+
+.studio-panel-heading h3,
+.studio-compass h3 {
+  font-size: var(--nf-font-section);
+}
+
+.studio-action-card {
+  gap: 12px;
+  padding: 18px;
+  border-radius: 14px;
+}
+
+.studio-action-card h3 {
+  font-size: var(--nf-font-section-lg);
+}
+
+.studio-action-card header > p {
+  margin-top: 7px;
+  font-size: var(--nf-font-label);
+  line-height: 1.55;
+  white-space: pre-line;
+}
+
+.studio-action-job-hint {
+  margin-bottom: 0;
+  color: var(--nf-text-muted-soft) !important;
+  font-size: var(--nf-font-ui) !important;
+}
+
+.studio-action-footer .button {
+  min-height: 36px;
+  font-size: var(--nf-font-body);
+}
+
+.studio-context-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.studio-context-card {
+  display: grid;
+  gap: 6px;
+  padding: 13px 15px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 18%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--nf-bg-panel) 58%, var(--nf-bg-surface));
+}
+
+.studio-context-card > span {
+  color: var(--nf-text-heading);
+  font-size: var(--nf-font-body);
+  font-weight: 700;
+}
+
+.studio-context-card p {
+  margin: 0;
+  color: var(--nf-text-secondary);
+  font-size: var(--nf-font-body);
+  line-height: 1.55;
+}
+
+.studio-context-card p.is-muted {
+  color: var(--nf-text-muted-soft);
+  font-size: var(--nf-font-ui);
+}
+
+.chapter-memory-tabs {
+  display: flex;
+  gap: 2px;
+  min-width: 0;
+  padding: 0 1px 6px;
+  overflow-x: auto;
+  border-bottom: 1px solid color-mix(in srgb, var(--nf-border-default) 16%, transparent);
+  scrollbar-width: thin;
+}
+
+.chapter-memory-tabs button {
+  position: relative;
+  min-width: 0;
+  min-height: 29px;
+  padding: 0 2px;
+  border: 0;
+  color: var(--nf-text-muted);
+  background: transparent;
+  font-size: var(--nf-font-micro);
+  line-height: 1.2;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chapter-memory-tabs button:hover {
+  color: var(--nf-text-secondary);
+  background: color-mix(in srgb, var(--nf-bg-hover-secondary) 68%, transparent);
+}
+
+.chapter-memory-tabs button.is-active {
+  color: var(--nf-accent-primary-pressed);
+  font-weight: 700;
+}
+
+.chapter-memory-tabs button.is-active::after {
+  position: absolute;
+  right: 6px;
+  bottom: 0;
+  left: 6px;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--nf-accent-primary);
+  content: "";
+}
+
+.chapter-memory-content {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-height: 0;
+  animation: chapter-memory-tab-fade 200ms ease-out;
+}
+
+.chapter-memory-card {
+  display: grid;
+  gap: 4px;
+  padding: 9px 10px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 17%, transparent);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--nf-bg-input) 37%, transparent);
+}
+
+.chapter-memory-card.is-highlight {
+  border-color: color-mix(in srgb, var(--nf-accent-primary) 35%, transparent);
+  background: color-mix(in srgb, var(--nf-accent-primary) 7%, var(--nf-bg-surface));
+}
+
+.chapter-memory-card.is-warning {
+  border-left: 3px solid var(--nf-accent-primary-pressed);
+}
+
+.chapter-memory-card strong {
+  color: var(--nf-text-heading);
+  font-size: var(--nf-font-ui);
+}
+
+.chapter-memory-card p {
+  margin: 0;
+  color: var(--nf-text-secondary);
+  font-size: var(--nf-font-ui);
+  line-height: 1.5;
+  white-space: pre-line;
+}
+
+@keyframes chapter-memory-tab-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chapter-memory-content { animation: none; }
+}
+
+/* Chapter rail sliding indicator */
+.studio-chapter-rail ol {
+  position: relative;
+}
+
+.studio-chapter-rail li button {
+  position: relative;
+  transition: transform 180ms cubic-bezier(.22, .61, .36, 1),
+              border-color 180ms ease,
+              background 180ms ease;
+}
+
+.studio-chapter-rail li button:hover {
+  transform: translateX(3px);
+}
+
+.studio-chapter-rail li button.is-selected {
+  animation: chapter-rail-select 250ms cubic-bezier(.22, .61, .36, 1);
+}
+
+.studio-chapter-rail li button.is-selected::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 60%;
+  background: var(--nf-accent-primary);
+  border-radius: 0 2px 2px 0;
+  animation: chapter-rail-indicator 250ms cubic-bezier(.22, .61, .36, 1);
+}
+
+@keyframes chapter-rail-select {
+  0% {
+    transform: scale(0.98);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes chapter-rail-indicator {
+  from {
+    height: 0%;
+    opacity: 0;
+  }
+  to {
+    height: 60%;
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .studio-chapter-rail li button {
+    transition: none;
+  }
+  .studio-chapter-rail li button:hover {
+    transform: none;
+  }
+  .studio-chapter-rail li button.is-selected {
+    animation: none;
+  }
+  .studio-chapter-rail li button.is-selected::before {
+    animation: none;
+  }
+  .studio-page .studio-action-card,
+  .studio-page .studio-artifacts {
+    animation: none;
+  }
+  .studio-page .studio-mode-control button {
+    transition: none;
+  }
+}
+
+/* ============================================================
+ * Chapter Studio visual parity — additional refinements
+ * ============================================================ */
+
+/* Action card smooth entrance */
+.studio-page .studio-action-card {
+  animation: studio-card-enter 220ms cubic-bezier(.22, .61, .36, 1) both;
+}
+
+@keyframes studio-card-enter {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Artifacts panel slide in */
+.studio-page .studio-artifacts {
+  animation: studio-card-enter 250ms cubic-bezier(.22, .61, .36, 1) both;
+  animation-delay: 50ms;
+}
+
+/* ── Chapter timeline: full-width task flow above the artifact shelf ─── */
+
+.studio-workflow-timeline {
+  display: grid;
+  gap: 11px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--nf-accent-primary) 21%, var(--nf-border-default));
+  border-radius: 14px;
+  background:
+    linear-gradient(112deg, color-mix(in srgb, var(--nf-accent-primary) 7%, transparent), transparent 37%),
+    var(--nf-bg-surface);
+  box-shadow: 0 8px 22px color-mix(in srgb, #17120d 7%, transparent);
+  animation: studio-card-enter 235ms cubic-bezier(.22, .61, .36, 1) both;
+  animation-delay: 25ms;
+}
+
+.studio-workflow-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.studio-workflow-heading .section-kicker {
+  color: var(--nf-accent-primary);
+  font-size: var(--nf-font-micro);
+  font-weight: 800;
+  letter-spacing: .1em;
+}
+
+.studio-workflow-heading h2 {
+  margin: 3px 0 0;
+  color: var(--nf-text-heading);
+  font-size: var(--nf-font-section-lg);
+}
+
+.studio-workflow-heading p,
+.studio-workflow-current {
+  margin: 4px 0 0;
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-label);
+}
+
+.studio-workflow-summary {
+  display: grid;
+  flex: 0 0 auto;
+  gap: 1px;
+  min-width: 80px;
+  padding: 6px 0 6px 12px;
+  border-left: 1px solid color-mix(in srgb, var(--nf-border-default) 75%, transparent);
+  text-align: right;
+}
+
+.studio-workflow-heading-actions {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  min-width: 0;
+}
+
+.studio-workflow-run-select {
+  width: min(330px, 31vw);
+}
+
+.studio-workflow-run-select .dropdown-select-trigger {
+  min-height: 32px;
+  font-size: var(--nf-font-ui);
+}
+
+.studio-workflow-summary strong {
+  color: var(--nf-accent-primary);
+  font-size: var(--nf-font-section-lg);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.05;
+}
+
+.studio-workflow-summary span {
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-micro);
+}
+
+.studio-workflow-progress {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--nf-border-default) 52%, transparent);
+}
+
+.studio-workflow-progress > span {
+  display: block;
+  height: 100%;
+  min-width: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--nf-accent-primary), color-mix(in srgb, var(--nf-accent-primary) 58%, #fff));
+  box-shadow: 0 0 10px color-mix(in srgb, var(--nf-accent-primary) 55%, transparent);
+  transition: width 280ms ease;
+}
+
+.studio-workflow-current {
+  margin: -2px 0 0;
+}
+
+.studio-workflow-current strong {
+  color: var(--nf-text-body);
+  font-weight: 650;
+}
+
+.studio-workflow-current span {
+  color: var(--nf-text-body);
+}
+
+.studio-workflow-phases {
+  display: grid;
+  align-items: start;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.studio-workflow-phase {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 78%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--nf-bg-panel) 68%, var(--nf-bg-surface));
+}
+
+.studio-workflow-phase > header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 8px 9px 6px;
+  border-bottom: 1px solid color-mix(in srgb, var(--nf-border-default) 48%, transparent);
+}
+
+.studio-workflow-phase > header span {
+  overflow: hidden;
+  color: var(--nf-text-heading);
+  font-size: var(--nf-font-label);
+  font-weight: 720;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.studio-workflow-phase > header small {
+  flex: 0 0 auto;
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-micro);
+  font-variant-numeric: tabular-nums;
+}
+
+.studio-workflow-phase ol {
+  display: grid;
+  gap: 1px;
+  margin: 0;
+  padding: 5px;
+  list-style: none;
+}
+
+.studio-workflow-phase li,
+.studio-workflow-phase li button {
+  min-width: 0;
+}
+
+.studio-workflow-phase li button {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 7px;
+  padding: 5px 4px;
+  border: 0;
+  border-radius: 6px;
+  color: var(--nf-text-muted);
+  background: transparent;
+  font: inherit;
+  text-align: left;
+}
+
+.studio-workflow-phase li button:enabled {
+  cursor: pointer;
+}
+
+.studio-workflow-phase li button:enabled:hover,
+.studio-workflow-phase li button:enabled:focus-visible {
+  outline: none;
+  color: var(--nf-text-heading);
+  background: color-mix(in srgb, var(--nf-accent-primary) 11%, transparent);
+}
+
+.studio-workflow-node-mark {
+  display: grid;
+  flex: 0 0 15px;
+  width: 15px;
+  height: 15px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 80%, transparent);
+  border-radius: 50%;
+  color: var(--nf-text-muted);
+  font-size: 10px;
+  line-height: 1;
+}
+
+.studio-workflow-node-copy {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.studio-workflow-node-copy strong,
+.studio-workflow-node-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.studio-workflow-node-copy strong {
+  font-size: var(--nf-font-micro);
+  font-weight: 590;
+}
+
+.studio-workflow-node-copy small {
+  color: inherit;
+  font-size: calc(var(--nf-font-micro) - 1px);
+}
+
+.studio-workflow-phase li.is-done button {
+  color: color-mix(in srgb, var(--nf-status-success, #16a34a) 78%, var(--nf-text-body));
+}
+
+.studio-workflow-phase li.is-done .studio-workflow-node-mark {
+  border-color: var(--nf-status-success, #16a34a);
+  color: var(--nf-bg-surface);
+  background: var(--nf-status-success, #16a34a);
+}
+
+.studio-workflow-phase li.is-active button {
+  color: var(--nf-accent-primary);
+}
+
+.studio-workflow-phase li.is-active .studio-workflow-node-mark {
+  border-color: var(--nf-accent-primary);
+  color: var(--nf-accent-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--nf-accent-primary) 14%, transparent);
+}
+
+.studio-workflow-phase li.is-failed button,
+.studio-workflow-phase li.is-failed .studio-workflow-node-mark {
+  color: var(--nf-status-danger, #dc2626);
+}
+
+.studio-workflow-phase li.is-skipped button {
+  color: var(--nf-text-muted);
+}
+
+.studio-workflow-phase li.is-skipped .studio-workflow-node-mark {
+  border-style: dashed;
+}
+
+.studio-workflow-phase li.is-blocked button,
+.studio-workflow-phase li.is-blocked .studio-workflow-node-mark {
+  color: var(--nf-status-warning, #b45309);
+}
+
+.studio-workflow-phase li.is-blocked .studio-workflow-node-mark {
+  border-color: var(--nf-status-warning, #b45309);
+  background: color-mix(in srgb, var(--nf-status-warning, #b45309) 9%, transparent);
+}
+
+.studio-workflow-phase li.is-rolled_back button,
+.studio-workflow-phase li.is-rolled_back .studio-workflow-node-mark {
+  color: var(--nf-status-info, #4a6d92);
+}
+
+.studio-workflow-phase li.is-rolled_back .studio-workflow-node-mark {
+  border-color: var(--nf-status-info, #4a6d92);
+  background: color-mix(in srgb, var(--nf-status-info, #4a6d92) 9%, transparent);
+}
+
+@media (max-width: 1320px) {
+  .studio-workflow-phases {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 780px) {
+  .studio-workflow-heading {
+    gap: 10px;
+  }
+
+  .studio-workflow-phases {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .studio-workflow-heading-actions {
+    flex-direction: column-reverse;
+    align-items: flex-end;
+  }
+
+  .studio-workflow-run-select {
+    width: min(300px, 48vw);
+  }
+}
+
+@media (max-width: 520px) {
+  .studio-workflow-timeline {
+    padding: 13px;
+  }
+
+  .studio-workflow-heading {
+    align-items: flex-start;
+  }
+
+  .studio-workflow-heading p {
+    display: none;
+  }
+
+  .studio-workflow-summary {
+    min-width: 68px;
+    padding-left: 8px;
+  }
+
+  .studio-workflow-phases {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Mode control smooth transitions */
+.studio-page .studio-mode-control button {
+  transition: color 150ms ease,
+              background 150ms ease,
+              border-color 150ms ease,
+              font-weight 150ms ease;
+}
+
+/* Context cards subtle border-left accent */
+.studio-page .studio-context-card {
+  transition: border-color 180ms ease, background 180ms ease;
+}
+
+.studio-page .studio-context-card:hover {
+  border-color: color-mix(in srgb, var(--nf-accent-primary) 35%, transparent);
+  background: color-mix(in srgb, var(--nf-bg-hover-secondary) 60%, var(--nf-bg-surface));
+}
+
+/* Artifact tab smooth transitions */
+.studio-page .studio-artifact-tabs button {
+  transition: color 150ms ease;
+}
+
+.studio-page .studio-artifact-tabs button.is-active::after {
+  transition: width 200ms cubic-bezier(.22, .61, .36, 1);
+}
+
+/* ============================================================
+ * Rewrite strategy selector
+ * ============================================================ */
+.studio-select-menu--rewrite {
+  flex: 0 0 220px;
+}
+
+.studio-rewrite-strategy {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.studio-rewrite-hint {
+  max-width: 216px;
+  padding-bottom: 6px;
+  color: var(--nf-text-muted, var(--nf-accent-primary));
+  font-size: var(--nf-font-micro);
+  line-height: 1.35;
+}
+
+/* Current chapter indicator stays visible without another infinite pulse. */
+.studio-rail-pulse {
+  position: absolute;
+  top: 50%;
+  left: -3px;
+  width: 6px;
+  height: 6px;
+  margin-top: -3px;
+  border-radius: 50%;
+  background: var(--nf-accent-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--nf-accent-primary) 18%, transparent);
+}
+
+.studio-chapter-rail ol li {
+  position: relative;
+}
+
+/* ============================================================
+ * Action panel state parity (action_panel.py badge tones)
+ * ============================================================ */
+
+.studio-action-state.is-tone-default {
+  color: var(--nf-text-muted);
+  background: var(--nf-bg-control);
+}
+
+.studio-action-state.is-tone-info {
+  color: var(--nf-accent-primary);
+  background: color-mix(in srgb, var(--nf-accent-primary) 13%, var(--nf-bg-surface));
+}
+
+.studio-action-state.is-tone-success {
+  color: var(--nf-status-success);
+  background: color-mix(in srgb, var(--nf-status-success) 12%, var(--nf-bg-surface));
+}
+
+.studio-action-state.is-tone-warning {
+  color: var(--nf-status-warning, #b45309);
+  background: color-mix(in srgb, var(--nf-status-warning, #f59e0b) 13%, var(--nf-bg-surface));
+}
+
+.studio-action-state.is-tone-error {
+  color: var(--nf-status-error, #dc2626);
+  background: color-mix(in srgb, var(--nf-status-error, #ef4444) 12%, var(--nf-bg-surface));
+}
+
+/* Action button rows (mirrors _add_btn_row: HBox spacing 8 + stretch) */
+.action-btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.action-btn-row .button.is-compact {
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: var(--nf-font-body);
+}
+
+.action-auto-hint {
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-body);
+}
+
+/* Multi-line summary text */
+.studio-action-summary {
+  white-space: pre-line;
+}
+
+/* Recovery banner */
+.studio-recovery-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 10px 14px;
+  border: 1px solid color-mix(in srgb, var(--nf-status-warning, #f59e0b) 38%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--nf-status-warning, #f59e0b) 8%, var(--nf-bg-surface));
+}
+
+.studio-recovery-banner p {
+  flex: 1;
+  margin: 0;
+  color: var(--nf-text-secondary);
+  font-size: var(--nf-font-body);
+  line-height: 1.5;
+}
+
+/* ============================================================
+ * Layout density parity (window/core.py::_apply_window_density)
+ * Thresholds: 1360×820, debounce 500ms (useLayoutDensity hook)
+ * ============================================================ */
+
+:root {
+  --nf-density-content-margin: 18px;
+  --nf-density-content-spacing: 12px;
+  --nf-density-topbar-min-height: 96px;
+  --nf-density-top-margin-x: 22px;
+  --nf-density-top-margin-y: 14px;
+  --nf-density-top-spacing: 10px;
+}
+
+[data-density="compact"] {
+  --nf-density-content-margin: 14px;
+  --nf-density-content-spacing: 10px;
+  --nf-density-topbar-min-height: 84px;
+  --nf-density-top-margin-x: 18px;
+  --nf-density-top-margin-y: 10px;
+  --nf-density-top-spacing: 8px;
+}
+
+.app-content {
+  margin: var(--nf-density-content-margin);
+}
+
+.app-topbar {
+  min-height: var(--nf-density-topbar-min-height);
+}
+
+/* Final source-parity density: the controller strip stays compact and the
+ * three-column workbench owns a bounded viewport with internal scrolling. */
+.studio-page {
+  gap: 10px;
+}
+
+.studio-selector {
+  padding: 8px 12px 9px;
+  border-radius: 13px;
+}
+
+.studio-selector-leading {
+  align-items: center;
+  gap: 10px;
+}
+
+.studio-selector-leading p {
+  display: none;
+}
+
+.studio-selector-leading .button {
+  min-height: 27px;
+  padding-inline: 9px;
+}
+
+.studio-selector-controls {
+  gap: 10px;
+  margin-top: 5px;
+}
+
+.studio-selector-controls > .studio-select-menu:first-child {
+  flex-basis: 190px;
+}
+
+.studio-select-menu-trigger {
+  height: 28px;
+  gap: 6px;
+  padding: 0 7px;
+  font-size: var(--nf-font-body);
+}
+
+.studio-select-menu--rewrite {
+  flex: 0 0 196px;
+}
+
+/* Segmented mode groups: zero gap between segments plus collapsed borders
+ * yield one unified pill per group instead of loose chips. */
+.studio-page .studio-mode-control {
+  gap: 0;
+}
+
+.studio-page .studio-mode-control > span {
+  margin-right: 6px;
+}
+
+.studio-page .studio-mode-control button {
+  min-width: 50px;
+  min-height: 26px;
+  padding: 0 6px;
+}
+
+.studio-page .studio-mode-control button + button {
+  margin-left: -1px;
+}
+
+.studio-page .studio-mode-control button.is-active {
+  z-index: 1;
+}
+
+.studio-selector-tools {
+  justify-content: flex-start;
+  gap: 4px;
+  margin-top: 6px;
+  padding-top: 6px;
+}
+
+.studio-selector-tools .button {
+  min-height: 25px;
+  padding-inline: 7px;
+}
+
+.studio-workbench {
+  height: clamp(430px, calc(100dvh - 420px), 490px);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.studio-chapter-rail,
+.studio-memory {
+  min-height: 0;
+  overflow: hidden;
+  padding: 12px 10px;
+}
+
+.studio-chapter-rail {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.studio-chapter-rail ol {
+  max-height: none;
+  min-height: 0;
+  margin-top: 8px;
+  overflow-y: auto;
+}
+
+.studio-chapter-rail li button {
+  min-height: 38px;
+  padding: 5px 7px;
+  font-size: var(--nf-font-body);
+}
+
+.studio-chapter-rail li strong {
+  font-size: var(--nf-font-body);
+}
+
+.studio-center,
+.studio-memory {
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.studio-center {
+  gap: 8px;
+}
+
+.studio-action-card {
+  gap: 8px;
+  padding: 13px 15px;
+}
+
+.studio-action-card h3 {
+  font-size: var(--nf-font-section-lg);
+}
+
+.studio-context-stack {
+  gap: 6px;
+}
+
+.studio-context-card {
+  gap: 3px;
+  padding: 8px 11px;
+}
+
+.studio-artifacts-heading {
+  padding: 13px 16px 9px;
+}
+
+.studio-artifacts-heading h2 {
+  font-size: var(--nf-font-section-lg);
+}
+
+@media (max-width: 1320px) {
+  .studio-selector-controls {
+    flex-wrap: wrap;
+  }
+
+  .studio-workbench {
+    grid-template-columns: 210px minmax(360px, 1fr) 255px;
+    height: clamp(420px, calc(100dvh - 435px), 470px);
+  }
+}
+
+/* ── 章台关注 section (mirrors PySide6 coord.py _task_focus_panel) ──── */
+
+.studio-focus-section {
+  display: grid;
+  gap: 8px;
+}
+
+/* Keep chapter focus below the artifact workspace: it is a full-width,
+   sequential status surface rather than a third item competing for the center column. */
+.studio-focus-section-bottom {
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+}
+
+.studio-focus-section-bottom .task-focus-panel {
+  width: 100%;
+}
+
+.studio-focus-header h3 {
+  margin: 0;
+  color: var(--nf-text-heading);
+  font-size: var(--nf-font-subsection);
+  font-weight: 700;
+}
+
+.studio-focus-header p {
+  margin: 2px 0 0;
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-micro);
+}
+
+@media (max-width: 1080px) {
+  .studio-workbench {
+    grid-template-columns: 200px minmax(360px, 1fr);
+  }
+
+  .studio-memory {
+    display: none;
+  }
+}
+
+/* The app is desktop-first, but Chapter Studio still needs a usable compact
+ * inspection surface when the window is temporarily narrow.  Keep this
+ * override page-scoped so other workbenches retain their established minimum. */
+@media (max-width: 780px) {
+  body:has(.nimo-app[data-page="chapter_studio"]) {
+    min-width: 0;
+  }
+
+  .nimo-app[data-page="chapter_studio"] {
+    grid-template-columns: 52px minmax(0, 1fr);
+    min-height: 0;
+  }
+
+  .nimo-app[data-page="chapter_studio"] .side-rail {
+    padding-inline: 8px;
+  }
+
+  .nimo-app[data-page="chapter_studio"] :is(.brand-seal, .rail-brand, .rail-footer, .rail-collapse) {
+    display: none;
+  }
+
+  .nimo-app[data-page="chapter_studio"] .rail-header {
+    min-height: 12px;
+  }
+
+  .nimo-app[data-page="chapter_studio"] .rail-navigation {
+    margin-top: 8px;
+  }
+
+  .nimo-app[data-page="chapter_studio"] .rail-nav-item {
+    justify-content: center;
+    padding-inline: 0;
+  }
+
+  .nimo-app[data-page="chapter_studio"] .rail-nav-item.is-active::before {
+    left: -8px;
+  }
+
+  .nimo-app[data-page="chapter_studio"] .rail-nav-label {
+    display: none;
+  }
+
+  .nimo-app[data-page="chapter_studio"] .rail-nav-icon {
+    display: grid;
+    place-items: center;
+  }
+
+  .nimo-app[data-page="chapter_studio"] .content-shell {
+    padding: 6px;
+  }
+
+  .nimo-app[data-page="chapter_studio"] .top-bar {
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px 10px;
+  }
+
+  .nimo-app[data-page="chapter_studio"] :is(.top-bar p, .topbar-meta) {
+    display: none;
+  }
+
+  .nimo-app[data-page="chapter_studio"] .topbar-controls {
+    width: 100%;
+    justify-content: flex-start;
+    overflow-x: auto;
+  }
+
+  .nimo-app[data-page="chapter_studio"] .page-canvas {
+    padding: 6px;
+  }
+
+  .nimo-app[data-page="chapter_studio"] .pet-companion,
+  .nimo-app[data-page="chapter_studio"] .pet-glow {
+    display: none;
+  }
+
+  .nimo-app[data-page="chapter_studio"] .studio-selector-leading,
+  .nimo-app[data-page="chapter_studio"] .studio-selector-leading-actions {
+    flex-wrap: wrap;
+  }
+
+  .nimo-app[data-page="chapter_studio"] .studio-selector-navigation-actions {
+    padding-inline-start: 0;
+    border-inline-start: 0;
+  }
+
+  .nimo-app[data-page="chapter_studio"] .studio-selector-controls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .nimo-app[data-page="chapter_studio"] .studio-selector-controls > .studio-select-menu:first-child,
+  .nimo-app[data-page="chapter_studio"] .studio-select-menu--rewrite,
+  .nimo-app[data-page="chapter_studio"] .studio-mode-control {
+    width: 100%;
+    flex-basis: auto;
+  }
+
+  .nimo-app[data-page="chapter_studio"] .studio-mode-control {
+    flex-wrap: wrap;
+    white-space: normal;
+  }
+
+  .nimo-app[data-page="chapter_studio"] .studio-workbench {
+    grid-template-columns: minmax(0, 1fr);
+    height: auto;
+    overflow: visible;
+  }
+
+  .nimo-app[data-page="chapter_studio"] .studio-chapter-rail {
+    max-height: 220px;
+  }
+
+  .nimo-app[data-page="chapter_studio"] .studio-center {
+    overflow: visible;
+  }
+
+  .nimo-app[data-page="chapter_studio"] .studio-workflow-heading {
+    flex-wrap: wrap;
+  }
+}

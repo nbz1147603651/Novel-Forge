@@ -1,0 +1,122 @@
+{# source_template_hash: 510cb7733f1d5921a4ea080fe8a91fbf680a6a0ea7dd6be82b1cf4a2acdce4d9 #}
+{# Candidate state delta extraction. LLM extracts candidates only; final judgement is separate. #}
+{#
+================================================================================
+[NOTES]
+================================================================================
+Prompt: extract_candidate_state_deltas.j2
+Service Step: EXTRACT_CANDIDATE_STATE_DELTAS (Candidate State Change Extraction)
+Function Summary: Extract adjudicable candidate state changes from chapter text; only performs evidence localization, not final fact writing judgment.
+Upstream Inputs:
+  - chapter_number: Chapter number
+  - chapter_contract: This chapter's narrative contract
+  - current_state: Current state summary
+  - entity_registry: Entity registry
+  - chapter_text: Chapter body text
+Downstream Outputs:
+  - JSON: candidates list, containing candidate_id, delta_type, summary, evidence and other fields
+  - Downstream Consumer: ADJUDICATE_STATE_DELTA / ADJUDICATE_FINAL_STATE
+Consumption Chain Priority: P0 (body evidence quote) > P1 (entity association and state path) > P2 (extraction notes)
+================================================================================
+#}
+
+## Task
+You only extract "minimalist core state changes" from this chapter's body text; do not judge whether they are ultimately established.
+
+The local system will only perform format parsing and evidence localization; narrative judgment will be delegated to the subsequent LLM adjudication step.
+
+## Fact Source Boundary (P0)
+- Only extract candidate facts from the final body text corresponding to FinalArtifact / `chapter_text`.
+- Chapter contracts, plans, source projections, summaries, adjudication opinions, and intermediate drafts are not occurred facts; they can only help determine what evidence to look for, not replace body text quotes.
+- Content without final body text evidence must not be written into candidates; do not use planned facts to complete canon/memory.
+
+## Extraction Scope (Strict)
+Only extract the following three categories; all other content must not enter the state:
+1. Characters appearing in this chapter: Only record characters who truly participate in scenes/dialogue/key actions; can be merged into 1 character_state candidate.
+2. Main plot key changes: Changes that will alter the direction of subsequent chapters, crises, goals, evidence chains, or chapter contract completion.
+3. Subplot key changes: Subplot advancements, suspense advancements, or relationship turns that will affect subsequent main plots or character relationship trajectories.
+4. Knowledge changes promised by `chapter_contract.knowledge_ops`: Must prioritize finding body text evidence of "who knows/misunderstands/suspects/conceals what through what evidence."
+5. Cognitive changes related to `chapter_contract.cognitive_constraints`: If the text advances a character or reader's cognition of a cognitive object from unknown/subconscious/suspicion to partial/confirmation/acknowledgment, must extract as cognitive candidate.
+
+Do not extract ordinary actions, atmosphere descriptions, temporary emotions, location movements, routine small talk, one-time props, already repeatedly confirmed old facts, trivial psychological activities, or chapter summaries.
+If a change cannot answer "how will it affect the next chapter or subsequent main/subplots?", do not output it.
+
+## Fixed Update Slots
+The `character_roster` in the current state summary is the current character list given by the character system/Canon; only select character names from here, do not create character names.
+The `state_update_slots` in the current state summary are the only state slots allowed for this round:
+- `chapter_presence`: Characters appearing in this chapter.
+- `main_plot`: Main plot key advancement.
+- `subplot`: Subplot key advancement.
+- `relationship_carry_forward`: Character relationship changes that must carry forward to subsequent chapters.
+- `contract_progression`: Chapter contract hard target completion evidence.
+
+Each candidate's `proposed_delta.scope` must belong to one of the above 5 slots; `state_path` must be directly taken from the corresponding slot, do not create arbitrary paths.
+
+## Contract Target Menu
+The local system has compiled the chapter contract into `contract_targets`. If a candidate corresponds to one or more contract targets, can only select `target_id` from this menu and write it into the candidate's top-level field `covered_target_ids`.
+Do not create `target_id`, do not freely concatenate `contract.*` paths; the local system will derive valid `state_path` based on your selected `target_id`.
+Targets with `required_for_archive=false` only serve as preconditions/diagnostic references; do not treat them as archive targets that must be re-completed by this chapter's body text.
+
+## Extractable Types
+- event: Clearly occurred event
+- relationship: Character relationship may change
+- item: Item ownership/appearance/transfer/destruction may change
+- knowledge: Information known/misunderstood/concealed by characters may change
+- cognitive: Cognition level of characters or readers regarding secrets/identities/truth may change
+- alias: Alias/title may point to a certain entity
+- promise: Foreshadowing laid/promoted/paid off
+- world_rule: World rules confirmed or updated
+- character_state: Character location, status, identity, emotions, etc. may change
+- other: Other important changes
+
+## Constraints
+1. Do not make final adjudication; only list candidates.
+2. Each candidate must provide a short quote from the body text.
+3. Do not supplement facts from creation reports, summaries, or common sense.
+4. If a quote cannot be found, do not output that candidate.
+5. Do not output chapter summaries.
+6. delta_type must only fill in one of the 10 English enum values above; do not add subcategories; emotional breakthroughs, identity changes, location/status changes are unified into character_state; ordinary knowing/misunderstanding/concealing are classified as knowledge; cognitive level upgrades or early confirmation are classified as cognitive.
+7. Each candidate uses field `summary` to summarize the change; evidence goes into `evidence` array, each item must contain at least `quote`; do not use top-level `description` or top-level `quote` as replacement.
+8. Each candidate must contain a non-empty `proposed_delta` object, at least write `source: "chapter_text"`, `delta_type`, `summary`; knowledge-type candidates should state who knows/misunderstands/suspects/conceals what, and try to write `entity_ids`, `knowledge_type`, `value`; cognitive-type candidates must write `cognitive_subjects`, `cognitive_object`, `cognitive_level`, `action_level`, `character_knowledge_coverage`, and keep the same information in `proposed_delta.value`; event-type candidates should state what happened and the state change that can be written.
+8a. Write `character_knowledge_coverage` independently for each named role from body-text evidence using only `unknown|partial|full`. Never infer it from `cognitive_level`, `reader_awareness`, or another role's state. Use `unknown` when evidence is insufficient; never place `confirmed/acknowledged/unaware` in this field.
+9. If a candidate has no quotable body text evidence, directly omit that candidate; do not output placeholder objects with empty summary, empty proposed_delta, or empty evidence.
+10. `contract_targets[].required_for_archive=true` is an archive hard target: If the complete target text, `knowledge_ops.evidence`, `knowledge_ops.description`, or key dialogue/terms in Chinese quotes appear verbatim in the body text, must extract as a separate candidate, and use the original body text sentence as evidence.quote.
+10a. `required_for_archive=false` is a context-only constraint or cognitive boundary: Only extract when the body text clearly has cognitive crossing, boundary conflicts, or will affect subsequent state writing; do not let it crowd out archive hard target candidate quotas.
+11. Only cite body text evidence; do not treat chapter contracts, current state summaries, creation reports, or adjudication opinions themselves as evidence.
+12. Output at most {{ candidate_limit | default(6) }} candidates; priority order: archive hard targets > main plot key changes > subplot key changes > context-only constraints > character appearance summary.
+13. Each candidate outputs at most {{ evidence_limit | default(2) }} evidence items; `quote` must be short original text; do not output entire paragraphs of context.
+14. Evidence items only allow containing `quote` and optional `paragraph_index`; output of `context` field is prohibited.
+15. Keep `proposed_delta` lightweight, only write fixed fields: `source`, `delta_type`, `scope`, `state_path`, `summary`, `value`, `present_characters`, `entity_ids`, `plot_thread_id`, `subplot_id`, `relationship_pair`, `knowledge_type`, `next_impact`; prohibit nesting `evidence` array inside `proposed_delta`.
+16. Character appearance candidates should not be split person by person; just list names in `present_characters` array.
+17. If there is no main/subplot/relationship/contract advancement, only output character appearance candidates; if even character appearance cannot be proven by body text quote, output empty candidates.
+18. If a candidate covers contract targets, must output top-level `covered_target_ids` array; array elements can only come from below `contract_targets[].target_id`.
+19. Coverage mapping completeness: For each `contract_targets[].required_for_archive=true` target, check whether the body text contains a semantically equivalent event. If the body text expresses the same event with different wording (e.g., contract says "went to the dye alley with old paper", body says "took the note slip to the dye alley"), still extract it as a candidate and mark the corresponding target_id in `covered_target_ids`. Do not miss coverage mappings due to wording differences.
+
+## This Chapter's Information
+- Chapter Number: {{ chapter_number }}
+- Chapter Contract:
+{{ chapter_contract }}
+
+## Current State Summary
+{{ current_state }}
+
+## Contract Target Menu
+{{ contract_targets }}
+
+## Entity Registry
+{{ entity_registry }}
+
+## Body Text
+{{ chapter_text }}
+
+## Quality Calibration
+- Work Identity: You are an evidence-prioritized narrative fact extractor, skilled at extracting traceable, mergeable state information from body text and upstream anchors.
+- Extraction Path: First find explicit facts in body text, then compare with shared anchors and known state, finally only retain information consumable by subsequent mergers.
+- Evidence Calibration: When the same fact has been confirmed by upstream fragments, maintain consistency; when evidence is insufficient, use conservative field values to express unknown or pending confirmation.
+- Actionable Paths: Each piece of information serves canon, memory, state, or audit chains; avoid treating tone, metaphor, or speculation as facts.
+
+## Pre-Delivery Verification
+- Is P0/P1/P2 priority maintained, and weak references are not allowed to override hard constraints.
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans.
+- Are unauthorized characters, locations, world rules, future payoffs, or format agreements avoided.
+- Are factual boundaries required for subsequent merging/retrieval preserved, and is speculation not written as established facts.

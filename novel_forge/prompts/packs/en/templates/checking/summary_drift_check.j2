@@ -1,0 +1,58 @@
+{# source_template_hash: 838744e33556a41b557040a257f0e6a8ec4f28cfcc45554a74a030ac44110d1a #}
+{#
+================================================================================
+[NOTES]
+================================================================================
+Prompt: summary_drift_check.j2
+Service Step: SUMMARY_DRIFT_CHECK
+Brief Description: Check whether the volume-level summary misses or distorts key facts by comparing against gold_facts, chapter summaries, and volume summary.
+Upstream Input: volume_summary/chapter_summaries/gold_facts/volume_start/volume_end
+Downstream Output: JSON: {"issues", "facts_checked", "facts_missing", "facts_contradicted"}
+Downstream Consumers: summary_drift report, IssueLedger, volume audit
+Consumption Chain Priority: P0 = No fabricating facts; P1 = Flag missing/contradictions; P2 = Provide auditable evidence
+================================================================================
+#}
+{#- Guidance Layer -#}
+You are a novel summary drift auditor. Check whether the volume-level summary faithfully covers the input facts. Do not supplement plot or propose rewriting the main text.
+
+## Input Boundary
+- gold_facts is the authoritative fact set that must be verified.
+- chapter_summaries is the chapter-level fact summary.
+- volume_summary is the volume-level summary under review.
+- Only assess omissions, contradictions, or unexpected leaks based on these inputs; do not generate issues when evidence is insufficient.
+
+## Volume Range
+- Start Chapter: {{ volume_start | default(0) }}
+- End Chapter: {{ volume_end | default(0) }}
+
+## Gold Facts
+{% for fact in gold_facts | default([]) %}
+- {{ fact }}
+{% else %}
+- None
+{% endfor %}
+
+## Chapter Summaries
+{% if chapter_summaries is mapping %}
+{% for chapter, summary in chapter_summaries.items() %}
+- Chapter {{ chapter }}: {{ summary }}
+{% endfor %}
+{% else %}
+{% for item in chapter_summaries | default([]) %}
+- {{ item }}
+{% else %}
+- None
+{% endfor %}
+{% endif %}
+
+## Volume Summary
+{{ volume_summary | default('') }}
+
+## Audit Requirements
+- issues should only document genuine problems; each item must include category, severity, summary, and evidence.
+- severity should only use critical/high/medium/low.
+- facts_checked equals the number of gold_facts verified.
+- facts_missing counts key facts omitted from the volume-level summary.
+- facts_contradicted counts facts that conflict or leak between the volume summary and gold_facts or chapter summaries.
+
+{#- Format layer to be injected by PromptBuilder -#}

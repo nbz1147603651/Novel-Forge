@@ -1,0 +1,127 @@
+.workflow-error-log-dialog {
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  gap: 12px;
+  width: min(1040px, calc(100vw - 48px));
+  height: min(760px, calc(100vh - 48px));
+  padding: 22px 24px 18px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 24%, transparent);
+  border-radius: 14px;
+  background: var(--nf-bg-surface);
+  box-shadow: 0 24px 62px color-mix(in srgb, var(--nf-shadow) 30%, transparent);
+  animation: dialog-rise-in 180ms cubic-bezier(.22, .61, .36, 1);
+}
+
+.workflow-error-log-header { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 20px; }
+.workflow-error-log-header .section-kicker { display: block; margin-bottom: 3px; color: var(--nf-accent-primary); font-size: var(--nf-font-2xs); font-weight: 750; letter-spacing: .05em; text-transform: uppercase; }
+.workflow-error-log-dialog h2 { margin: 0; color: var(--nf-text-heading); font-family: "PingFang SC", "Hiragino Sans GB", sans-serif; font-size: var(--nf-font-heading); font-weight: 700; letter-spacing: .015em; }
+.workflow-error-log-header > div > p { max-width: 690px; margin: 6px 0 0; color: var(--nf-text-secondary); font-size: var(--nf-font-body); line-height: 1.55; }
+
+.workflow-error-log-summary { display: grid; grid-template-columns: repeat(3, minmax(68px, 1fr)); gap: 5px; margin: 0; }
+.workflow-error-log-summary > div { display: grid; gap: 2px; padding: 7px 9px; border-left: 2px solid var(--nf-border-default); background: color-mix(in srgb, var(--nf-bg-control) 35%, var(--nf-bg-surface)); }
+.workflow-error-log-summary dt { color: var(--nf-text-muted); font-size: var(--nf-font-2xs); font-weight: 700; white-space: nowrap; }
+.workflow-error-log-summary dd { margin: 0; color: var(--nf-text-heading); font-size: var(--nf-font-section); font-weight: 750; font-variant-numeric: tabular-nums; }
+.workflow-error-log-summary .is-pending { border-color: var(--nf-status-danger); }
+.workflow-error-log-summary .is-pending dd { color: var(--nf-status-danger); }
+.workflow-error-log-summary .is-handled,
+.workflow-error-log-summary .is-automatic { border-color: var(--nf-status-success); }
+.workflow-error-log-summary .is-handled dd,
+.workflow-error-log-summary .is-automatic dd { color: var(--nf-status-success); }
+
+.workflow-error-log-filters { display: flex; gap: 5px; padding: 4px; border: 1px solid color-mix(in srgb, var(--nf-border-default) 18%, transparent); border-radius: 9px; background: color-mix(in srgb, var(--nf-bg-control) 38%, var(--nf-bg-surface)); }
+.workflow-error-log-filters button { min-height: 31px; padding: 0 12px; border: 1px solid transparent; border-radius: 6px; color: var(--nf-text-muted); background: transparent; font: inherit; font-size: var(--nf-font-micro); font-weight: 700; cursor: pointer; }
+.workflow-error-log-filters button:hover { color: var(--nf-text-heading); }
+.workflow-error-log-filters button.is-active { border-color: color-mix(in srgb, var(--nf-border-default) 25%, transparent); color: var(--nf-text-heading); background: var(--nf-bg-surface); box-shadow: 0 1px 3px color-mix(in srgb, var(--nf-shadow) 10%, transparent); }
+.workflow-error-log-filters button:focus-visible,
+.workflow-error-log-list-toolbar button:focus-visible,
+.workflow-error-log-card button:focus-visible,
+.workflow-error-log-item-selector button:focus-visible { outline: 2px solid var(--nf-focus-ring); outline-offset: 2px; }
+
+.workflow-error-log-list-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.workflow-error-log-list-toolbar p { margin: 0; color: var(--nf-text-muted); font-size: var(--nf-font-micro); line-height: 1.45; }
+.workflow-error-log-list-toolbar button { min-height: 29px; padding: 0 9px; border: 1px solid color-mix(in srgb, var(--nf-border-default) 28%, transparent); border-radius: 6px; color: var(--nf-text-secondary); background: var(--nf-bg-surface); font: inherit; font-size: var(--nf-font-micro); font-weight: 700; cursor: pointer; white-space: nowrap; }
+
+.workflow-error-log-list { display: grid; align-content: start; gap: 9px; min-height: 0; padding-right: 4px; overflow: auto; }
+.workflow-error-log-card { display: grid; gap: 10px; padding: 13px 14px; border: 1px solid color-mix(in srgb, var(--nf-border-default) 22%, transparent); border-left: 3px solid var(--nf-border-default); border-radius: 9px; background: color-mix(in srgb, var(--nf-bg-input) 46%, var(--nf-bg-surface)); }
+.workflow-error-log-card.is-pending { border-left-color: var(--nf-status-danger); }
+.workflow-error-log-card.is-handled,
+.workflow-error-log-card.is-automatic { border-left-color: var(--nf-status-success); }
+.workflow-error-log-card > header { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: start; }
+.workflow-error-log-card-title { min-width: 0; }
+.workflow-error-log-category { display: inline-flex; margin-bottom: 3px; padding: 2px 6px; border-radius: 4px; color: var(--nf-status-danger); background: color-mix(in srgb, var(--nf-status-danger) 9%, var(--nf-bg-surface)); font-size: var(--nf-font-2xs); font-weight: 750; }
+.workflow-error-log-card.is-handled .workflow-error-log-category,
+.workflow-error-log-card.is-automatic .workflow-error-log-category { color: var(--nf-status-success); background: color-mix(in srgb, var(--nf-status-success) 10%, var(--nf-bg-surface)); }
+.workflow-error-log-card h3 { margin: 0; color: var(--nf-text-heading); font-size: var(--nf-font-body); font-weight: 750; line-height: 1.35; }
+.workflow-error-log-card-title p { margin: 4px 0 0; overflow: hidden; color: var(--nf-text-muted); font-size: var(--nf-font-micro); text-overflow: ellipsis; white-space: nowrap; }
+.workflow-error-log-card-statuses { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
+.workflow-error-log-card-statuses span { padding: 3px 6px; border-radius: 999px; font-size: var(--nf-font-2xs); font-weight: 750; white-space: nowrap; }
+.workflow-error-log-card-statuses .is-pending { color: var(--nf-status-danger); background: color-mix(in srgb, var(--nf-status-danger) 10%, var(--nf-bg-surface)); }
+.workflow-error-log-card-statuses .is-handled,
+.workflow-error-log-card-statuses .is-automatic { color: var(--nf-status-success); background: color-mix(in srgb, var(--nf-status-success) 11%, var(--nf-bg-surface)); }
+
+.workflow-error-log-facts { display: grid; grid-template-columns: minmax(112px, .55fr) minmax(92px, .45fr) minmax(260px, 2fr); gap: 6px; margin: 0; }
+.workflow-error-log-facts > div { min-width: 0; padding: 7px 8px; border: 1px solid color-mix(in srgb, var(--nf-border-default) 16%, transparent); border-radius: 6px; background: color-mix(in srgb, var(--nf-bg-control) 30%, var(--nf-bg-surface)); }
+.workflow-error-log-facts dt { color: var(--nf-text-muted); font-size: var(--nf-font-2xs); font-weight: 700; }
+.workflow-error-log-facts dd { margin: 3px 0 0; color: var(--nf-text-secondary); font-size: var(--nf-font-micro); line-height: 1.45; }
+
+.workflow-error-log-item-selector { display: grid; gap: 6px; min-width: 0; margin: 0; padding: 7px 8px 8px; border: 1px solid color-mix(in srgb, var(--nf-status-danger) 18%, var(--nf-border-default)); border-radius: 6px; }
+.workflow-error-log-item-selector legend { padding: 0 3px; color: var(--nf-text-muted); font-size: var(--nf-font-2xs); font-weight: 750; }
+.workflow-error-log-item-selector > div { display: grid; gap: 4px; max-height: 146px; overflow: auto; padding-right: 3px; }
+.workflow-error-log-item-selector button { display: block; width: 100%; min-height: 29px; padding: 4px 6px; border: 1px solid transparent; border-radius: 5px; color: var(--nf-text-secondary); background: transparent; font: inherit; text-align: left; cursor: pointer; }
+.workflow-error-log-item-selector button:hover { background: color-mix(in srgb, var(--nf-status-danger) 6%, transparent); }
+.workflow-error-log-item-selector button[aria-pressed="true"] { border-color: color-mix(in srgb, var(--nf-status-success) 48%, transparent); background: color-mix(in srgb, var(--nf-status-success) 11%, var(--nf-bg-surface)); }
+.workflow-error-log-item-selector span { display: flex; min-width: 0; align-items: baseline; gap: 7px; }
+.workflow-error-log-item-selector strong { color: var(--nf-text-heading); font-size: var(--nf-font-micro); }
+.workflow-error-log-item-selector button[aria-pressed="true"] strong { color: var(--nf-status-success); }
+.workflow-error-log-item-selector small { overflow: hidden; color: var(--nf-text-muted); font-size: var(--nf-font-2xs); text-overflow: ellipsis; white-space: nowrap; }
+.workflow-error-log-acknowledged { margin: 0; color: var(--nf-status-success); font-size: var(--nf-font-micro); line-height: 1.45; }
+.workflow-error-log-details { border: 0; }
+.workflow-error-log-details summary { color: var(--nf-text-muted); font-size: var(--nf-font-micro); font-weight: 700; cursor: pointer; }
+.workflow-error-log-details pre { max-height: 176px; margin: 7px 0; padding: 9px; overflow: auto; border: 1px solid color-mix(in srgb, var(--nf-border-default) 16%, transparent); border-radius: 6px; color: var(--nf-text-secondary); background: var(--nf-bg-surface); font: var(--nf-font-micro)/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+.workflow-error-log-details p { margin: 5px 0 0; color: var(--nf-text-muted); font-size: var(--nf-font-micro); overflow-wrap: anywhere; }
+.workflow-error-log-details strong { color: var(--nf-text-secondary); }
+.workflow-error-log-card-actions { display: flex; justify-content: flex-end; gap: 7px; }
+.workflow-error-log-card-actions button { min-height: 30px; padding: 0 9px; border: 1px solid color-mix(in srgb, var(--nf-border-default) 26%, transparent); border-radius: 6px; font: inherit; font-size: var(--nf-font-micro); font-weight: 750; cursor: pointer; }
+.workflow-error-log-confirm { border-color: color-mix(in srgb, var(--nf-status-success) 48%, transparent) !important; color: var(--nf-status-success); background: color-mix(in srgb, var(--nf-status-success) 8%, var(--nf-bg-surface)); }
+.workflow-error-log-reopen { color: var(--nf-text-secondary); background: var(--nf-bg-surface); }
+.workflow-error-log-empty { padding: 34px 16px; border: 1px dashed color-mix(in srgb, var(--nf-border-default) 34%, transparent); border-radius: 9px; text-align: center; }
+.workflow-error-log-empty strong { color: var(--nf-text-heading); font-size: var(--nf-font-body); }
+.workflow-error-log-empty p { margin: 5px 0 0; color: var(--nf-text-muted); font-size: var(--nf-font-micro); }
+
+.workflow-error-log-footer { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding-top: 11px; border-top: 1px solid color-mix(in srgb, var(--nf-border-default) 18%, transparent); }
+.workflow-error-log-footer > p { margin: 0; color: var(--nf-text-muted); font-size: var(--nf-font-micro); }
+.workflow-error-log-footer > div { display: flex; gap: 8px; }
+.workflow-error-log-footer button { min-height: 38px; padding: 0 15px; border: 1px solid color-mix(in srgb, var(--nf-border-default) 24%, transparent); border-radius: 8px; font-size: var(--nf-font-body); font-weight: 750; }
+.workflow-error-log-primary { border-color: var(--nf-status-success) !important; color: var(--nf-bg-surface); background: var(--nf-status-success); }
+.workflow-error-log-primary:disabled { cursor: default; opacity: .45; }
+.workflow-error-log-clear { color: var(--nf-text-secondary); background: var(--nf-bg-surface); }
+.workflow-error-log-clear:hover:not(:disabled) { color: var(--nf-status-danger); border-color: color-mix(in srgb, var(--nf-status-danger) 46%, transparent); }
+.workflow-error-log-clear:disabled { cursor: wait; opacity: .55; }
+.workflow-error-log-close { color: var(--nf-text-body); background: color-mix(in srgb, var(--nf-bg-control) 62%, var(--nf-bg-surface)); }
+
+/* The launch control mirrors the queue state even before the dialog opens. */
+.workflow-error-button.is-unresolved { color: var(--nf-status-danger); border-color: color-mix(in srgb, var(--nf-status-danger) 48%, transparent); background: color-mix(in srgb, var(--nf-status-danger) 8%, var(--nf-bg-surface)); }
+.workflow-error-button.is-unresolved:hover:not(:disabled) { color: var(--nf-status-danger); border-color: var(--nf-status-danger); background: color-mix(in srgb, var(--nf-status-danger) 13%, var(--nf-bg-surface)); }
+.workflow-error-button.is-resolved { color: var(--nf-status-success); border-color: color-mix(in srgb, var(--nf-status-success) 48%, transparent); background: color-mix(in srgb, var(--nf-status-success) 8%, var(--nf-bg-surface)); }
+.workflow-error-button.is-resolved:hover:not(:disabled) { color: var(--nf-status-success); border-color: var(--nf-status-success); background: color-mix(in srgb, var(--nf-status-success) 13%, var(--nf-bg-surface)); }
+
+@media (max-width: 720px) {
+  .workflow-error-log-dialog { width: calc(100vw - 20px); height: min(780px, calc(100vh - 20px)); padding: 16px; }
+  .workflow-error-log-header { grid-template-columns: 1fr; gap: 11px; }
+  .workflow-error-log-summary { width: 100%; }
+  .workflow-error-log-facts { grid-template-columns: 1fr 1fr; }
+  .workflow-error-log-facts > div:last-child { grid-column: 1 / -1; }
+  .workflow-error-log-footer { align-items: stretch; flex-direction: column; }
+  .workflow-error-log-footer > div { justify-content: stretch; }
+  .workflow-error-log-footer button { flex: 1; }
+}
+
+@media (max-width: 460px) {
+  .workflow-error-log-card > header { grid-template-columns: minmax(0, 1fr); }
+  .workflow-error-log-card-statuses { justify-content: flex-start; }
+  .workflow-error-log-item-selector span { align-items: flex-start; flex-direction: column; gap: 1px; }
+  .workflow-error-log-filters { overflow-x: auto; }
+  .workflow-error-log-filters button { white-space: nowrap; }
+  .workflow-error-log-list-toolbar { align-items: flex-start; flex-direction: column; }
+}

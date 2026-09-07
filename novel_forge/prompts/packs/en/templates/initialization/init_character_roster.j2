@@ -1,0 +1,80 @@
+{# source_template_hash: b1d2660d4771e0c6ab9650bbfedebc35cf0482b4590ed806ea029a18d040e4d3 #}
+{#
+================================================================================
+【Notes】
+================================================================================
+Prompt: init_character_roster.j2
+Service Step: INIT_CHARACTER_ROSTER (Character Bible Fragment: Character Roster)
+Brief Description: First determine the core character list and functions for the entire book, serving as a common anchor for subsequent profiles/relationships/arcs.
+Upstream Input: premise/story_bible/characters_hint/conflict_hint/expected_total_words
+Downstream Output: JSON: {"character_roster": [...]}
+Downstream Consumers: INIT_CHARACTER_PROFILE_BATCH / RELATIONSHIP_MATRIX / ARC_PLAN / Local Merger
+Consumption Chain Priority: P0 = roster stable and non-fragmented; P1 = character functions cover main conflict; P2 = quantity matches length
+================================================================================
+#}
+{%- from "_base/_shared_evidence_anchor.j2" import render_shared_evidence_anchor -%}
+
+{#- Guidance Layer -#}
+Please only generate the character roster anchor. Subsequent character profiles, relationship networks, and arcs will be based on this list, so do not write full profiles.
+
+## Output Field Description
+- `character_roster`: Character roster list, each entry containing `name` (canonical full name), `role` (protagonist/antagonist/deuteragonist/supporting/minor), `age`, `gender`, `status` (active/dormant/retired), `time_layer` (modern/past/cross_temporal/memory_only/default), `function` (brief functional description).
+
+## Chain Boundary
+This template is only for the first step of the split character generation chain; it does not generate a complete CharacterBible.
+This round's output is the sole roster anchor for subsequent profile_batch, relationship_matrix, and arc_plan.
+Do not output `character_bible`, `character_profiles`, `relationship_matrix`, or `character_arcs`.
+If `character_generation_mode` appears in context, use it only to confirm the current chain; do not write it into character fields.
+
+## Canonical Name Rules
+- `name` is the canonical name in the character system; downstream chapter prompts, entity registry, relationship matrix, and canon will all use it.
+- Old names, aliases, past-life names, misnames, titles, or stage identities cannot create separate characters; only explain their relationship to the canonical name in `function` with a short phrase.
+- If one surface name may point to multiple entities, use parentheses to generate different canonical names; if they are different names for the same entity, keep only one roster entry.
+- Do not preemptively expand characters to fill relationships or arcs; this phase only ensures roster stability and clear character functions.
+
+{{ render_shared_evidence_anchor(shared_evidence_anchor) }}
+
+## Story Premise
+{{ premise }}
+
+## Worldview Anchor
+{{ story_bible | tojson(indent=2) if story_bible is mapping else story_bible }}
+
+{% if expected_total_words %}- expected_total_words: {{ expected_total_words }}{% endif %}
+{% if characters_hint %}- characters_hint: {{ characters_hint }}{% endif %}
+{% if conflict_hint %}- conflict_hint: {{ conflict_hint }}{% endif %}
+{% if extra_instructions %}- extra_instructions: {{ extra_instructions }}{% endif %}
+
+## Requirements
+- Must include at least 1 protagonist.
+- `protagonist` indicates the core main perspective/main action axis of the entire book; other equally important characters who carry the second action axis, relationship axis, or strong subplot axis should use `deuteragonist` first, do not label all important characters as protagonist.
+- If there is a dual-core or multi-core structure, determine `protagonist` by "who carries the main perspective/main action decision/chapter progression responsibility"; the other core typically uses `deuteragonist`. Only output multiple protagonists when the user explicitly requests ensemble multi-leadership, or multiple characters genuinely share the main action axis equally.
+- Keep explicit characters from the user prompts, and supplement necessary antagonists, allies, faction representatives, or functional characters.
+- `name` must be the canonical full name used throughout the subsequent full text.
+- `name` must be globally unique within the entire roster. Do not output two identical `name` values.
+- Once the roster is determined, subsequent fragments must verbatim use these `name` values; if there are old names, aliases, past-life names, or misnames, write them only in `function`, do not create separate characters for aliases.
+- If the same surface name spans modern/past/memories and indeed needs to appear as two separate actionable entities in the roster, add brief qualifiers in `name`, such as "Xiang (Modern)", "Xiang (Past)", "Xiang (Memory)"; if it is merely the same soul/past-life information, do not create a separate character with the same name—write the past-life name or past experiences into the current character's `function`.
+- `role` can only use: `protagonist` / `antagonist` / `deuteragonist` / `supporting` / `minor`; character importance or supplementary notes go into `function`.
+- `status` can only use: `active` / `dormant` / `retired`; deceased characters who still affect the main storyline should use `role=minor`, `status=retired`, `time_layer=memory_only`.
+- `time_layer` can only use: `modern` / `past` / `cross_temporal` / `memory_only` / `default`.
+- Characters only mentioned verbally, who will not form action/conflict/memory scenes, should not enter the roster; they can be merged into related characters' `function`.
+- Functional crowd characters must have reusable narrative functions; do not use placeholder names unless the story genuinely needs a recurring group representative.
+- Relationships, arcs, and background explanations are left to subsequent fragments; this round only writes short `function`.
+
+## Field Content Constraints
+- Each character object can only contain `name`, `role`, `age`, `gender`, `status`, `time_layer`, `function`.
+- Do not add new fields; short descriptions go only into `function`.
+
+## Quality Calibration
+- Work Identity: You are a long-form narrative architect, skilled at splitting story assets intohandoff, verifiable, non-spoiler-heavy execution plans.
+- Planning Inference Path: First lock in P0 hard constraints, then allocate P1 progression rhythm, finally use P2 style/theme to complement the presentation layer.
+- Field-Level Quality Examples (not output format): Weak = "advances relationship"; High-Quality = "clarifies who acts for what, how relationships change, how the next link connects".
+- Actionable Path: Plan items must be directly checkable by subsequent writing/auditing, avoid giving only abstract wishes or theme slogans.
+
+## Pre-Delivery Verification
+- Are P0/P1/P2 priorities maintained, and no weak references overriding hard constraints.
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans.
+- Are unauthorized new characters, places, world rules, future payoffs, or format agreements avoided.
+- Are abstract goals transformed into observable actions, conflicts, state changes, or chapter handoff points.
+
+{#- Format Layer -#}

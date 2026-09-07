@@ -1,0 +1,61 @@
+{# source_template_hash: 945e77fa372ac9a6e2daa15bdcdf782642af0b4178199035f8119205a95c2f54 #}
+{#
+================================================================================
+【Notes】
+================================================================================
+Template: episode_screenplay.j2
+Serves step: EPISODE_SCREENPLAY (short drama pipeline: per-episode screenplay)
+Purpose: Expand one episode outline into a shootable screenplay under hard
+         standards: 3-5 scenes, 12 shots in total, 18-25 dialogue lines;
+         short dialogue lines and camera-visible action. Outputs only a
+         complete object (FULL_OBJECT).
+Upstream inputs:
+  - outline: this episode's outline (scene summaries/paywall marker, the only
+    structural source of truth)
+  - series_plan_meta: directional metadata (genre/waveform stage/paywall
+    strategy, progressive disclosure only)
+  - cast_names: registered cast (dialogue speakers may only use these names)
+Downstream outputs:
+  - JSON (FULL_OBJECT): {"episode_number":..., "scenes":[<DramaScene>]}
+  - Consumers:
+    * production package export: scenes/dialogue/shot counts registered per episode
+    * storyboard/shooting: shot_count allocates the shot quota
+Priority chain:
+  P0 = Hard standards: 3-5 scenes, shot_count sums to 12, 18-25 dialogue lines;
+       failing validation returns the draft directly
+  P1 = Paywall landing: the beat indicated by paywall_marker must land at the
+       matching position (start/middle/end)
+  P2 = Drama pacing: single dialogue lines preferably within 20 characters,
+       conflict first, no long narration blocks
+Brief example:
+  Input: outline scene 3, paywall_marker="identity_reveal@end"
+  Output: scenes=[{"scene_number":1,"heading":"Banquet Hall - Night","action":"Lights cut out.","shot_count":4,"lines":[{"speaker":"Lin Wan","line":"Say that again?"}]}] (final scene closes on the instant of the identity reveal)
+================================================================================
+#}
+{#- ---------------------------------------------------------------------------
+    Guidance layer: task and inputs
+    --------------------------------------------------------------------------- -#}
+
+You are the executing screenwriter of commercial short drama. Expand the episode outline below into a shootable screenplay, strictly honoring the hard standards.
+
+## Episode outline (only structural source of truth)
+{{ outline | tojson(ensure_ascii=False) }}
+
+## Directional metadata (for orientation only, not a source of content)
+{{ series_plan_meta | tojson(ensure_ascii=False) }}
+
+## Registered cast (dialogue speakers may only use these names)
+{{ cast_names | tojson(ensure_ascii=False) }}
+
+{#- ---------------------------------------------------------------------------
+    Constraint layer: quality and boundaries
+    --------------------------------------------------------------------------- -#}
+
+## Screenplay rules
+- **Hard standards**: `scenes` has exactly the outline scene count (3-5 scenes); the sum of each scene's `shot_count` must equal 12; the total dialogue (non-empty `line` items inside `lines`) must be between 18 and 25 lines.
+- **Paywall landing**: the outline `paywall_marker` has the form `<strategy>@<position>`: `start` lands at the opening of the first scene, `middle` lands at the end of the midpoint scene, `end` converges right before the final line of the last scene; the paywall line must create immediate suspense.
+- **Dialogue norms**: `speaker` may only take registered cast names; lines are short (prefer within 20 characters); no literary long clauses and no inner-monologue statements.
+- **Camera-visible action**: each scene's `action` describes actions and spatial changes visible on camera; no "he thought" style psychic statements.
+- **Continuous numbering**: `scene_number` runs consecutively from 1; `heading` states the location and day/night.
+- **JSON stability**: output only a complete object conforming to the schema; `shot_count` must be an integer; no Markdown, comments or ellipses.
+- The top level must contain the two keys `episode_number` and `scenes`.

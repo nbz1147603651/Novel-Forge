@@ -1,0 +1,133 @@
+{# source_template_hash: a70c73b96062d39d1a931152e79e92026ead168602c0a9ce734f728e988a82c8 #}
+{#
+================================================================================
+【Notes】
+================================================================================
+Prompt: init_story_b2.j2
+Service Step: INIT_STORY_BIBLE (Initialize Story Bible)
+Function Description: Based on the story premise and creative intent provided by the user, generate a complete and self-consistent worldview setting (StoryBible) to serve as the foundational constraint for all subsequent planning and writing.
+Upstream Input:
+  - premise: Story premise (core idea) input by user
+  - title/genre/tone/language: Work metadata input by user
+  - expected_total_words: Expected total word count (affects worldview depth and complexity)
+  - world_hint/conflict_hint/pov_hint: Auxiliary hints input by user
+  - opening_style/ending_style: Opening and ending direction preferences
+  - extra_instructions: User's additional constraints
+Downstream Output:
+  - JSON (StoryBible): title, premise, era, geography, locations, culture,
+    magic_or_tech, rules, tone, themes, audio_aesthetic
+  - Optional JSON fields: time_convention, social_hierarchy, address_rules,
+    self_reference_rules, etiquette_rules, institution_terms, material_culture,
+    anachronism_blacklist, dialogue_register_rules
+    (output only when the era/system/register requires project-level constraints)
+  - Downstream Consumers:
+    * PLAN_OUTLINE: consumes premise/era/geography/rules/themes to generate narrative blueprint
+    * INIT_CHARACTER_BIBLE: consumes era/geography/culture/magic_or_tech to generate characterprofile
+    * DRAFT_CHAPTER: consumes rules/tone/themes/world_context as hard constraints via narrative_contract
+Consumption Chain Priority:
+  P0 = premise core idea must not deviate / rules must be specific and have costs
+  P1 = genre/tone consistency / era/geography provides stage for conflict
+  P2 = opening_style/ending_style directional hints
+Brief Example:
+  Input: premise="Memory Recycler discovers his first half of life was rewritten", genre="scifi", tone="dark"
+  Output: {"story_bible":{"title":"Memory Recycler","era":"near future...","rules":["Memory editing requires mutual consent",...]}}
+
+【Protective Comment - Do Not Delete the Following】
+- The "Worldview Quality Standards" chapter (rule specificity/geography stage adequacy/rule and tone consistency) is a quality constraint,
+  not a field list that duplicates the JSON schema. These standards directly affect the quality of subsequent PLAN_OUTLINE and DRAFT_CHAPTER.
+  Deleting them will result in vague rules, geography becoming a simple list of place names, and magic_or_tech lacking cost descriptions.
+- If simplification is needed, quality standards can be merged into JSON schema field descriptions, but cannot be completely deleted.
+- All fields must be perfectly aligned with the StoryBible field definitions in core/schemas/bible.py.
+  Do not add fields that do not exist in the schema, do not omit fields that are required in the schema.
+================================================================================
+#}
+{#- ---------------------------------------------------------------------------
+    Guidance Layer: Task and Input
+    --------------------------------------------------------------------------- -#}
+
+Based on the following story premise, generate a complete worldview setting (StoryBible).
+
+## Story Premise
+{{ premise }}
+
+{% if title %}- Tentative Title: {{ title }}{% endif %}
+{% if genre %}- Genre: {{ genre }}{% endif %}
+{% if tone %}- Tone: {{ tone }}{% endif %}
+{% if language %}- Output Language: {{ describe_language(language) }}{% endif %}
+{% if expected_total_words %}- Expected Total Words: {{ expected_total_words }}{% endif %}
+{% if world_hint %}- Worldview Hint: {{ world_hint }}{% endif %}
+{% if conflict_hint %}- Core Conflict: {{ conflict_hint }}{% endif %}
+{% if pov_hint %}- Narrative POV: {{ pov_hint }}{% endif %}
+{% if opening_style %}- Opening Direction: {{ opening_style }}{% endif %}
+{% if ending_style %}- Ending Direction: {{ ending_style }}{% endif %}
+{% if extra_instructions %}- Extra Constraints: {{ extra_instructions }}{% endif %}
+
+{#- ---------------------------------------------------------------------------
+    Worldview Quality Standards (Must Follow)
+    --------------------------------------------------------------------------- -#}
+
+## Worldview Quality Standards
+- **Rule Specificity**: Rules must be specific and have costs, avoid being too vague (e.g., "key ability/technology/system needs clear resources or costs" rather than "the world has some special rule")
+- **Stage Adequacy**: Geography/cultural background should provide sufficient stage for conflict and character choices
+- **Cross-media Upstream Ownership**: Structure core spaces in `locations`, locking movement,
+  materials, practical lights, weather, recurring props, and ambient sound. These fields serve
+  prose continuity, voice soundscapes, and screen art direction; do not leave them for downstream guessing.
+  Cross-media core fields (`spatial_layout`, `materials`, `practical_lights`, `ambient_sound`,
+  `continuity_rules`) are mandatory hard constraints; missing fields trigger targeted field-level
+  backfill tasks, so write them fully in this round.
+- **Tone Consistency**: Supernatural/technical rules must be consistent with the overall tone
+- **Structure Compactness**: Each string field should be expressed in one paragraph; do not write long numbered lists within strings; when enumeration is needed, compress using short sentences and semicolons to avoid JSON truncation from overly long output.
+- **JSON Stability**: Do not use unescaped double quotes inside strings; Chinese book quotes, quotation marks, and dashes can be used, but do not output Markdown, comments, or ellipses.
+- **Era Context Output on Demand**: Only output address forms, self-references, etiquette, artifacts, time units, and forbidden anachronism rules when the story involves history, ancient times, court politics, power struggles, xianxia, Republic of China era, future, fictional systems, strong social hierarchies, or special professional systems, or when the user explicitly requests them.
+- **Avoid Hard-coded Templates**: Do not mechanically apply common sense of a certain dynasty; derive the rules needed for this project based on the story premise, era background, social structure, and conflict scenarios.
+- **Keep Lightweight for Ordinary Themes**: For ordinary modern/realistic/daily themes where addresses, time, artifacts, and dialogue register can all be handled by common sense, do not output era context optional fields, do not output empty arrays, and do not output "not applicable" explanations.
+
+## Field Content Constraints
+- `story_bible` must include: `title`, `premise`, `era`, `geography`, `locations`, `culture`, `magic_or_tech`, `rules`, `tone`, `themes`, `audio_aesthetic`.
+- `story_bible` may optionally include: `notes`, `time_convention`, `banned_intent_rules`, `social_hierarchy`, `address_rules`, `self_reference_rules`, `etiquette_rules`, `institution_terms`, `material_culture`, `anachronism_blacklist`, `dialogue_register_rules`, `location_transition_window_sentences`, `bridge_echo_window_chars`, `max_key_revelations_per_chapter`, `min_unresolved_threads_to_keep`.
+- Do not add fields outside the schema; extra settings should be merged into `notes` or existing fields.
+
+## Quality Calibration
+- Work Identity: You are a long-form narrative architect, skilled at splitting story assets into executable, verifiable, and not overly spoiler-heavy plans.
+- Planning Inference Path: First lock P0 hard constraints, then allocate P1 to advance rhythm, finally use P2 style/theme to complement the presentation layer.
+- Field-level Quality Example (not output format): Weak = "advancing relationship"; High-quality = "clearly state who acts for what reason, how the relationship changes, and how the next link connects".
+- Actionable Path: Plan items must be directly checkable by subsequent writing/audit, avoid giving only abstract wishes or theme slogans.
+
+## Pre-delivery Verification
+- Whether P0/P1/P2 priority is maintained, and no weak references override hard constraints.
+- Whether key judgments can be traced back to input evidence, upstream contracts, or approved plans.
+- Whether new unauthorized characters, places, world rules, future payoffs, or format agreements are avoided.
+- Whether abstract goals are transformed into observable actions, conflicts, state changes, or chapter connection points.
+
+{#- ---------------------------------------------------------------------------
+    System Contract Injected by PromptBuilder
+    --------------------------------------------------------------------------- -#}
+
+## Field Requirements
+- `title`: Tentative name of 4-10 characters consistent with premise.
+- `premise`: 2-3 sentences, including protagonist identity, core conflict, and unique selling point.
+- `era`: Precise enough to affect narrative rhythm era background; avoid only writing "future" or "ancient".
+- `geography`: At least 2-3 core locations and their cultural/political significance, providing stage for conflict.
+- `locations`: 2-6 structured recurring story spaces. Every entry must contain `name`,
+  `location_id`, `dramatic_function`, `spatial_layout`, `materials`, `practical_lights`,
+  `ambient_sound`, and `continuity_rules` (cross-media hard constraints, none optional); then
+  complete `geography`, `era`, `weather_states`, and `recurring_props` as needed.
+  If a space has a clear camera-language preference, add optional `shot_language_seed` (one
+  sentence of shot size/motion/lighting/lens, e.g. "low angle, handheld, 35mm, practical side
+  light"); screen shot planning consumes it first.
+  Layout must support blocking; ambient sound must identify audible, layered, reusable sources.
+- `culture`: 1-2 sentences explaining dominant social structure, values, and power dynamics.
+- `magic_or_tech`: Explain the specific operation, cost, and limitations of supernatural, plot device, or technology system; for realistic themes, state realistic constraints.
+- `rules`: 3-5 hard rules affecting narrative, must be specific and have costs.
+- `tone`: Specific narrative atmosphere; do not just repeat a single tone enumeration.
+- `themes`: 2-4 deep themes running through the entire book.
+- `audio_aesthetic`: One sentence locking voice distance, ambient density, music entry, and dynamic range for Voice Studio.
+
+## Length and Optional Fields
+- `era`, `geography`, `culture`, `magic_or_tech`, `tone` each controlled at 80-220 characters.
+- Each `rules` entry 40-100 characters; each `themes` entry 50-120 characters.
+- Optional era context fields added on demand; if not applicable, completely omit the field, do not output empty arrays or "not applicable".
+- `time_convention`: Output only when time expression affects text texture or plot judgment, such as ancient timekeeping, astrological calendar, or system timestamps.
+- `social_hierarchy`: Output only when class/citizen-servant/lineage/organizational hierarchy affects actions and dialogue.
+- `address_rules` / `self_reference_rules` / `etiquette_rules` / `dialogue_register_rules`: Output only when address forms, self-references, etiquette, or dialogue register require project-level constraints, 2-5 items each.
+- `institution_terms` / `material_culture` / `anachronism_blacklist`: Output only when institutional terms, artifact texture, or era anachronism risk significantly affects the main text, 3-8 items each.

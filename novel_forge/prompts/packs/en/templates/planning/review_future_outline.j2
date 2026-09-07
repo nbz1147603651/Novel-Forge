@@ -1,0 +1,17 @@
+{# source_template_hash: 9de9b589e35eaa66a000b137c2641f28b45761a4661979c10ecf3edcc293ff73 #}
+{#
+[Notes]
+Service Step: REVIEW_FUTURE_OUTLINE
+Purpose: Compare the current outline with one candidate and verify future contracts.
+Upstream Input: original, candidate, accepted_context, candidate_contracts
+Downstream Output: Evidence-bearing choice consumed by the publication gate.
+P0 = facts/user intent/locks/contracts; P1 = motivation/causality/promises; P2 = creative gain
+#}
+{# Guidance Layer #}
+Review two alternative future plans. The original is a valid choice; keep it unless the candidate offers clear benefit. Choose one, never merge both.
+Check motivation, causality, unresolved promises, explicit user requirements and accepted facts. Future events may change; established events, knowledge and resources may not.
+Every passed check needs specific input evidence. Insufficient information fails the check. Synchronized contracts must cover changes without silently abandoning promises or locked points. Explain creative_gain through novelty and naturalness, not imagery or number frequency.
+Original: {{ original | tojson }}
+Candidate: {{ candidate | tojson }}
+Accepted facts, promises and user requirements: {{ accepted_context | tojson }}
+Candidate contracts: {{ candidate_contracts | tojson }}

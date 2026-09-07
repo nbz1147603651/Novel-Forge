@@ -1,0 +1,152 @@
+{%- from "_styles/_render_style_profile.j2" import render_style_profile_for_stage -%}
+{%- import "_base/_render_style_profile_global.j2" as style_global -%}
+{%- from "_base/_artifact_source_contract.j2" import render_artifact_source_contract -%}
+{%- from "_base/_quality_calibration.j2" import render_quality_calibration, render_pre_delivery_checklist -%}
+{%- from "_base/_editorial_card.j2" import render_editorial_card -%}
+{%- from "_quality_standards.j2" import creative_specificity_rules -%}
+
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：polish_chapter.j2
+服务步骤：POLISH_CHAPTER（章节精修润色）
+作用简述：对章节进行精修润色，使其在文学品质上达到出版级标准。
+上游输入：
+  - chapter_text: 来自 EditStep 产出的章节正文
+  - stage_cards.source: ChapterSourceSlice，含源头边界与风格/声纹投影（如调用方提供）
+  - eval_summary: 来自 EvaluateStep 的评估摘要
+  - repair_hints: 来自 EvaluateStep 的评估建议
+  - continuity_notes: 来自 ContinuityEval / ContinuityRepair 的连贯性问题
+  - style_profile: 来自 StyleProfile
+下游输出：
+  - text: 纯文本精修后章节正文
+  - 下游消费者：CheckChapterStep / PersistStep
+消费链优先级：
+  P0 = immutable_facts / POV规则 / 字数±10%约束
+  P1 = continuity_notes（连贯性修复）/ repair_hints（评估建议）
+  P2 = 文学风格 / 感官多样性 / 对话密度
+简要例子：
+  输入：chapter_text="林远站在城门口...", eval_summary="节奏偏慢"
+  输出："清晨的雾气中，林远的身影出现在城门..."（纯文本）
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    指导层：任务定义 + 上下文消费
+    --------------------------------------------------------------------------- -#}
+{% set cards = stage_cards | default({}) %}
+{% set source = cards.source | default({}) %}
+{% set source_contract = source.chapter_contract | default({}) %}
+{% set cognitive_constraints = source_contract.cognitive_constraints | default([]) %}
+{% set chapter_card = cards.chapter | default({}) %}
+{% set position = chapter_card.chapter_position | default(chapter_position | default({})) %}
+{{ render_style_profile_for_stage(style_profile | default(None), stage="edit", include_banned_phrases=true) }}
+{%- set _dlg_min = style_global.dialogue_ratio_min(style_profile | default(None)) | trim | int -%}
+{%- set _dlg_max = style_global.dialogue_ratio_max(style_profile | default(None)) | trim | int -%}
+请对章节做最终精修：提升语言、节奏和段落呼吸，同时保持剧情事实完全不变。润色后会重新跑连贯性与因果审核，任何关键事件、人物关系结论或出口状态都不能被改写。
+
+{{ render_artifact_source_contract(source, title="## Source Artifact 边界（P0）", mode="polish") }}
+
+{% if cognitive_constraints %}
+## 精修认知保真边界（P0）
+- 只允许调整句法、节奏和表达密度；不得改变任一角色的 `unknown|partial|full`，不得把内心确认改成公开行动。
+{% endif %}
+
+## Polish 消费规则
+- 只消费已修正文、评估/表达问题、字数指导和风格投影。
+- 不能新增剧情事实、角色认知、事件 ledger、关系结论、身份确认或未来 payoff。
+- 若语言优化会改变事件结果或信息等级，保留原事实表达，只微调句法和节奏。
+- 精修不消费全书级初始化源、角色大包或跨场景意图；只保留上方会被改写直接影响的最小认知契约。
+- 声纹、象征物解释、余波和身体信号预算只用于“微调句法和节奏”，不用于“改剧情事实”。
+
+## 章节信息
+- 第 {{ chapter_number }} 章「{{ chapter_title }}」
+- 基调：{{ tone }}
+{% if genre %}- 类型：{{ genre }}{% endif %}
+{% if pov_character %}- 视角人物：{{ pov_character }}{% endif %}
+{% if target_word_count %}- 目标字数：约 {{ target_word_count }} 字{% endif %}
+{% if position %}
+- 章节位置：第 {{ position.chapter_number | default(chapter_number) }} / {{ position.total_chapters }} 章；is_last_chapter={{ position.is_last_chapter | default(false) }}。
+{% if position.is_last_chapter | default(false) %}
+- 本章是当前 outline 的全书终章，可以保留全书级收束语气，但不得新增契约外事实。
+{% else %}
+- 本章不是全书终章：精修不得改写成全书结局，不得新增最终清算、最终命运定论或全线 payoff。
+{% endif %}
+{% if position.is_previously_final_chapter | default(false) %}
+- 本章曾是旧终章但已被延长：只保留阶段性落点，弱化最终章口吻。
+{% endif %}
+{% endif %}
+
+{% if eval_summary %}
+## 当前评估反馈
+{{ eval_summary }}
+{% endif %}
+
+{% if repair_hints %}
+## 评估建议（P1）
+{{ repair_hints }}
+{% endif %}
+
+{% if continuity_notes %}
+## 连贯性/因果提示（P1）
+可用过渡句、铺垫、动作衔接或内心判断修复；不得改变事件结果。
+{{ continuity_notes }}
+{% endif %}
+
+{% if word_count_guidance %}
+## 字数精修目标（P0）
+只处理字数与表达密度，不重规划、不重写剧情链路。
+{{ word_count_guidance }}
+{% endif %}
+
+{% set editorial = cards.editorial | default({}) %}
+{{ render_editorial_card(editorial, mode="polish") }}
+
+{% set quality = cards.quality | default({}) %}
+{% if quality.chapter_hook | default('') or quality.in_chapter_payoffs | default([]) %}
+## 追读力胶囊（P2，精修时保持）
+{% if quality.in_chapter_payoffs | default([]) %}- 微兑现：{{ quality.in_chapter_payoffs | join('；') }}{% endif %}
+{% if quality.chapter_hook | default('') %}- 章尾钩子方向：{{ quality.chapter_hook }}{% endif %}
+- 精修不得削弱或删减上述追读力锚点。
+{% endif %}
+
+{% set style = cards.style | default({}) %}
+{% if style.summary | default('') or style.modules | default([]) or style.banned_phrases | default([]) %}
+## 风格胶囊（P2）
+{% if style.summary | default('') %}- {{ style.summary }}{% endif %}
+{% for module in style.modules | default([]) %}
+- {{ module.name | default('未命名模块') }}：{{ module.rules | default([]) | join('；') }}
+{% endfor %}
+{% if style.banned_phrases | default([]) %}- 禁用短语：{{ style.banned_phrases | join('；') }}{% endif %}
+{% endif %}
+
+{% set memory = cards.memory | default({}) %}
+{% if memory.expression_channel_records | default([]) %}
+## 表达通道冷却（P1）
+以下是近期高频表达机制；精修时不得用同类生理/动作模板承载同一种情绪，必须换成动作选择、对白延迟、环境注意力或决策过程。
+{% for item in memory.expression_channel_records %}
+{% set recent_hits = item.recent_semantic_hits | default([]) %}
+- {{ item.channel }} / {{ item.channel_id }}：{{ item.text }}{% if item.reason %}（{{ item.reason }}）{% endif %}{% if item.replacement_axes %}；替代方向：{{ item.replacement_axes | join('、') }}{% endif %}{% if recent_hits %}；近例：第{{ recent_hits[0].chapter }}章“{{ recent_hits[0].quote }}”{% endif %}
+{% endfor %}
+{% endif %}
+
+## 当前正文
+{{ chapter_text }}
+
+## 精修规则
+1. P0：不改变剧情走向、人物关系结论、关键事件、角色出入场、专有名词、开头承接和章尾出口。
+2. P0：若有字数目标，按上方要求压缩或扩写；否则保持原文 ±10%。
+3. P1：删除低信息过渡、重复解释、同构判断句和无新增信息的心理绕圈。
+4. P1：泛化动词、空泛形容和机械身体反应，优先改成动作后果、对白潜台词、环境阻力或角色选择。
+5. P2：场景转换保留必要锚点；感官和意象服务冲突，不为覆盖率硬补。
+6. P2：对话密度参考 {{ _dlg_min }}%-{{ _dlg_max }}%，只补能推动信息、关系或决策的对话。
+{{ creative_specificity_rules(title="") }}
+
+{{ render_quality_calibration() }}
+
+{{ render_pre_delivery_checklist() }}
+
+{#- ---------------------------------------------------------------------------
+    格式层：输出格式约束
+    --------------------------------------------------------------------------- -#}

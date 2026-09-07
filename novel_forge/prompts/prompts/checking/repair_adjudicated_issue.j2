@@ -1,0 +1,84 @@
+{%- from "_quality_standards.j2" import creative_specificity_rules -%}
+{%- from "_base/_artifact_source_contract.j2" import render_artifact_source_contract -%}
+{%- from "_base/_repair_attempt_guidance.j2" import render_repair_attempt_guidance -%}
+{%- from "_base/_repair_quality_calibration.j2" import render_repair_quality_calibration, render_repair_pre_delivery_checklist -%}
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：repair_adjudicated_issue.j2
+服务步骤：REPAIR_ADJUDICATED_ISSUE（裁判问题修复）
+作用简述：根据 LLM 裁判给出的修复要求，对章节正文做局部修复并返回可合并的正文段落。
+上游输入：
+  - adjudicated_issue：裁判问题与修复要求
+  - stage_cards.source：ChapterSourceSlice，含禁揭示边界（如调用方提供）
+  - chapter_contract：本章契约
+  - current_state：当前硬事实状态
+  - repair_context：待修复证据窗口
+  - chapter_text：完整章节正文（仅作兜底）
+下游输出：
+  - TEXT：修复后的正文段落；可返回完整正文，但优先返回局部段落
+  - 下游消费者：复检 / 归档流程
+消费链优先级：P0（裁判修复要求）> P1（契约和硬事实）> P2（原文风格保持）
+================================================================================
+#}
+
+{% set cards = stage_cards | default({}) %}
+{% set source = cards.source | default({}) %}
+
+## 任务
+根据 LLM 裁判给出的修复要求，局部修复正文。
+
+{{ render_artifact_source_contract(source, title="## Source Artifact 边界（P0）", mode="repair") }}
+
+## ticket/window 规则
+- `adjudicated_issue.evidence_quotes` 与 `repair_context` 是本次修复的第一依据。
+- 章节契约、当前硬事实状态和 source 只用于验收边界，不用于新增剧情事实。
+- 只修 ticket/window，不自由重写整章；若无法定位，返回最相关原文窗口而不是扩写。
+- `repair_kind="mapping"`、路径修正、target_id 重组和状态槽位问题不属于正文修复；遇到这类问题应原样返回相关原文窗口，不要改写正文。
+
+## 🔒 禁止修改的区域
+1. **未被裁判问题明确指出的段落、事实、关系、物品归属、身份揭示**：任何未被 adjudicated_issue 中的 evidence_quotes 或 repair_instruction 涵盖的内容，均不得修改。
+2. **与当前章节契约无冲突的已有硬事实**：如果硬事实未被裁判问题质疑，保持原样。
+3. **已通过裁判审核的内容**：任何未在本次裁判中标记为有问题的内容，视为已通过审核，不得修改。
+
+## ✅ 允许修改的范围
+1. **裁判问题中 evidence_quotes 涉及的段落**：以裁判问题中的证据引用为精确锚点，定位需要修改的具体位置。
+2. **裁判问题中 repair_instruction 明确要求的修改**：严格按照 repair_instruction 的描述执行修改。
+3. **为实现修复必须调整的过渡段落**：为保证修复后段落流畅衔接，允许调整必要的过渡语句，但不超过原段落数量的 20%。
+
+## ⚠️ 修复策略
+1. **最小干预原则**：只修改必要部分，能局部修改就不全文重写。
+2. **证据锚定**：以 evidence_quotes 定位修改范围，确保每处修改都有裁判依据。
+3. **风格保持**：修复后保持原文风格、节奏、人物语气。
+4. **优先输出修复后的局部正文段落**：只返回被修改窗口中需要替换回原文的正文段落，不输出说明或 JSON，以标准文本格式输出。
+5. **不要求重吐整章**：如果修复只涉及一两段，就只输出那一两段修复后的正文；若无法可靠定位修改点，则原样返回最相关的原文段落，不要扩写整章。
+6. **记忆只作辅助**：若提供记忆提示，只可用来保持语气、承接和修复段落的上下文一致；不得把记忆摘要当作正文证据，不得据此新增事实、人物状态、关系变化或修复目标。
+{{ creative_specificity_rules(title="") }}
+
+{{ render_repair_attempt_guidance(repair_attempt_guidance | default(none)) }}
+
+## 裁判问题
+{#- adjudicated_issue 包含 verdict, rationale, evidence_quotes, repair_instruction, severity。LLM 应以 evidence_quotes 定位修改点，以 repair_instruction 指导具体修改 -#}
+{{ adjudicated_issue }}
+
+## 本章契约
+以下只作边界和验收条件，不是新增事实来源。
+{{ chapter_contract }}
+
+## 当前硬事实状态
+{{ current_state }}
+
+{% if memory_repair_hints %}
+## 记忆辅助提示（非事实源）
+以下内容来自记忆检索，只能作为修复时的上下文提示。硬事实以“当前硬事实状态”、章节契约、裁判问题和正文证据为准。
+{{ memory_repair_hints }}
+{% endif %}
+
+## 待修复正文窗口
+以下是从完整章节中按裁判证据抽取的局部窗口。请只修复这些窗口里与裁判问题直接相关的正文段落。
+{{ repair_context | default(chapter_text) }}
+
+{{ render_repair_quality_calibration("repair") }}
+
+{{ render_repair_pre_delivery_checklist("repair") }}

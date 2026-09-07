@@ -1,0 +1,37 @@
+{
+  "title": "示例：山风小镇",
+  "genre": "life_healing",
+  "theme": "被听见不等于被审判",
+  "tone": "warm",
+  "length_target": 108000,
+  "language": "zh",
+  "narrative_complexity": "standard",
+  "pov_hint": "第三人称限知，主线跟随沈鹿溪，穿插陈屿视角；正文禁止第一人称叙述主体，对话中角色自称除外",
+
+  "character_silence": true,
+  "extra_instructions": "言情要素自然融入，主要发展沈鹿溪与陈屿之间的感情线，从相识到相知到相互理解；乡村振兴要素需作为背景压力来源；前三章强钩子，多线并进，中段设反转，结尾有收束与回响",
+
+  "backstory_reveals": [
+    {
+      "topic": "主角网络暴力前史",
+      "required_first_appearance": 5,
+      "min_word_count": 300,
+      "reveal_mode": "flashback",
+      "triggers": ["声音", "录音", "麦克风", "匿名", "直播", "弹幕"]
+    },
+    {
+      "topic": "陈屿大学风能课题与返乡动机",
+      "required_first_appearance": 8,
+      "min_word_count": 200,
+      "reveal_mode": "dialogue_snippet",
+      "triggers": ["新能源", "导师", "论文", "风能", "扶贫"]
+    },
+    {
+      "topic": "苏皖的离婚协议悬而未决",
+      "required_first_appearance": 12,
+      "min_word_count": 150,
+      "reveal_mode": "object_trigger",
+      "triggers": ["协议", "签字", "上海", "离婚"]
+    }
+  ]
+}

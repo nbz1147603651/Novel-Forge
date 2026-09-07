@@ -1,0 +1,316 @@
+{# ================================================================================
+【备注】
+================================================================================
+提示词：plan_outline_continue.j2
+服务步骤：PLAN_OUTLINE_CONTINUE（大纲续写）
+作用简述：在已生成的大纲基础上，续写指定章节范围（batch_start-batch_end）
+         的章节大纲，保持与前批次的连贯性。
+上游输入：
+  - spec: 用户输入的故事规格（genre, theme, tone 等）
+  - blueprint: 来自 PLAN_OUTLINE（完整蓝图结构）
+  - blueprint_element_selection: 来自 BLUEPRINT_ELEMENT_SELECT（extension_elements 候选）
+  - phase_guidance/phase_rhythm_guidance: 蓝图阶段导航信息
+  - batch_start/batch_end: 本批次的章节范围
+  - words_per_chapter: 每章目标字数
+  - outline_tracker_context: 统一记忆追踪（关系动态、主题出现等）
+  - outline_entity_catalog: 本批所有章节的注册实体 ID 与类型（含未锁定的预规划章节）
+  - chapter_design_matrix: 当前续写范围的 canonical entity_id、cast 与蓝图情绪证据
+  - is_final_batch: 是否为终章批次
+下游输出：
+  - JSON：{chapters: [{chapter_number, title, goal, beats_summary, main_plot_points,
+             subplot_points, element_focus, pov_character_id, pov_character_name,
+             involved_character_ids, cast_plan, emotional_plan, scene_design_goals,
+             setting, expected_word_count, expected_hook, expected_payoffs, notes}]}
+  - 下游消费者：PLAN_CHAPTER（章节规划）
+消费链优先级：
+  P0 = 章节编号连续性 / 叙事阶段覆盖完整性
+  P1 = outline_tracker_context 一致性约束
+  P2 = 支线交织合理性
+简要例子：
+  输入：batch_start=6, batch_end=10, is_final_batch=true
+  输出：{chapters:[{chapter_number:6, title:"...", goal:"...", beats_summary:[...]}]}
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    指导层：任务定义 + 上下文消费
+    --------------------------------------------------------------------------- -#}
+
+请继续按照相同格式，生成第 {{ batch_start }} 章到第 {{ batch_end }} 章的章节大纲。
+
+{% if spec is defined %}
+## 故事基础信息
+- 体裁：{{ spec.genre }}｜主题：{{ spec.theme }}｜基调：{{ spec.tone }}
+{% if spec.opening_style %}- 开篇风格样张（仅供笔法参考，不得逐句复刻到第1章）：{{ spec.opening_style }}{% endif %}
+{% if spec.ending_style %}- 收束风格样张（仅供笔法参考，不得逐句复刻到末章）：{{ spec.ending_style }}{% endif %}
+{% if spec.world_hint %}- 世界观：{{ spec.world_hint }}{% endif %}
+{% if spec.conflict_hint %}- 核心冲突：{{ spec.conflict_hint }}{% endif %}
+{% if spec.pov_hint %}- 叙事视角：{{ spec.pov_hint }}{% endif %}
+{% endif %}
+
+{% if story_bible is defined and story_bible %}
+## 世界观锚定
+{% set story_rules = story_bible.rules | default(story_bible.world_rules | default([]), true) %}
+{% if story_bible.era | default('') %}- 时代背景：{{ story_bible.era }}{% endif %}
+{% if story_rules %}- 世界规则：{% for rule in story_rules %}{{ rule }}{% if not loop.last %}；{% endif %}{% endfor %}{% endif %}
+{% endif %}
+
+{% if character_bible is defined and character_bible and character_bible.characters %}
+## 角色状态参考
+{% for char in character_bible.characters %}
+{% set char_arc = char.arc | default('', true) %}
+{% if not char_arc and char is mapping %}{% set char_arc = char.get('arc_goal', '') %}{% endif %}
+- {{ char.name | default('', true) }}：{% if char.role | default('') %}{{ char.role }}{% endif %}{% if char_arc %}｜弧光目标：{{ char_arc }}{% endif %}
+{% endfor %}
+{% endif %}
+
+{% set density = outline_density | default({}, true) %}
+{% set beats_min = density.beats_min | default(4, true) %}
+{% set beats_max = density.beats_max | default(8, true) %}
+{% set main_min = density.main_plot_points_min | default(2, true) %}
+{% set main_max = density.main_plot_points_max | default(4, true) %}
+{% set subplot_max = density.subplot_points_max | default(3, true) %}
+{% set element_focus_max = density.element_focus_max | default(3, true) %}
+{% set payoff_min = density.expected_payoffs_min | default(1, true) %}
+{% set payoff_max = density.expected_payoffs_max | default(3, true) %}
+
+{% set design_matrix = chapter_design_matrix | default(none) %}
+{% set entity_catalog = outline_entity_catalog | default(design_matrix.entity_catalog if design_matrix else [], true) %}
+{% if entity_catalog %}
+## 实体身份目录（P0，覆盖本批所有章节）
+### Entity Catalog
+{{ entity_catalog | tojson(indent=2) }}
+- 实体身份与章节是否已锁定无关；本批所有章节（包括无矩阵行的预规划章节）都必须使用以上注册 ID。
+- 所有角色 ID、情绪主体 `emotional_plan.subject_entity_id`、`forbidden_active_character_ids` 只能引用 `entity_type=character`；地点、物品等只能进入场景描述或 `mention_only_entity_ids`。
+- `mention_only_entity_ids` 可以引用任意已注册实体；不得编造 ID、用名字或拼音替代 ID。展示名只从对应 ID 的 `name` 回填。
+- 角色名单由本章实际行动、对白或因果作用决定；仅回忆、谈及或背景出现的角色不能升级为主动出场角色。
+- 没有矩阵行的章节是可调整的预规划，不能套用其他章节的 POV、required 或 forbidden 约束；暂定引用仍须满足上述类型规则。
+{% endif %}
+{% if design_matrix %}
+## 章节设计矩阵（P0 身份约束 + P1 创作证据）
+以下矩阵来自 EntityRegistry 与上游蓝图。`entity_id` 与 cast 是硬约束；`emotional_brief`
+只提供蓝图证据，不是本地写好的情绪计划。续写、补章和质量重试都必须沿用身份约束，
+并据证据重新创作每章独特的 `emotional_plan`：
+
+### 本批章节约束
+{% for row in design_matrix.chapters %}
+- 第{{ row.chapter_number }}章：
+  - plot_duties={{ row.plot_duties | tojson }}
+  - cast_plan={{ row.cast_plan | tojson }}
+  - emotional_brief={{ row.emotional_brief | tojson }}
+{% if row.knowledge_boundary %}  - knowledge_boundary={{ row.knowledge_boundary | tojson }}
+{% endif %}{% if row.hook_payoff_duties %}  - hook_payoff_duties={{ row.hook_payoff_duties | tojson }}
+{% endif %}{% if row.scene_design_goals %}  - scene_design_goals={{ row.scene_design_goals | tojson }}
+{% endif %}
+{% endfor %}
+
+- `pov_character_id` 必须等于本章 `cast_plan.pov_entity_id`。
+- 矩阵中的 `required_character_ids` 是必须主动驱动本章的硬约束；矩阵中的 `support_character_ids` 只是本叙事阶段的**候选池**，禁止为了“保持连续性”或“主角团完整”而让候选角色全员出场。
+- 输出的 `support_character_ids` 只保留在本章目标、节拍、主/支线点、情绪计划、scene 目标、钩子或兑现中有明确姓名及可观察行动/对白/因果作用的角色。若必须使用候选池外角色，须来自 Entity Catalog、有同等明确证据，且不得命中 `forbidden_active_character_ids`。
+- `involved_character_ids` 必须精确等于 `pov_character_id + required_character_ids + 实际 support_character_ids` 的去重并集；仅被回忆、谈及、作为背景设定出现的角色不得进入。
+- `pov_character_name`、`involved_character_names`、`pov_character`、`involved_characters` 只能由 Entity Catalog 中对应 id 的 `name` 回填，不得自造名称或使用 alias。
+- 输出 `cast_plan` 必须保留矩阵的 POV、required、mention-only 和 forbidden 约束，并把 `support_character_ids` 收敛为本章实际 support；不得改写 entity_id。
+- 非注册人物、称谓、历史名、误称只能出现在 `goal`、`beats_summary`、`main_plot_points` 或 `notes`，不能进入结构化角色字段。
+- `emotional_plan.subject_entity_id` 必须使用本章 POV 或 required cast 的 entity_id。
+- 依据 `emotional_brief` 把情绪写成“进入状态 → 压力 → 关系/行动选择 → 情绪转向 → 退出余韵”，禁止空泛抒情和跨章复制套话。
+- 所有章节统一遵守知识边界：角色只能获得本章行动、观察和对白明确带来的信息，未来揭示不得提前变成已知事实。
+- 章尾钩子来自行动后果、关系选择或认知变化；微兑现对应主线职责或情绪选择，不得凭空新增设定。
+{% endif %}
+
+{% set character_whitelist = outline_character_whitelist | default([], true) %}
+{% if character_whitelist and not entity_catalog %}
+## 结构化角色白名单（P0）
+以下白名单来自角色圣经 `characters[].name`。只有这些正式角色名可以写入 `pov_character` 与 `involved_characters`：
+{{ character_whitelist | tojson(indent=2) }}
+
+- `pov_character` 必须是白名单中的**单个名字**，一字不差；禁止写组合、说明、比例或“某角色为主”等描述。
+- `involved_characters` 必须是白名单名字数组；禁止写称谓、阵营、群体、职位、别称、未登记人物或仅在设定文本中被提及的对象。
+- 如果本章需要提及白名单外对象，请放在 `goal`、`beats_summary`、`main_plot_points` 或 `notes` 中说明，不要放入结构化角色字段。
+{% endif %}
+
+{% if reveal_window | default(none) %}
+## 叙事揭示边界（P0）
+- {{ reveal_window.priority_rule | default('P0 叙事揭示边界 > P1 情节推进 > P2 追读力/钩子/微兑现。') }}
+- {{ reveal_window.allowed_policy | default('目标章之前只能写观察、误判、怀疑、遮蔽、间接异常；不得写成坐实、确认、印证、公开揭露或完整因果解释。') }}
+- 若强钩子、微兑现或爽点会提前消费下列未来揭示，必须降低钩子强度，改为疑点、误导或间接异常。
+{% if reveal_window.current_targets | default([]) %}
+- 本批允许到达目标章的揭示：
+{% for item in reveal_window.current_targets %}
+  - 第{{ item.target_chapter }}章 {{ item.thread }} / {{ item.stage }}：允许透露={{ item.allowed_disclosure }}；触发={{ item.trigger }}；后果={{ item.required_action_consequence }}
+{% endfor %}
+{% endif %}
+{% if reveal_window.future_guardrails | default([]) %}
+- 本批不得确认或兑现的未来揭示：
+{% for item in reveal_window.future_guardrails %}
+  - 目标第{{ item.target_chapter }}章 {{ item.thread }} / {{ item.stage }}：当前只能铺垫或误导，不得写成确认；允许透露={{ item.allowed_disclosure }}
+{% endfor %}
+{% if reveal_window.withheld_future_count | default(0) %}- 另有 {{ reveal_window.withheld_future_count }} 条远期揭示已因篇幅隐藏，也不得提前兑现。{% endif %}
+{% endif %}
+{% if reveal_window.past_reveals | default([]) %}
+- 已过目标章的揭示只可作为既定承接，不要重复写成新发现：{% for item in reveal_window.past_reveals %}第{{ item.target_chapter }}章{{ item.thread }}/{{ item.stage }}{% if not loop.last %}；{% endif %}{% endfor %}
+{% endif %}
+{% endif %}
+
+## 本批任务
+
+* 章节范围：第 {{ batch_start }}–{{ batch_end }} 章（共 {{ batch_end - batch_start + 1 }} 章）
+* 每章目标字数：{{ words_per_chapter }} 字（±30% 可微调）
+* 续写规则：只生成当前批次章节，禁止重写或覆盖已完成章节
+* 连贯规则：本批首章必须可直接承接上一批末章，不能把叙事重新开一遍
+* 编号规则：chapter_number 必须连续且严格落在 {{ batch_start }}–{{ batch_end }} 范围内
+* 标题规则：每章先确定一个 4-10 个汉字的章名，并写入 `title`；标题不是剧情摘要，不得复制 `goal` / `main_plot_points` / `beats_summary`，不得包含地点长句、标点长句、人物并列句或完整事件句，禁止省略
+* 字段顺序规则：每个 chapter 对象先输出 `chapter_number`、`title`、`goal`，再输出 `beats_summary` 等长数组，避免长数组挤掉标题字段
+* 颗粒度规则：每章 {{ main_min }}-{{ main_max }} 条 main_plot_points、{{ beats_min }}-{{ beats_max }} 条 beats_summary（**硬上限，不得超出**）、0-{{ subplot_max }} 条 subplot_points
+* **节拍颗粒度规范（P0 硬约束）**：
+  - 每条 beat 代表一个**可独立推进的叙事单元**（拥有自身的"情境→行动→变化"弧线），在正文中至少展开 1200 字以上。
+  - **同一时空内的连续动作必须合并为一条 beat**。禁止逐帧拆分：不得把角色在同一场景中的连续反应、感受、动作拆成多条 beat。判断标准：若两条 beat 发生在同一地点且时间连续（无场景切换），必须合并。
+  - **字数容量校验**：beats_summary 条数 × 1200 不得显著超过 expected_word_count。{{ words_per_chapter }} 字的章节，有效 beat 上限为 {{ (words_per_chapter / 1200) | int }} 条。
+  - beat 只写"谁在什么情境下做了什么、导致什么变化"，不写瞬间感受、肢体微动作或环境粒子效果。
+  - beats_summary 是章节级叙事骨架，动作拆分与场景分配留给 PLAN_CHAPTER。
+* 节拍格式：`beats_summary` 每一项只写纯情节句，禁止使用 `【节拍1：标签】`、`【标签】`、`节拍1：` 等编号/标签前缀；每条 beat 只写一个完整叙事单元（情境→行动→变化），禁止把同一场景的连续瞬间拆成多条
+
+## 标题压缩规则
+- 从本章的核心动作、冲突转折、关键意象或情绪落点中取 2-4 个词组合。
+- 避免把角色名、地点、完整动作链和事件结果全部塞进标题。
+- 标题必须贴合本作输入，不复用模板自带题材词或外部角色名。
+
+{% if outline_quality_feedback is defined and outline_quality_feedback %}
+
+## 上轮质量问题（本次必须修复）
+以下问题来自系统质量门禁。本次必须重新生成当前批次，禁止沿用占位符、模板章名、模板主线或空泛目标：
+
+{{ outline_quality_feedback }}
+{% endif %}
+
+{% if phase_guidance %}
+
+## 蓝图导航（本批应落实的关键节点）
+
+{{ phase_guidance }}
+{% endif %}
+
+{% if phase_rhythm_guidance %}
+
+## 阶段节奏调控
+
+{{ phase_rhythm_guidance }}
+{% endif %}
+
+{% set scoped_weave = extract_scoped_weave_links(blueprint, batch_start, batch_end) %}
+{% if scoped_weave %}
+### 本批相关支线交织
+{% for subplot in scoped_weave %}
+- 支线「{{ subplot.name }}」的交织关系：
+{% for link in subplot.weave_links %}
+  - {{ link.source_type }}「{{ link.source_ref }}」→ {{ link.link_type }} → 第{{ link.trigger_chapter }}章影响「{{ link.target_subplot }}」
+    （{{ link.description }}）
+{% endfor %}
+{% endfor %}
+{% endif %}
+
+{% set _sel = blueprint_element_selection or {} %}
+{% set _ext_focus_candidates = _sel.extension_elements if _sel.extension_elements is defined else [] %}
+{% if _ext_focus_candidates %}
+## 章节要素聚焦候选（用于 `element_focus`）
+每章请输出 0-{{ element_focus_max }} 个重点扩展要素（`element_focus`），只能从下列 `element_id` 选择：
+{% for item in _ext_focus_candidates %}
+- `{{ item.element_id }}`（{{ item.name }}{% if item.selection_score is defined and item.selection_score %}｜优先级 {{ item.selection_score }}{% endif %}）：{{ item.prompt_hint }}
+{% endfor %}
+选择时优先考虑高优先级元素、上一批未覆盖元素，以及本批情节天然需要的元素；不要为了覆盖而生硬塞入。
+{% endif %}
+
+{% if outline_tracker_context %}
+## 统一记忆追踪
+
+### 关系动态
+{{ outline_tracker_context.relationship_summary }}
+
+### 主题出现
+{{ outline_tracker_context.themes_summary }}
+
+### 关键事件追踪
+{{ outline_tracker_context.key_events_summary }}
+
+### 待解决悬念
+{{ outline_tracker_context.unresolved_summary }}
+
+### 最近章节概览
+{{ outline_tracker_context.recent_chapters_summary }}
+
+⚠️ **强制要求**：本章情节必须与上述关系变化、主题发展、关键事件保持一致。
+- 不得与已建立的角色关系矛盾
+- 不得忽略已出现的主题线索
+- 应当承接或解决上述悬念，而不是引入完全无关的情节
+- 如需改变关系状态或引入新主题，必须有充分的叙事理由
+{% endif %}
+
+{% if relationship_overview | default([]) %}
+## 初始化角色关系总览
+本批续写必须承接这些最终角色关系，关系端点名不可丢失：
+{% for rel in relationship_overview %}
+- {{ rel }}
+{% endfor %}
+{% endif %}
+
+{% if style_profile %}
+## 项目风格与追读力约束
+{% if style_profile.summary %}- 风格概述：{{ style_profile.summary }}{% endif %}
+{% if style_profile.hook_config %}
+- 钩子偏好：{{ style_profile.hook_config.preferred_types | join("、") }}
+- 强度基准：{{ style_profile.hook_config.strength_baseline }}
+{% endif %}
+{% if style_profile.micro_payoff_config %}
+- 每章最低微兑现：{{ style_profile.micro_payoff_config.min_per_chapter }} 个
+{% if style_profile.micro_payoff_config.preferred_types %}- 偏好微兑现类型：{{ style_profile.micro_payoff_config.preferred_types | join("、") }}{% endif %}
+{% endif %}
+{% endif %}
+
+{% if is_final_batch %}
+
+## ⚠️ 终章要求（本批包含全书最后章节）
+
+* 必须回收全部主线悬念和关键伏笔
+* 角色弧光必须有明确着陆点
+* 结尾需呼应全局叙事蓝图中的收束策略
+* 最终章需有情感共鸣和叙事张力的完整释放
+{% endif %}
+
+## 追读力规划要求
+
+### 章尾钩子（expected_hook）
+- 每章必须包含 `expected_hook`
+- 类型：crisis / mystery / emotion / choice / desire
+- 强度：strong / medium / weak
+- 描述：简要描述钩子内容，供下一章桥接和追读力复评使用
+
+### 微兑现（expected_payoffs）
+- 每章必须包含 `expected_payoffs`
+- 类型：information / relationship / ability / resource / recognition / emotion / clue
+- 每章规划 {{ payoff_min }}-{{ payoff_max }} 个微兑现点；若风格规范偏好更密，仍以本章纲颗粒度为上限
+- 兑现类型必须与本章主线推进、支线节点、要素聚焦自然对应，不要机械塞入
+- `expected_payoffs` 必须写在每个 chapter 对象内部，紧跟 `expected_hook` 之后；写完 `expected_payoffs` 后才允许关闭该 chapter 对象
+
+{% include "_shared/_outline_quality_invariants.j2" %}
+
+{#- ---------------------------------------------------------------------------
+    系统契约由 PromptBuilder 注入
+    --------------------------------------------------------------------------- -#}
+
+## 章节字段要求
+- `chapters` 数组必须恰好包含 {{ batch_end - batch_start + 1 }} 个条目，`chapter_number` 从 {{ batch_start }} 连续到 {{ batch_end }}。
+- 每个章节对象必须显式包含 `title` 字段；标题可短，但禁止省略，禁止只用 `goal`、`beats_summary` 或 `main_plot_points` 代替标题。
+- 每个章节对象开头必须先出现 `chapter_number`、`title`、`goal` 三个字段，然后再写 `beats_summary`、`main_plot_points` 等数组字段。
+- 每章必须包含章节号、标题、叙事目标、节拍摘要、主线推进点、支线点、支线焦点、要素焦点、POV ID/展示名、是否切换 POV、主要场景、预期字数、出场角色 ID/展示名、cast_plan、emotional_plan、scene_design_goals、备注、章尾钩子和微兑现。
+- 字段名必须使用：`chapter_number`, `title`, `goal`, `beats_summary`, `main_plot_points`, `subplot_points`, `subplot_focus`, `element_focus`, `pov_character_id`, `pov_character_name`, `pov_character`, `pov_switch`, `setting`, `expected_word_count`, `involved_character_ids`, `required_character_ids`, `support_character_ids`, `involved_character_names`, `involved_characters`, `cast_plan`, `emotional_plan`, `scene_design_goals`, `notes`, `expected_hook`, `expected_payoffs`；禁止使用 `pov`, `main_scenes`, `target_word_count` 等别名字段。
+{% if design_matrix %}- 所有 `*_character_ids` 和 `cast_plan.*_ids` 只能使用章节设计矩阵中的 entity_id；展示名字段必须按 Entity Catalog 回填。
+{% elif character_whitelist %}- `pov_character` 和 `involved_characters` 只能使用上方白名单中的正式名；`involved_characters` 列出本章涉及的白名单角色，含 POV 角色；只列名字，不加描述。
+{% else %}- `involved_characters` 必须列出本章所有出场角色，含 POV 角色；只列名字，不加描述。
+{% endif %}
+- `emotional_plan` 必须包含 `subject_entity_id`, `entry_state`, `pressure_source`, `relationship_choice`, `turning_emotion`, `exit_aftertaste`, `expression_channels`；不得写成抽象主题口号。
+- `scene_design_goals` 必须列出 2-5 条后续 PLAN_CHAPTER 可落实为 scene 的目标，必须来自 plot_duties / emotional_plan / hook_payoff_duties。
+- `main_plot_points` 长度 {{ main_min }}-{{ main_max }}；`beats_summary` 长度 {{ beats_min }}-{{ beats_max }}（**硬上限，不得超出**）；`subplot_points` 长度 0-{{ subplot_max }}。
+- `element_focus` 必须是数组，元素仅允许来自上文候选扩展要素的 `element_id`，长度 0-{{ element_focus_max }}。
+- `beats_summary` 数组元素必须是纯情节句，禁止带标签或"节拍n："前缀，禁止扩写成分场大纲。每条 beat 只写一个完整叙事单元（情境→行动→变化），禁止把同一场景的连续瞬间拆成多条。
+- `expected_hook` 与 `expected_payoffs` 每章都必须存在，且必须属于同一个 chapter 对象。
+- `expected_hook` 包含 hook_type、hook_strength、hook_description；`expected_payoffs` 长度 {{ payoff_min }}-{{ payoff_max }}，每项包含 payoff_type 与 description。
+- `payoff_type` 只能使用 information、relationship、ability、resource、recognition、emotion、clue。

@@ -1,0 +1,22 @@
+{
+  "task": "PLAN_OUTLINE",
+  "contract_context": {
+    "total_chapters": 24,
+    "blueprint_fragment_request": {
+      "block_key": "character_arcs",
+      "required_keys": [
+        "character_arcs",
+        "emotional_arcs"
+      ]
+    }
+  },
+  "raw_content": "{\"character_arcs\":[{\"character\":\"沈鹿溪\",\"arc_summary\":\"从封闭到发声\",\"milestones\":[{\"chapter_start\":1,\"chapter_end\":6,\"description\":\"初到小镇，封闭自我，只敢记录风声。\"}]},\"emotional_arcs\":[{\"arc_name\":\"沈鹿溪创伤疗愈弧线\",\"emotion_type\":\"温馨\",\"peak_chapters\":[23,24],\"valley_chapters\":[1,13],\"description\":\"从压抑到舒展。\",\"related_characters\":[\"沈鹿溪\"],\"related_subplots\":[\"主线\"]}]}",
+  "expected": {
+    "success": true,
+    "strategy": "plan_outline_fragment_array_sibling_repair",
+    "top_level_keys": [
+      "character_arcs",
+      "emotional_arcs"
+    ]
+  }
+}

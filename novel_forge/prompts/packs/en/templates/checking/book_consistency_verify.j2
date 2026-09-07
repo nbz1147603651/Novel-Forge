@@ -1,0 +1,133 @@
+{# ================================================================================
+source_template_hash: e304bf90b8d0c832fac2239b92c872ad0369295ab060747a7655add1da39ad4e
+【Remarks】
+================================================================================
+Prompt: book_consistency_verify.j2
+Service Step: BOOK_CONSISTENCY_VERIFY (Full Book Consistency Verification)
+Function Summary: Verify each issue in the problem list for a chapter during full book audit, determining whether issues truly exist.
+Upstream Inputs:
+  - chapter_number: Chapter number
+  - numbered_text: Full chapter text (with paragraph numbering)
+  - paragraph_count: Paragraph count
+  - chapter_summary: Chapter summary
+  - related_chapters_context: Context from related chapters involved in cross-chapter issues
+  - canon_characters: Current canon character status
+  - claimed_issues: Problem list to be verified (from full book audit phase one)
+Downstream Output:
+  - JSON: {"verified_issues": [{"issue_id", "status", "paragraph_index", ...}]}
+  - Downstream Consumer: BookConsistencyStep (used to update issue status)
+Consumption Chain Priority: P0 (false positives may cause unnecessary fixes) > P1 (issue location deviation)
+              > P2 (description accuracy)
+Brief Example:
+  Input: chapter_number=5, claimed_issues=[{"issue_id": "ch5_timeline_01", "description": "Timeline contradiction"}]
+  Output: {"verified_issues": [{"issue_id": "ch5_timeline_01", "status": "verified", "paragraph_index": 12}]}
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer: Task Definition + Context Consumption
+    --------------------------------------------------------------------------- -#}
+You have received a problem list for **Chapter {{ chapter_number }}** from the full book consistency audit.
+Please read through the full chapter text issue by issue, verify each problem, determine whether it truly exists, and provide precise paragraph location.
+
+## Chapter {{ chapter_number }} Full Text (with Paragraph Numbering)
+- paragraph_count={{ paragraph_count }}
+{{ numbered_text }}
+
+{% if chapter_summary %}
+## Chapter Summary
+{{ chapter_summary }}
+{% endif %}
+
+{% if related_chapters_context %}
+## Related Chapter Context (for Cross-Chapter Issue Verification)
+Notes:
+- Only summaries and short evidence windows from chapters involved in cross-chapter issues are provided here, not complete chapters.
+- When the claimed issue's `chapters_involved` exceeds 1 chapter, you must judge by combining this chapter's full text, related chapter context, and the issue description. Do not reject solely because this chapter is internally consistent.
+- If the related context is still insufficient for a complete determination, keep the issue as `modified` or lower the confidence, and explain which evidence is missing in the description / rejection_reason.
+
+{% for ch in related_chapters_context %}
+### Chapter {{ ch.chapter_number }}
+{% if ch.chapter_summary %}- Summary: {{ ch.chapter_summary }}{% endif %}
+{% if ch.issue_refs %}
+- Related Issues:
+{% for ref in ch.issue_refs %}
+  - {{ ref.issue_id }} [{{ ref.severity }} / {{ ref.category }}]: {{ ref.description }}{% if ref.evidence %}; Evidence hint: {{ ref.evidence }}{% endif %}
+{% endfor %}
+{% endif %}
+{% if ch.excerpts %}
+- Short Evidence Windows:
+{% for excerpt in ch.excerpts %}
+  - {{ excerpt }}
+{% endfor %}
+{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if canon_characters %}
+## Current Canon Character Status
+{% for name, info in canon_characters.items() %}
+- {{ name }}: {% if info.alive is defined %}{% if info.alive %}Alive{% else %}Deceased (Chapter {{ info.death_chapter }}){% endif %}{% endif %}{% if info.location %}, location={{ info.location }}{% endif %}
+{% endfor %}
+{% endif %}
+
+## Issues to Be Verified (from Full Book Audit Phase One)
+{% for issue in claimed_issues %}
+### Issue {{ loop.index }}
+- issue_id: {{ issue.issue_id }}
+- category: {{ issue.category }}
+- severity: {{ issue.severity }}
+- description: {{ issue.description }}
+- evidence: {{ issue.evidence }}
+- location: {{ issue.location }}
+- paragraph_index: {{ issue.paragraph_index }}
+- suggestion: {{ issue.suggestion }}
+- fix_mode: {{ issue.fix_mode }}
+- fix_action: {{ issue.fix_action }}
+- confidence: {{ issue.confidence }}
+{% if issue.chapters_involved %}- chapters_involved: {{ issue.chapters_involved }}{% endif %}
+{% if issue.evidence_pairs %}- evidence_pairs: {{ issue.evidence_pairs }}{% endif %}
+{% if issue.verification_questions %}- verification_questions: {{ issue.verification_questions }}{% endif %}
+{% if issue.handoff_notes %}- handoff_notes: {{ issue.handoff_notes }}{% endif %}
+{% endfor %}
+
+## Verification Requirements
+
+For each issue, you must:
+1. **Confirm or Deny**: Read the original text to determine whether the issue truly exists.
+2. **Precise Location**: If the issue exists, provide the **exact paragraph number** (paragraph_index, 1-based, corresponding to [Pnumber] markers).
+3. **Update Evidence**: Quote the exact short evidence from the original text (no more than 50 characters).
+4. **Adjust Confidence**: Reassess confidence based on verification results (0.0-1.0).
+5. **Mark Status**:
+   - `"verified"` — Issue truly exists, location confirmed/corrected
+   - `"rejected"` — Issue not found in original text, hallucination
+   - `"modified"` — Issue exists but description/severity/location needs correction
+6. **Be Cautious When Rejecting Cross-Chapter Issues**: If the issue relies on comparison with other chapters, you must use "Related Chapter Context" for judgment. Only reject when neither the current chapter nor the related context supports the contradiction.
+7. **Semantic Judgment is Yours to Complete**: The local program only passes candidate issues and formatted context; whether ordinary words are mistakenly identified as entities, whether dreams/memories/retellings cause superficial contradictions, and whether evidence belongs to the same time layer—all are your decisions.
+8. **Downstream Repair Handoff**: When verified/modified, output `adjudication_notes`, explaining what can and cannot be mistakenly changed in the repair phase; when rejected, explain the false positive reason.
+9. **Precise Location**: When verified/modified, you must provide `paragraph_index`, `paragraph_span`, `location`, `anchor_type`, and `location_confidence` as much as possible. If positioning can only rely on evidence phrases, use `evidence_match` for `anchor_type`; if paragraph numbers are clear, use `explicit_para`.
+10. **Precise Repair Boundaries**: When verified/modified, you must provide `repair_scope`, explaining the target paragraphs, allowed changes, prohibited changes, and must-preserve items. Repair scope should be as small as possible; when safe automatic repair is not possible, use `manual_patch` for `fix_mode`.
+
+## False Positive Filtering Calibration
+- If an issue treats ordinary narrative words like "beginning," "tomorrow," "waiting," "nightfall," "voice," or "gaze" as entities, props, or characters, it should be rejected unless the text explicitly sets them as proper nouns.
+- If evidence exists only on one side, cross-chapter evidence pairs are missing, and the related chapter context cannot compensate, use `modified` and lower the confidence rather than forcibly marking as `verified`.
+- If contradictions come from memories, dreams, archives, hearsay, metaphors, or character misunderstandings, they should be rejected or modified rather than directly requiring text correction.
+
+## Verification Entry Field Requirements
+- Each verified_issues entry should retain the original issue_id, and fill in status, description, severity, confidence, and evidence.
+- Verified/modified entries should fill in paragraph_index, paragraph_span, location, anchor_type, and location_confidence as much as possible.
+- Cross-chapter issues should retain evidence_pairs; when necessary evidence is missing, lower the confidence, and explain in description or rejection_reason.
+- Verified/modified entries must provide adjudication_notes, repair_scope, fix_mode, fix_action, and postconditions to facilitate the repair phase in controlling the scope of changes.
+- Rejected entries must fill in rejection_reason, explaining the false positive reason.
+
+## Quality Calibration
+- Work Identity: You are a rigorous novel quality editor, skilled at locating issues using short evidence, clear boundaries, and downstream actionable suggestions.
+- Editing Path: First confirm input evidence, then judge issue type, impact range, and repair boundaries, finally provide downstream actionable location information.
+- Field-Level Quality Example (not output format): Weak = "This is incoherent"; High-Quality = "Point out which two pieces of evidence conflict, risk level, verifiable issue."
+- Actionable Path: Each judgment must support review or repair; low-confidence content should be downgraded to pending verification issues.
+
+## Pre-Delivery Verification
+- Are P0/P1/P2 priorities maintained, and has weak reference not overridden hard constraints?
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans?
+- Are unauthorized new characters, locations, world rules, future payoffs, or format agreements avoided?
+- Are short evidence, risk level, location information, and downstream verifiable issues provided?

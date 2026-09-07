@@ -1,0 +1,176 @@
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：bridge_chapter.j2
+服务步骤：BRIDGE_CHAPTER（章节桥接）
+作用简述：只生成“上一章出口 → 本章开场”的桥接契约，确定时间、地点、
+          POV、动作接力、情绪余波和因果链，不承担完整规划与正文写作。
+上游输入：
+  - stage_cards.source：ChapterSourceSlice，含本章唯一初始化权威投影
+  - stage_cards.bridge：上一章出口、上一章结尾、承接摘要、既有桥接信息
+  - stage_cards.contract：本章硬契约派生卡，只能补充 source 中的局部缺口
+  - stage_cards.chapter：本章大纲薄片
+下游输出：
+  - ChapterBridge JSON
+消费链优先级：
+  P0 = 上一章真实出口 / action_handoff / 禁止变化
+  P1 = causal_link / pending_questions / opening anchors
+  P2 = 情绪余波 / 修辞避重复
+================================================================================
+#}
+
+{%- from "_base/_artifact_source_contract.j2" import render_artifact_source_contract -%}
+{%- from "_base/_cognitive_constraints.j2" import render_cognitive_constraints -%}
+{%- from "_base/_retrieval_evidence.j2" import render_retrieval_evidence -%}
+
+{#- ---------------------------------------------------------------------------
+    指导层
+    --------------------------------------------------------------------------- -#}
+
+{% set cards = stage_cards | default({}) %}
+{% set source = cards.source | default({}) %}
+{% set source_contract = source.chapter_contract | default({}, true) %}
+{% set chapter = cards.chapter | default({}) %}
+{% set bridge = cards.bridge | default({}) %}
+{% set contract = source_contract if source_contract else (cards.contract | default({})) %}
+{% set memory = cards.memory | default({}) %}
+{% set quality = cards.quality | default({}) %}
+{% set style = cards.style | default({}) %}
+{% set opening_evidence = cards.opening_evidence | default({}) %}
+{% set retrieval_evidence = cards.retrieval_evidence | default({}) %}
+{% set boundary = bridge.boundary_window_policy | default({}) %}
+
+## 任务
+为第 {{ chapter.chapter_number }} 章生成桥接契约。
+
+桥接只回答一个问题：上一章最后的状态，为什么会自然导致本章第一幕的时间、地点、POV、动作和情绪。
+
+{{ render_artifact_source_contract(source, title="## Source Artifact 契约（P0）", mode="bridge") }}
+
+{{ render_retrieval_evidence(retrieval_evidence, title="## 桥接用动态叙事证据") }}
+
+## 桥接信息清单
+最终 JSON 的字段协议、字段集合和嵌套形状以末尾「统一格式契约（系统注入）」为唯一准则；这里仅定义每项桥接信息必须表达的叙事事实。
+- `opening_time`：本章开场时间。
+- `opening_location`：本章开场地点。
+- `opening_pov`：本章开场 POV。
+- `transition_mode`：过渡方式，只使用 direct_continue / action_handoff / time_skip / pov_switch / synthetic 或同等短标签。
+- `emotional_carryover`：上一章情绪如何带入本章开场；无明显承接时输出空字符串。
+- `action_handoff`：可直接写进正文开头的动作或状态接力。
+- `causal_link`：对象，包含 `previous_event`、`causal_mechanism`、`unresolved_question`、`open_threads`。
+- `pending_questions`：本章开头必须带入的悬念数组；没有则输出 []。
+- `forbidden_repetition`：本章桥接阶段应避开的修辞意象/句式数组；没有则输出 []。
+- `opening_acceptance_criteria`：开头窗口可验收条件数组，供 Plan/Draft/Edit/Review 使用。
+- `bridge_summary`：用 1-2 句压缩“上一章具体事件 → 本章具体行动”的因果承接；必须保留未决张力，不得写成空泛主题总结。
+- `relationship_beat`：关系状态对象；没有可承接的关系变化时输出 `null`，否则写清信任度、未言明张力和当前权力关系。
+- `sensory_anchors`：开场可落笔的 1-3 个感官锚点；必须服务地点、动作或情绪，不能只是装饰性意象。
+
+## 本章薄片
+- 标题：{{ chapter.title | default('') }}
+- 目标：{{ chapter.goal | default('') }}
+- 补充说明：{{ chapter.notes | default('') }}
+- POV：{{ chapter.pov_character | default('') }}
+- 场景：{{ chapter.setting | default('') }}
+
+{% if contract.entry_state_requirements | default([]) or contract.must_carry_forward | default([]) or contract.forbidden_changes | default([]) or contract.guard_constraints | default([]) or contract.hard_facts | default([]) %}
+## 硬契约
+{% if contract.entry_state_requirements | default([]) %}- 入口状态：{{ contract.entry_state_requirements | join('；') }}{% endif %}
+{% if contract.must_carry_forward | default([]) %}- 必须承接：{{ contract.must_carry_forward | join('；') }}{% endif %}
+{% if contract.forbidden_changes | default([]) %}- 禁止变化：{{ contract.forbidden_changes | join('；') }}{% endif %}
+{% if contract.guard_constraints | default([]) %}- 护栏约束：{{ contract.guard_constraints | join('；') }}{% endif %}
+{% if contract.hard_facts | default([]) %}- 相关硬事实：{{ contract.hard_facts | join('；') }}{% endif %}
+{% endif %}
+
+{% if contract.cognitive_constraints | default([]) %}
+## 开场认知边界（P0）
+- 桥接只能承接各角色已有的知情程度；不得因上一章出口或读者已知而把角色的 `unknown|partial` 自动升为 `full`。
+{{ render_cognitive_constraints(contract.cognitive_constraints) }}
+{% endif %}
+
+## 上一章出口
+{% if bridge.previous_exit | default(none) %}
+- 时间：{{ bridge.previous_exit.time_marker }} | 地点：{{ bridge.previous_exit.location }} | POV：{{ bridge.previous_exit.pov }}
+{% if bridge.previous_exit.open_questions %}- 未决问题：{{ bridge.previous_exit.open_questions | join('；') }}{% endif %}
+{% if bridge.previous_exit.must_carry_forward %}- 出口承接：{{ bridge.previous_exit.must_carry_forward | join('；') }}{% endif %}
+{% else %}
+- 第一章或无上一章出口：生成 synthetic bridge，但仍须服务本章目标。
+{% endif %}
+
+{% if bridge.previous_chapter_ending | default('') %}
+## 上一章结尾原文
+{% if boundary.previous_tail_paragraphs | default(0) %}（按设置取末尾 {{ boundary.previous_tail_paragraphs }} 段）{% endif %}
+{{ bridge.previous_chapter_ending }}
+{% endif %}
+
+{% if bridge.bridge_context_brief | default('') %}
+## 承接摘要
+{{ bridge.bridge_context_brief }}
+{% endif %}
+
+{% if opening_evidence.relationship_shifts | default([]) or opening_evidence.pov_knowledge | default([]) or opening_evidence.due_promises | default([]) %}
+## 开场决策证据（P0，最小必要集）
+以下仅用于判断本章开场谁能采取什么行动、能知道到什么程度；不能据此新增事件、解释或提前揭示。
+{% if opening_evidence.relationship_shifts | default([]) %}- 当前 POV 相关关系：
+{% for item in opening_evidence.relationship_shifts %}
+  - 与{{ item.with_character | default('相关角色') }}：{{ item.label | default('关系') }}{% if item.status | default('') %}，状态={{ item.status }}{% endif %}{% if item.shift_summary | default('') %}；最近变化={{ item.shift_summary }}{% endif %}
+{% endfor %}
+{% endif %}
+{% if opening_evidence.pov_knowledge | default([]) %}- 当前 POV 的认知边界：
+{% for item in opening_evidence.pov_knowledge %}
+  - {{ item.type | default('known') }}：{{ item.fact | default('') }}
+{% endfor %}
+{% endif %}
+{% if opening_evidence.due_promises | default([]) %}- 本章已到期、可自然承接的线索：
+{% for item in opening_evidence.due_promises %}
+  - {{ item.description | default('') }}
+{% endfor %}
+{% endif %}
+{% endif %}
+
+{% if quality.hook_type_constraint | default('') or quality.force_resolve_suspense | default([]) %}
+## 承接边界
+{% if quality.hook_type_constraint | default('') %}- 开场承接约束：{{ quality.hook_type_constraint }}{% endif %}
+{% if quality.force_resolve_suspense | default([]) %}- 开场必须带入的悬念：{{ quality.force_resolve_suspense | join('；') }}{% endif %}
+{% endif %}
+
+{% if style.summary | default('') or style.modules | default([]) %}
+## 风格薄片
+{% if style.summary | default('') %}- {{ style.summary }}{% endif %}
+{% for module in style.modules | default([]) %}- {{ module.name | default('未命名模块') }}：{{ module.rules | default([]) | join('；') }}
+{% endfor %}
+{% endif %}
+
+{% if bridge.previous_forbidden_repetition | default([]) or memory.motif_repetition_risks | default([]) %}
+## 跨章高频修辞提示（软约束）
+以下只用于提醒桥接阶段识别高频修辞通道；必须优先保证上一章出口与本章开场连贯，不能因为避重复而丢掉动作接力或剧情锚点。
+{% if bridge.previous_forbidden_repetition | default([]) %}- 上一桥接禁用通道：{{ bridge.previous_forbidden_repetition | join('；') }}{% endif %}
+{% if memory.motif_repetition_risks | default([]) %}- 母题避重复：{{ memory.motif_repetition_risks | join('；') }}{% endif %}
+{% endif %}
+
+## 生成要求
+1. `action_handoff` 必须是可写进正文开头的具体动作/状态接力，不能写“承接上章”“延续氛围”等说明腔。
+2. `opening_time / opening_location / opening_pov` 必须能从上一章出口推导；`transition_mode` 必须概括承接方式。若同一 POV 发生地点跳转，`action_handoff` 或 `causal_link.causal_mechanism` 必须写清移动路径、时间跳转或抵达方式；若切换 POV/行动线，必须在 `transition_mode=pov_switch` 且 `causal_link.causal_mechanism` 中写清叙事焦点为什么转向新 POV，而不是伪造上一 POV 的移动过程。
+3. `causal_link.previous_event` 写上一章结尾最后发生的具体事件；`causal_mechanism` 写 A 导致 B 因此 C 的链条。
+4. `pending_questions` 只列本章开头必须带入的悬念，最多 5 条。
+5. `forbidden_repetition` 只列修辞意象和句式，不列人物名、地点、关键道具、剧情锚点。
+6. `opening_acceptance_criteria` 写成开头窗口可验收的 2-5 条条件，供 Plan/Draft/Edit 与复审使用。
+{% if boundary.opening_paragraphs | default(0) %}7. 这些验收条件默认要求在本章开头 {{ boundary.opening_paragraphs }} 段内自然落地。{% endif %}
+8. `bridge_summary` 必须能与 `action_handoff`、`causal_link` 互相印证；`relationship_beat` 与 `sensory_anchors` 必须能在本章开场被后续 Plan/Draft 观察或引用。
+9. 不要生成正文，不要写规划解释。
+
+## 质量校准
+- 工作身份：你是一位长篇叙事架构师，擅长把故事资产拆成可承接、可验证、不过度剧透的执行计划。
+- 规划推断路径：先锁定 P0 硬约束，再分配 P1 推进节奏，最后用 P2 风格/主题补足表现层。
+- 字段级质量示例（非输出格式）：平弱=“推进关系”；高质量=“写清谁因何行动、关系如何变化、下一环如何承接”。
+- 可操作路径：计划项要能被后续写作/审计直接检查，避免只给抽象愿望或主题口号。
+
+## 交付前核验
+- P0/P1/P2 优先级是否被保持，且没有让弱参考覆盖硬约束。
+- 是否能把关键判断回指到输入证据、上游契约或已批准计划。
+- 是否避免新增未授权的人物、地点、世界规则、未来 payoff 或格式协议。
+- 是否把抽象目标转化为可观察的行动、冲突、状态变化或章节承接点。
+
+{#- ---------------------------------------------------------------------------
+    格式层
+    --------------------------------------------------------------------------- -#}

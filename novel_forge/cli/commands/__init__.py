@@ -1,0 +1,2 @@
+"""CLI command registration modules."""
+

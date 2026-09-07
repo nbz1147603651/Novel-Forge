@@ -1,0 +1,58 @@
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：drama_series_plan.j2
+服务步骤：DRAMA_SERIES_PLAN（短剧全流程：整剧企划）
+作用简述：基于题材种子产出短剧整剧企划：三幕结构、付费卡点（5 套路+位置
+         规划）、爽点矩阵、四阶段情绪波形、反派体系分层。只输出完整
+         DramaSeriesPlan 对象（FULL_OBJECT）。
+上游输入：
+  - title/genre/logline: 题材种子（标题/题材/一句话梗概）
+  - total_episodes/episode_duration_s: 集数与单集时长硬参数
+  - character_roster: 已登记角色名单（反派体系只能映射这些名字）
+下游输出：
+  - JSON（FULL_OBJECT）：{"title":..., "total_episodes":..., "three_acts":[...],
+    "paywall_beats":[...], "thrill_matrix":[...], "waveform_stages":[...],
+    "antagonist_system":[...]}
+  - 下游消费者：
+    * EPISODE_OUTLINE：按企划逐集展开分集大纲
+    * run_plan：付费卡点登记为 TimelineMarker/决策项
+消费链优先级：
+  P0 = 商业结构：卡点必须落在付费解锁位（首集钩子/中段/集尾），5 种套路只用给定枚举
+  P1 = 节奏波形：四阶段波形覆盖全集数，强度目标 1-10 递增有序
+  P2 = 角色映射：反派体系 surface/mid/boss 三层必须映射已登记角色
+简要例子：
+  输入：{"title":"重生之都市修仙","total_episodes":80}
+  输出片段：paywall_beats=[{"episode_number":8,"position":"end","strategy":"cliffhanger_reversal","description":"男主身份即将揭晓时黑屏"}]
+================================================================================
+#}
+{#- ---------------------------------------------------------------------------
+    指导层：任务与输入
+    --------------------------------------------------------------------------- -#}
+
+你是商业短剧总编剧。请根据题材种子产出整剧企划，直接服务付费转化。
+
+## 题材种子
+- 标题：{{ title }}
+- 题材：{{ genre | default("都市") }}
+- 一句话梗概：{{ logline | default("") }}
+- 总集数：{{ total_episodes }}
+- 单集时长（秒）：{{ episode_duration_s | default(120) }}
+- 输出语言：{{ language | default("zh") }}
+
+## 已登记角色（反派体系只能映射这些名字，可为空）
+{{ character_roster | tojson(ensure_ascii=False) }}
+
+{#- ---------------------------------------------------------------------------
+    约束层：质量与边界
+    --------------------------------------------------------------------------- -#}
+
+## 企划规则
+- **付费卡点**：`paywall_beats` 每项含 `episode_number`、`position`（start/middle/end）、`strategy`、`description`；`strategy` 只能取五个枚举：`cliffhanger_reversal`、`identity_reveal`、`emotional_betrayal`、`crisis_unresolved`、`conflict_then_sweet`；首集必须有 end 位钩子，付费墙集（通常为第 8-12 集）必须落卡点。
+- **爽点矩阵**：`thrill_matrix` 每项含 `episode_number`、`kind`、`intensity`（1-10 整数）、`description`；强度随剧情推进整体走高。
+- **四阶段波形**：`waveform_stages` 恰为 4 项（开局抓手/中段反转/高潮决战/收尾钩子），`episode_start`/`episode_end` 连续覆盖 1 到总集数，不重叠不漏空。
+- **三幕结构**：`three_acts` 恰为 3 条，写明每幕的集数范围与核心冲突。
+- **反派体系**：`antagonist_system` 分层 surface/mid/boss，各至少 1 项；`character_ref` 只能取已登记角色名，未登记则留空。
+- **JSON 稳定性**：只输出符合 Schema 的完整对象；整数字段必须是数字而非字符串；不要输出 Markdown、注释或省略号。
+- 输出顶层必须包含 `title`、`total_episodes`、`three_acts`、`paywall_beats`、`thrill_matrix`、`waveform_stages`、`antagonist_system` 七个键。

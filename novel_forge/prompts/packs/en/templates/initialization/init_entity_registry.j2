@@ -1,0 +1,80 @@
+{# source_template_hash: 3b6558c0e8218a6f1e31da380b22d253a4879083dc103bdbf3195513c801f3e7 #}
+{#
+================================================================================
+【Notes】
+================================================================================
+Prompt: init_entity_registry.j2
+Service Step: INIT_ENTITY_REGISTRY (Entity Registry Initialization)
+Brief Description: Identify characters, locations, items, organizations, and conceptual entities from project initialization materials, establishing a stable entity registry.
+Upstream Input:
+  - spec: Story specification
+  - story_bible: World-building setting
+  - character_bible: Character setting
+  - character_system: Accepted character relationship system
+  - existing_entity_registry: Structured baseline registry (`unknown` means pending LLM classification)
+  - entity_registry_scope: Scope of this supplemental pass
+Downstream Output:
+  - JSON: entities list, containing entity_id, name, entity_type, aliases, source, notes
+  - Downstream Consumers: Candidate State Extraction / Narrative State Adjudication
+Consumption Chain Priority: P0 (stable entity_id/name/type) > P1 (aliases) > P2 (notes)
+================================================================================
+#}
+
+{#- Guidance Layer -#}
+## Task
+Build an entity registry from project initialization materials. You are only responsible for identifying entities and their possible aliases; do not make chapter-level factual judgments.
+
+Output Controls:
+- Prioritize characters, core locations, key items, organizations, and core concepts; do not list ordinary scene props.
+- Keep `notes` as empty strings or brief sentences under 20 characters; do not expand with background explanations.
+- `entity_id` must be stable and concise; do not output duplicates of the same entity.
+- This artifact serves as the canonical entity registry for subsequent source artifacts; characters, locations, items, organizations, and concepts must receive unique `entity_id` here.
+- Old names, misnames, past lives, nicknames, and internal organization titles may only go into the same entity's `aliases`; do not create separate synonymous entities.
+- If an alias does not explicitly appear in the input materials, do not invent it; uncertain designations should be written as brief risk hints in `notes`, not registered as formal aliases.
+- Subsequent chapter prompts will only reference `entity_id` or projections from this registry; therefore `name` must be the authoritative display name; do not mix in stage states or plot explanations.
+
+## Field Content Constraints
+- Each entity object may only contain `entity_id`, `name`, `entity_type`, `aliases`, `source`, `notes`.
+- `entity_type` may only be `character`, `location`, `item`, `organization`, `concept`, `unknown`.
+- Field names must use only the English `snake_case` keys listed above; categories, backgrounds, or relationship or chapter factual explanations should be merged into `notes`.
+
+## Input
+Story Specification:
+{{ spec }}
+
+World-Building:
+{{ story_bible }}
+
+Character Setting:
+{{ character_bible }}
+
+{% if existing_entity_registry | default({}) %}
+## Structured Baseline Entity Registry
+This is the current fixed source-of-truth snapshot and is not written to the vector store. Do not rename, re-ID, or duplicate entities with explicit types. Every `entity_type=unknown` record is a pending semantic slot: classify it from the supplied evidence while preserving its `entity_id` and `name`.
+{{ existing_entity_registry }}
+{% endif %}
+
+{% if entity_registry_scope | default({}) %}
+## Supplemental Scope
+{{ entity_registry_scope }}
+{% endif %}
+
+{% if character_system | default({}) %}
+## Character Relationship System
+Use it only to identify non-character targets mentioned by relationships; do not duplicate character entities.
+{{ character_system }}
+{% endif %}
+
+## Quality Calibration
+- Working Identity: You are a long-form narrative architect, skilled at disassembling story assets into executable, verifiable plans that avoid excessive spoiling.
+- Planning Inference Path: First lock in P0 hard constraints, then allocate P1 for pacing advancement, and finally use P2 style/theme to supplement the presentation layer.
+- Field-Level Quality Examples (not output format): Weak = "Advance the relationship"; High-Quality = "Clarify who acts for what reason, how the relationship changes, and how the next link connects."
+- Actionable Path: Plan items must be directly checkable by subsequent writing/audit; avoid giving only abstract wishes or thematic slogans.
+
+## Pre-Delivery Verification
+- Are P0/P1/P2 priorities maintained, without letting weak references override hard constraints?
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans?
+- Are unauthorized characters, locations, world rules, future payoffs, or format protocols avoided?
+- Are abstract goals transformed into observable actions, conflicts, state changes, or chapter handoff points?
+
+{#- Format Layer -#}

@@ -1,0 +1,244 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "novel-forge"
+version = "0.1.0"
+description = "NIMO AI-native narrative workspace"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = [
+    "uv>=0.10,<1",
+    "huggingface-hub>=1.7.1,<2",
+    "pydantic>=2.5,<3",
+    "pydantic-settings>=2.1,<3",
+    "jinja2>=3.1,<4",
+    "typer>=0.9,<1",
+    "rich>=13.0,<14",
+    "fastapi>=0.109,<1",
+    "uvicorn[standard]>=0.25,<1",
+    "httpx>=0.26,<1",
+    "python-multipart>=0.0.9,<1",
+    "pyyaml>=6.0,<7",
+    "opencc-python-reimplemented>=0.1.7,<1",
+    "jieba>=0.42,<1",
+    "sqlalchemy[asyncio]>=2.0",
+    "aiosqlite>=0.19",
+    "zvec>=0.5,<1",
+    "numpy>=1.23",
+    "pydub>=0.25,<1",
+    "imageio-ffmpeg>=0.5,<1",
+    "opentimelineio>=0.17,<1",
+    "typing_extensions>=4.0;python_version<'3.10'",
+]
+
+[project.urls]
+Homepage = "https://github.com/nbz1147603651/Novel-Forge"
+Repository = "https://github.com/nbz1147603651/Novel-Forge"
+Issues = "https://github.com/nbz1147603651/Novel-Forge/issues"
+Documentation = "https://github.com/nbz1147603651/Novel-Forge/blob/main/docs/README.md"
+
+[project.optional-dependencies]
+openai = ["openai>=1.10,<2", "tiktoken>=0.8,<1"]
+anthropic = ["anthropic>=0.18,<1"]
+# Compatibility-only UI runtime. The primary NIMO client is React/Tauri and
+# uses the base Python package for its managed Engine.
+pyside = ["PySide6>=6.6,<6.11"]
+desktop = ["PySide6>=6.6,<6.11"]
+performance = ["psutil>=5.9,<6"]
+zvec = ["zvec>=0.5,<1", "numpy>=1.23"]
+db = ["sqlalchemy[asyncio]>=2.0", "aiosqlite>=0.19"]
+otel = ["opentelemetry-sdk>=1.20", "opentelemetry-exporter-otlp>=1.20"]
+all = ["novel-forge[openai,anthropic,pyside,performance,zvec,db,otel]"]
+dev = [
+    "pytest>=7.4",
+    "pytest-asyncio>=0.23",
+    "pytest-cov>=4.1,<6",
+    "pytest-env>=1.0,<2",
+    "pytest-qt>=4.2,<5",
+    "pytest-timeout>=2.2,<3",
+    "pytest-xdist>=3.5,<4",
+    "ruff>=0.2,<1",
+    "mypy>=1.8,<2",
+    "types-tqdm>=4.66,<5",
+    "pillow>=10.0,<13",
+    "import-linter>=2.0,<3",
+]
+
+[project.scripts]
+novel-forge = "novel_forge.cli.main:app"
+# Primary desktop entry. ``nimo-t`` remains a compatibility alias for saved
+# scripts while ``nimo-p`` is the explicit PySide safety/fallback client.
+nimo = "novel_forge.desktop.tauri_launcher:main"
+nimo-p = "novel_forge.desktop.main:main"
+nimo-t = "novel_forge.desktop.tauri_launcher:main"
+qwen3-tts-sidecar = "novel_forge.tts.qwen3_sidecar:main"
+
+[tool.hatch.build.targets.wheel.force-include]
+"novel_forge/desktop/resources" = "novel_forge/desktop/resources"
+"novel_forge/prompts/packs" = "novel_forge/prompts/packs"
+"novel_forge/prompts/prompts" = "novel_forge/prompts/prompts"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+timeout = 300
+timeout_method = "thread"
+testpaths = ["tests"]
+env = [
+    "QT_QPA_PLATFORM=offscreen",
+    "NOVEL_FORGE_MEMORY_USE_MOCK_EMBEDDINGS=true",
+]
+markers = [
+    "unit: unit tests",
+    "integration: integration tests",
+    "regression: regression tests",
+    "perf: performance regression tests",
+    "desktop: desktop UI tests",
+    "visual: visual regression tests (run only with -m visual; not in default CI)",
+    "timeout(seconds): mark tests with an expected timeout; honored when pytest-timeout is installed",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+exclude = ["^Reference/"]
+
+[[tool.mypy.overrides]]
+module = "novel_forge.gateway.secure_keys"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+# These imports are loaded only inside the optional, isolated Qwen ASR sidecar.
+# The base application must type-check without installing its multi-GB runtime.
+module = "novel_forge.tts.sidecars.qwen3_asr_sidecar"
+disable_error_code = ["import-not-found"]
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = false
+
+[tool.coverage.run]
+source = ["novel_forge"]
+omit = []
+
+# ── import-linter: layered architecture contracts ─────────────────────────────
+[tool.importlinter]
+root_packages = ["novel_forge"]
+
+[[tool.importlinter.contracts]]
+name = "Layered architecture"
+type = "layers"
+layers = [
+    "novel_forge.desktop",
+    "novel_forge.api",
+    "novel_forge.cli",
+    "novel_forge.app_service",
+    "novel_forge.workspace",
+    "novel_forge.pipeline",
+    "novel_forge.tts",
+    "novel_forge.memory",
+    "novel_forge.model_runtime",
+    "novel_forge.story_kernel",
+    "novel_forge.narrative_state",
+    "novel_forge.editorial",
+    "novel_forge.gateway",
+    "novel_forge.prompts",
+    "novel_forge.persistence",
+    "novel_forge.control_plane",
+    "novel_forge.obs",
+    "novel_forge.core",
+    "novel_forge.common",
+]
+ignore_imports = [
+    # ── common → upper layers (plot_guard is a cross-cutting concern) ──
+    "novel_forge.common.interfaces -> novel_forge.gateway.types",
+    "novel_forge.common.plot_guard -> novel_forge.core.constants",
+    "novel_forge.common.plot_guard -> novel_forge.core.parsing.parse_utils",
+    "novel_forge.common.plot_guard -> novel_forge.core.schemas.chapter",
+    "novel_forge.common.plot_guard -> novel_forge.core.schemas.outline",
+    "novel_forge.common.plot_guard -> novel_forge.gateway.router",
+    "novel_forge.common.plot_guard -> novel_forge.persistence.filesystem",
+    "novel_forge.common.plot_guard -> novel_forge.persistence.models",
+    "novel_forge.common.plot_guard -> novel_forge.persistence.project_staleness",
+    "novel_forge.common.plot_guard -> novel_forge.pipeline.long.services.plot_milestones",
+    "novel_forge.common.plot_guard -> novel_forge.pipeline.token_budget",
+    "novel_forge.common.plot_guard -> novel_forge.prompts.builder",
+    "novel_forge.common.plot_guard -> novel_forge.story_kernel.schemas",
+    # ── control_plane → app_service (resume/shadow need job contracts) ──
+    "novel_forge.control_plane.resume -> novel_forge.app_service.contracts",
+    "novel_forge.control_plane.resume -> novel_forge.app_service.job_service",
+    "novel_forge.control_plane.shadow -> novel_forge.app_service.contracts",
+    # ── core → obs/persistence/pipeline/prompts/story_kernel/narrative_state ──
+    "novel_forge.core.domain.bible_derived_provider -> novel_forge.obs.logger",
+    "novel_forge.core.context -> novel_forge.obs.tracer",
+    "novel_forge.core.context -> novel_forge.persistence.filesystem",
+    "novel_forge.core.context -> novel_forge.persistence.models",
+    "novel_forge.core.schemas.review_state -> novel_forge.persistence.models",
+    "novel_forge.core.context -> novel_forge.pipeline.chapter_runner",
+    "novel_forge.core.context -> novel_forge.prompts.builder",
+    "novel_forge.core.context -> novel_forge.story_kernel.merger",
+    "novel_forge.core.context -> novel_forge.story_kernel.retriever",
+    "novel_forge.core.context -> novel_forge.story_kernel.rules",
+    "novel_forge.core.infra.dependency_resolver -> novel_forge.persistence.models",
+    "novel_forge.core.domain.forbidden_element_registry -> novel_forge.obs.logger",
+    "novel_forge.core.format_contracts -> novel_forge.narrative_state.schemas",
+    "novel_forge.core.patch_engine.executor -> novel_forge.obs.logger",
+    "novel_forge.core.schemas.chapter -> novel_forge.story_kernel.schemas",
+    "novel_forge.core.schemas.init_v2 -> novel_forge.narrative_state.schemas",
+    "novel_forge.core.utils.chapter_enumeration -> novel_forge.persistence.models",
+    "novel_forge.core.utils.edit_tracker -> novel_forge.persistence.filesystem",
+    "novel_forge.core.utils.macro_guard_helpers -> novel_forge.persistence.models",
+    "novel_forge.core.utils.version_diff -> novel_forge.persistence.filesystem",
+    # ── editorial → pipeline/narrative_state ──
+    "novel_forge.editorial.revision_planner -> novel_forge.pipeline.steps.book_audit_runner",
+    "novel_forge.editorial.signals -> novel_forge.narrative_state.schemas",
+    "novel_forge.editorial.validators -> novel_forge.pipeline.steps.blueprint_element_select.elements",
+    # ── memory → pipeline (token_budget, steps) ──
+    "novel_forge.memory.compression -> novel_forge.pipeline.token_budget",
+    "novel_forge.memory.critic -> novel_forge.pipeline.token_budget",
+    "novel_forge.memory.integration.persistence_mixin -> novel_forge.pipeline.steps.expression_observation_step",
+    "novel_forge.memory.integration_expression -> novel_forge.pipeline.steps.expression_observation_step",
+    "novel_forge.memory.integration_expression -> novel_forge.pipeline.token_budget",
+    "novel_forge.memory.motif -> novel_forge.pipeline.token_budget",
+    "novel_forge.memory.summary -> novel_forge.pipeline.token_budget",
+    # ── obs → persistence ──
+    "novel_forge.obs.project_logger -> novel_forge.persistence.filesystem",
+    "novel_forge.obs.project_logger -> novel_forge.persistence.models",
+    # ── persistence → narrative_state/story_kernel ──
+    "novel_forge.persistence.project_staleness -> novel_forge.narrative_state.store",
+    "novel_forge.persistence.project_staleness -> novel_forge.story_kernel.store",
+    # ── prompts → gateway/pipeline ──
+    "novel_forge.prompts.builder -> novel_forge.gateway.types",
+    "novel_forge.prompts.registry -> novel_forge.pipeline.long.services.blueprint.outline_helpers",
+    # ── story_kernel → pipeline/memory ──
+    "novel_forge.story_kernel.state_writer -> novel_forge.pipeline.long.services.context.story_kernel_context",
+    "novel_forge.story_kernel.state_writer -> novel_forge.pipeline.steps.state_adjudication_step",
+    "novel_forge.story_kernel.zvec_layer -> novel_forge.memory.zvec_store",
+    # ── tts → pipeline (reuses PipelineStep base) ──
+    "novel_forge.tts.pipeline.align_speech_timeline_step -> novel_forge.pipeline.steps.base",
+    "novel_forge.tts.pipeline.assemble_audio_step -> novel_forge.pipeline.steps.base",
+    "novel_forge.tts.pipeline.build_narrator_profile_step -> novel_forge.pipeline.steps.base",
+    "novel_forge.tts.pipeline.build_voice_team_step -> novel_forge.pipeline.steps.base",
+    "novel_forge.tts.pipeline.generate_script_step -> novel_forge.pipeline.steps.base",
+    "novel_forge.tts.pipeline.synthesize_audio_step -> novel_forge.pipeline.steps.base",
+    "novel_forge.tts.script_review -> novel_forge.pipeline.steps.humanize_scan_step",
+]
+
+[[tool.importlinter.contracts]]
+name = "Pipeline must not import workspace"
+type = "forbidden"
+source_modules = ["novel_forge.pipeline"]
+forbidden_modules = ["novel_forge.workspace"]

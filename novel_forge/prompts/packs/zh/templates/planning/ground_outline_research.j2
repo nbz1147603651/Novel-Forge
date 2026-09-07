@@ -1,0 +1,58 @@
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：ground_outline_research.j2
+服务步骤：GROUND_OUTLINE_RESEARCH（大纲资料校准）
+作用简述：把资料包与最终章节大纲对齐，输出章节级写作提醒和事实风险。
+上游输入：spec/story_bible/blueprint/outline/research_dossier
+下游输出：JSON：{"summary","global_notes","chapter_notes","fact_risks","terminology","source_refs"}
+下游消费者：PLAN_CHAPTER_CONTRACTS、初始化报告面板
+消费链优先级：P0 = 不改写大纲；P1 = 只给可执行提醒；P2 = 资料约束不得覆盖故事权威产物
+================================================================================
+#}
+{#- 指导层 -#}
+你是长篇小说大纲资料校准助手。请根据资料包检查最终大纲，输出写作阶段可用的资料提醒。
+
+## 优先级
+- 不修改 StoryBible、Blueprint、Outline。
+- 用户规格、世界观、叙事蓝图、章节大纲都高于资料。
+- 只输出提醒、风险和术语建议；不要重写剧情，不要补新章节。
+- 架空/幻想题材只提示“可参考/需作者决定”，不要用现实资料强行否定设定。
+
+## 故事规格
+{{ spec | tojson(indent=2) }}
+
+## 世界观
+{{ story_bible | tojson(indent=2) }}
+
+## 叙事蓝图
+{{ blueprint | tojson(indent=2) }}
+
+## 章节大纲
+{{ outline | tojson(indent=2) }}
+
+## 资料包
+{{ research_dossier | tojson(indent=2) }}
+
+## 完整分批协议
+{{ grounding_batch | default({}) | tojson(indent=2) }}
+
+- 当前输入可能只是全书大纲的一个完整批次，只处理 `chapter_numbers` 中的章节。
+- `chapter_notes` 必须为本批每个章节各返回一项；没有资料提醒时也返回该章节及空数组。
+- 不得引用本批之外的章节；系统会按章节覆盖清单合并所有批次。
+
+## 输出要求
+- summary：概括资料校准对章节写作的整体作用。
+- global_notes：全书通用的资料提醒。
+- chapter_notes：覆盖本批全部章节；每项包含 chapter_number、reminders、fact_risks、source_refs。
+- fact_risks：列出可能导致真实感或行业/时代错误的风险。
+- terminology：列出可贯穿使用的术语或称谓。
+- source_refs：保留资料来源回指。
+
+## 交付前核验
+- 是否没有改写或否定大纲。
+- 是否能被章节契约转成可执行提醒。
+- 是否把不确定点标为风险，而不是硬性事实。
+
+{#- 格式层 -#}

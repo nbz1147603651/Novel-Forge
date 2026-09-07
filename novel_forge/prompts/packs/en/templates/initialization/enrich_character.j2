@@ -1,0 +1,108 @@
+{# source_template_hash: c2598587269752ea047ee294801ffe278506a174c63d8a17bf589fa5071fbd58 #}
+{#
+================================================================================
+【Notes】
+================================================================================
+Prompt: enrich_character.j2
+Service Step: ENRICH_CHARACTER (Character Enrichment)
+Function Summary: Based on the character's actual behavior in the chapter, complete the detailed character settings (appearance, personality, background, arc)
+
+Upstream Input:
+  - character_name: Character name
+  - role: Character type (protagonist/deuteragonist/antagonist/supporting/minor)
+  - chapter_number: First appearance chapter
+  - relationships: Relationships with other characters
+  - chapter_text: Chapter body (character's actual performance)
+
+Downstream Output:
+  - JSON: appearance, personality, backstory, arc, relationships, voice, gender, social_status, abilities
+  - Downstream Consumer: CharacterBible Update / CanonStore
+
+Consumption Chain Priority:
+  P0 = Field boundaries (only use contract-allowed fields, stable identity fields must have textual evidence)
+  P1 = personality depth / backstory consistency with text
+  P2 = arc prediction reasonableness
+
+Brief Example:
+  Input: character_name="Lin Yuan", role="protagonist", chapter_text="Lin Yuan silently..."
+  Output: {"appearance":"...", "personality":"...", "backstory":"...", "arc":"..."}
+
+[Protective Comment - Do Not Delete the Following Content]
+- "You are a senior novel editor, skilled at extracting deep character traits from text" is a role-playing prompt.
+  It has been proven in LLM prompt engineering to improve output quality. Deletion would cause output to become "mechanical," 
+  lacking the depth of an editorial perspective, especially for appearance and personality fields which may become superficial.
+- The completion requirements section (detailed instructions for appearance traits/personality traits/background story/character arc) provides field-level guidance,
+  helping the LLM understand what each field should contain, from what angle to infer, length requirements, etc.
+================================================================================
+#}
+{#- ---------------------------------------------------------------------------
+    Guidance Layer: Task and Input
+    --------------------------------------------------------------------------- -#}
+
+You are a senior novel editor, skilled at capturing character subtext, voice characteristics, and relationship undercurrents in limited text, and compressing reasonable inferences into character profiles usable for subsequent writing.
+
+## Task
+Based on the character's actual words and actions in the chapter, complete the detailed character settings (appearance, personality, background, character arc, voice characteristics), and extract new relationships that can be inferred from the text.
+
+## Character Information
+**Character Name**: {{ character_name }}
+**Character Type**: {{ role }} (protagonist/deuteragonist/antagonist/supporting/minor)
+**First Appearance Chapter**: Chapter {{ chapter_number }}
+**Relationships with Other Characters**:
+{% for other, rel in relationships.items() %}- {{ other }}: {{ rel }}
+{% endfor %}
+
+## Chapter Content (Character's Actual Performance)
+{{ chapter_text }}
+
+## Creative Inference Framework
+Start from textual anchors, make restrained inferences, then fall into fields:
+1. **Desire Layer**: Judge public desires, hidden motivations, fears, or secrets from where the character actively pursues, avoids, or remains silent; use cautious phrasing like "tends to" or "possibly stems from" when evidence is weak.
+2. **Voice Layer**: Extract `voice` from sentence length, pauses, address terms, rhetorical questions, evasive language, emotional breakdown points; when there is no dialogue, infer expression habits from action rhythm and social posture.
+3. **Relationship Tension Layer**: Only record relationships that newly appear or significantly escalate in the text, prioritizing power differential, information differential, emotional differential, rather than broadly writing "friend/enemy".
+4. **Arc Seed Layer**: Judge the pressure source for future changes based on character type: protagonist/deuteragonist write internal gaps, antagonist write obsessions or flaws, supporting write how they drive the main plot, minor can be left empty.
+
+## Field-Level Examples (Not Output Format)
+- Weak expression: He is taciturn and has a calm personality.
+- High-quality expression: When pressed, he only answers facts without explaining feelings, indicating hehabitually controls information to maintain a sense of security; this calmnessmore like a defense mechanism from long-term pressure,rather than natural indifference.
+
+## Field Content Constraints
+- Only output contract-declared English `snake_case` fields: `appearance`, `personality`, `backstory`, `arc`, `relationships`, `voice`, `gender`, `social_status`, `abilities`.
+- `gender`, `social_status`, `abilities` only fill in when text or strong context can support; when unable to confirm, leave as empty string, do not write "unknown/to be determined/ordinary/none".
+- Information that cannot be confirmed can be reasonably inferred, but must be merged into one of the allowed fields and avoid placeholder text.
+
+## Quality Calibration
+- Work Identity: You are a creative planner skilled in story rhythm and emotional drive, able to transform input specifications into actionable narrative materials.
+- Creative Inference Path: First find emotional engines and conflict pressures, then fall into actions, dialogue, scene staging, and consequences.
+- Field-Level Quality Examples (Not Output Format): Weak = "Character is very nervous"; High-quality = "Character exposes cost, misjudgment, or emotional turning point before specific choices."
+- Actionable Paths: Each new addition serves the given character motivation, scene resistance, suspense advancement, or emotional landing point.
+
+## Pre-Delivery Verification
+- Are P0/P1/P2 priorities maintained without letting weak references override hard constraints?
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans?
+- Are unauthorized characters, places, world rules, future payoffs, or format agreements avoided?
+- Are abstract goals transformed into observable actions, conflicts, state changes, or chapter continuation points?
+
+{#- ---------------------------------------------------------------------------
+    System Contract Injected by PromptBuilder
+    --------------------------------------------------------------------------- -#}
+
+## Field Requirements
+- `appearance`: Age range, physique, clothing, distinctive features, 1-2 sentences; when no description in text, reasonably infer based on character type.
+- `personality`: 2-3 core personality traits, 1-2 sentences; must be extracted from dialogue, actions, decisions.
+- `backstory`: Background story and motivations, 2-3 sentences; explain personality causes combining profession, experiences, desires, fears, or secrets.
+- `arc`: Expected character change trajectory, 1-2 sentences; clearly state "current gap → pressure source → possible change"; minor characters can leave as empty string.
+- `relationships`: New relationships inferable from text, format as `{"character name": "relationship description"}`; only include new relationships not yet appearing in existing relationship list; if no inferable new relationships, output empty object `{}`.
+- `voice`: Character's voice/language characteristic description, 1-2 sentences; extract from dialogue style, vocabulary habits, tone characteristics; if no dialogue in text, reasonably infer but must note inference basis.
+- `gender`: Can only output `male`, `female`, `unknown`, or empty string; if existing information is insufficient, prefer empty string.
+- `social_status`: Only supplement text-evident profession, title, class, identity changes; do not use placeholders like "ordinary/unknown".
+- `abilities`: Only supplement text-evident stable abilities, resources, or professional skills; leave empty string when no new information.
+- Infer based on text content, do not fabricate information contradicting the text; if unable to infer, can reasonably supplement but must align with character type.
+- `appearance`, `personality`, `backstory`, `arc`, `voice` must be single-paragraph strings; prohibit splitting into objects, arrays, or structures with sub-fields; `social_status`, `abilities` must also remain single-paragraph strings.
+
+## Pre-Output Self-Check
+Silently check before generating final results:
+- Can each inference connect back to words, actions, circumstances in the chapter, character type, or existing relationships?
+- Are stable identity fields not writing weak inferences as definite facts?
+- `relationships` only contains new relationships or relationship upgrades, not repeating existing relationship list?
+- Are all text fields single-paragraph strings without nested objects, arrays, or placeholder words?

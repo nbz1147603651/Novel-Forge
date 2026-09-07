@@ -1,0 +1,136 @@
+{# source_template_hash: 28a5c77648a6fa9d97ad577deeb3bd7b8c2d398e15581f4add3efd5593613751 #}
+{#
+================================================================================
+【notes】
+================================================================================
+Prompt: volume_audit.j2
+Service Step: VOLUME_AUDIT
+Role Summary: Conduct end-of-volume audit, evaluate goal completion and consistency, output next volume bridging plan
+Upstream Inputs:
+  - volume: Volume info (volume_number, title, start_chapter, end_chapter, arc_goal, etc.)
+  - story_synopsis: Full story premise
+  - chapter_summaries: Chapter summary list for this volume
+  - timeline_events: Key event list for this volume
+  - active_characters: Current canon character states
+  - active_foreshadowing: Active foreshadowing list
+  - world_fact_keys: World fact key list
+  - blueprint_phases/blueprint_arc_milestones: Blueprint phase goals (optional)
+Downstream Output:
+  - JSON: volume_summary, milestone_status, consistency_score, carry_over/retire lists, next_volume_focus
+  - Downstream Consumers: Next volume planning / CanonStore cleanup
+Consumption Chain Priority:
+  P0 = retire_* accuracy / Unresolved foreshadowing must go into carry_over_*
+  P1 = milestone_status accuracy / consistency_score reasonableness
+  P2 = token_optimization_notes executability
+Brief Example:
+  Input: volume={"volume_number":1, "title":"Awakening"}, chapter_summaries=[...]
+  Output: {"volume_summary":"...", "milestone_status":[...], "carry_over_characters":[...], ...}
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer: Task Definition and Input Consumption
+    --------------------------------------------------------------------------- -#}
+
+Please conduct an end-of-volume audit for the current volume and provide an executable "next volume bridging" plan.
+
+## Volume Info
+- Volume: {{ volume.volume_number }}
+- Title: {{ volume.title }}
+- Chapter Range: {{ volume.start_chapter }}-{{ volume.end_chapter }}
+- Arc Goal: {{ volume.arc_goal }}
+{% if volume.milestone_targets %}
+- Milestone Targets: {{ volume.milestone_targets | join("; ") }}
+{% endif %}
+{% if volume.main_conflicts %}
+- Main Conflicts: {{ volume.main_conflicts | join("; ") }}
+{% endif %}
+{% if volume.climax_hint %}- Climax Hint: {{ volume.climax_hint }}{% endif %}
+{% if volume.resolution_hint %}- Resolution Hint: {{ volume.resolution_hint }}{% endif %}
+
+## Story Synopsis
+{{ story_synopsis }}
+
+## Chapter Summaries
+{% for s in chapter_summaries %}
+- Chapter {{ s.chapter }}: {{ s.summary }}
+{% endfor %}
+
+## Key Events
+{% for e in timeline_events %}
+- Chapter {{ e.chapter }}: {{ e.event }}
+{% endfor %}
+
+## Current Canon Status
+### Characters
+{% for c in active_characters %}
+- {{ c.name }} | alive={{ c.alive }} | location={{ c.location }} | inventory={{ c.inventory | join(", ") }}
+{% endfor %}
+
+### Active Foreshadowing
+{% for fs in active_foreshadowing %}
+- {{ fs.id }}: {{ fs.description }} (status={{ fs.status }})
+{% endfor %}
+
+### World Fact Keys
+{{ world_fact_keys | join(", ") }}
+
+{% if blueprint_phases %}
+## Blueprint Phase Targets (Verify Volume Implementation)
+{% for phase in blueprint_phases %}
+### Phase "{{ phase.phase_name }}" (Chapters {{ phase.chapter_start }}-{{ phase.chapter_end }}, tension={{ phase.tension_level }})
+- Phase Goal: {{ phase.description }}
+{% if phase.key_events %}
+- Key Events to Cover:
+{% for e in phase.key_events %}
+  - {{ e }}
+{% endfor %}
+{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if blueprint_arc_milestones %}
+## Character Arc Milestones (Verify Character Arc Progress)
+{% for arc in blueprint_arc_milestones %}
+- **{{ arc.character }}** ({{ arc.arc_summary }})
+{% for ms in arc.milestones %}
+  - Chapters {{ ms.chapter_start }}-{{ ms.chapter_end }}: {{ ms.description }}
+{% endfor %}
+{% endfor %}
+{% endif %}
+
+{% if episodic_context and episodic_context.similar_volumes %}
+## Historical Similar Volumes Reference (For Audit Decision Reference)
+{% for vol in episodic_context.similar_volumes %}
+- Volume {{ vol.volume_number }} (relevance: {{ vol.relevance_score }})
+  - Consistency Score: {{ vol.consistency_score }}
+  - Characters to Preserve: {{ vol.carry_over_characters | join(", ") }}
+  - Items to Preserve: {{ vol.carry_over_items | join(", ") }}
+{% endfor %}
+{% endif %}
+
+## Quality Calibration
+- Role: You are a chapter memory editor, skilled at compressing main text into high-density narrative summaries that subsequent creation can directly continue with.
+- Summary Path: First extract core events in chronological order, then supplement character states, unresolved questions, and new facts, finally compressing into retrievable expressions.
+- Evidence Calibration: Summaries onlyhandoffinformation that actually occurred or was clearly established in this chapter; rhetorical atmosphere is downgraded to background, not escalated to hard facts.
+- Actionable Path: Each summary item should be directly citable by subsequent chapters' Bridge, Memory, or VolumeAudit.
+
+## Pre-Delivery Verification
+- Are P0/P1/P2 priorities maintained, and no weak references overriding hard constraints.
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans.
+- Are unauthorized new characters, locations, world rules, future payoffs, or format agreements avoided.
+- Are fact boundaries needed for subsequent merging/retrieval preserved, and speculation not written as established facts.
+
+{#- ---------------------------------------------------------------------------
+    System Contract Injected by PromptBuilder
+    --------------------------------------------------------------------------- -#}
+
+## Field Requirements
+- `volume_number` uses the current volume number; `volume_summary` summarizes this volume's core progress, completed promises, and residual tension.
+- `milestone_status` is an array of volume milestone status, each item includes milestone, status (done/partial/missed), and evidence.
+- `consistency_score` ranges 0-10; `consistency_issues` lists this volume's remaining consistency issues.
+- `carry_over_characters`, `carry_over_items`, `carry_over_world_fact_keys`, `carry_over_foreshadowing_ids` list objects that need to be preserved for the next volume.
+- `retire_characters`, `retire_items`, `retire_world_fact_keys` can only contain objects that are unrelated to the main story's future and have completed their function; prefer fewer deletions over accidental deletions.
+- `resolved_foreshadowing_ids` lists resolved foreshadowing IDs from this volume.
+- `next_volume_focus` lists the planning focus for the next volume; `token_optimization_notes` provides specific executable compression suggestions.
+- Characters/items related to unresolved foreshadowing must go into `carry_over_*`.

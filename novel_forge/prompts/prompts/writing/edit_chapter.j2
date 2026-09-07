@@ -1,0 +1,225 @@
+{%- from "_base/_calculate_word_constraints.j2" import render_word_constraint_hard, render_word_constraint_self_check -%}
+{%- from "_base/_artifact_source_contract.j2" import render_artifact_source_contract -%}
+{%- from "_base/_quality_calibration.j2" import render_quality_calibration, render_pre_delivery_checklist -%}
+{%- from "_base/_editorial_card.j2" import render_editorial_card -%}
+{%- from "_base/_knowledge_card.j2" import render_knowledge_card -%}
+{%- from "_quality_standards.j2" import creative_specificity_rules -%}
+{%- from "_base/_repair_attempt_guidance.j2" import render_repair_attempt_guidance -%}
+
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：edit_chapter.j2
+服务步骤：EDIT_CHAPTER（章节编辑）
+作用简述：基于阶段卡片对草稿做局部编辑。编辑阶段负责清理语言、修正已知问题、
+          调整字数与节奏，但不得重新规划章节。
+上游输入：
+  - draft_text：当前章节正文
+  - stage_cards.source：ChapterSourceSlice，含不可越界的源头投影
+  - stage_cards：contract / bridge / plan / style / memory / repair 派生卡
+  - chapter_repair_report / word_count_warning / word_count_restructure：本轮修复信号
+下游输出：
+  - TEXT：修订后的完整章节正文
+消费链优先级：
+  P0 = 字数硬约束 / 契约保持 / 事实与禁变更
+  P1 = 当前报告问题 / 语言质量 / 节奏
+  P2 = 风格胶囊 / 追读力胶囊
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    指导层
+    --------------------------------------------------------------------------- -#}
+
+{% set cards = stage_cards | default({}) %}
+{% set source = cards.source | default({}) %}
+{% set source_contract = source.chapter_contract | default({}, true) %}
+{% set chapter = cards.chapter | default({}) %}
+{% set contract = source_contract if source_contract else (cards.contract | default({})) %}
+{% set bridge = cards.bridge | default({}) %}
+{% set plan_card = cards.plan | default({}) %}
+{% set element = cards.element | default({}) %}
+{% set narration = cards.narration | default({}) %}
+{% set style = cards.style | default({}) %}
+{% set editorial = cards.editorial | default({}) %}
+{% set quality = cards.quality | default({}) %}
+{% set repair = cards.repair | default({}) %}
+{% set characters = cards.characters | default([]) %}
+{% set knowledge = cards.knowledge | default({}) %}
+{% set bridge_boundary = bridge.boundary_window_policy | default({}) %}
+{% set cognitive_constraints = contract.cognitive_constraints | default([]) %}
+
+## 任务
+对第 {{ chapter.chapter_number | default(chapter_number, true) }} 章进行第 {{ iteration }} 轮编辑。
+
+{{ render_word_constraint_hard(chapter.target_word_count | default(target_word_count | default(0), true)) }}
+
+{{ render_artifact_source_contract(source, title="## Source Artifact 边界（P0）", mode="repair") }}
+
+## 编辑消费规则
+- 本轮只处理当前文本、报告 ticket、字数事务、代词/对齐等明确修复信号和必要 source 边界。
+- 不自由重写整章，不重做章节规划，不新增剧情事实、主事件、角色认知、关系结论或未来 payoff。
+- 若没有 ticket/window 指向，编辑只做语言、节奏和系统痕迹清理，不能改变事实。
+
+## 不可破坏卡
+{% if contract.required_events | default([]) %}- 必达事件：{{ contract.required_events | join('；') }}{% endif %}
+{% if contract.required_progressions | default([]) %}- 必达推进：{{ contract.required_progressions | join('；') }}{% endif %}
+{% if contract.allowed_progressions | default([]) %}- 允许铺垫：{{ contract.allowed_progressions | join('；') }}{% endif %}
+{% if contract.forbidden_changes | default([]) %}- 禁止变化：{{ contract.forbidden_changes | join('；') }}{% endif %}
+{% if contract.forbidden_progressions | default([]) %}- 禁止提前推进：{{ contract.forbidden_progressions | join('；') }}{% endif %}
+{% if contract.future_leak_risks | default([]) %}- 未来泄露风险：{{ contract.future_leak_risks | join('；') }}{% endif %}
+{% if contract.exit_state_targets | default([]) %}- 出口目标：{{ contract.exit_state_targets | join('；') }}{% endif %}
+{% if cognitive_constraints %}
+- 认知约束已在 Source Artifact 边界中完整列出；编辑只能修语言和节奏，不得把怀疑、误判、间接异常改成确认、坐实、公开揭示或完整解释。
+{% endif %}
+{% if bridge.action_handoff | default('') %}- 开场动作接力：{{ bridge.action_handoff }}{% endif %}
+{% if bridge_boundary.opening_paragraphs | default(0) %}- 开场验收窗口：前 {{ bridge_boundary.opening_paragraphs }} 段{% endif %}
+{% if bridge.opening_acceptance_criteria | default([]) %}- 开场验收条件：{{ bridge.opening_acceptance_criteria | join('；') }}{% endif %}
+{% if plan_card.opening_contract | default('') %}- 开场契约：{{ plan_card.opening_contract }}{% endif %}
+{% if plan_card.closing_contract | default('') %}- 结尾契约：{{ plan_card.closing_contract }}{% endif %}
+{% if repair.preserve | default([]) %}- 必须保留：{{ repair.preserve | join('；') }}{% endif %}
+{% if repair.do_not_introduce | default([]) %}- 不得引入：{{ repair.do_not_introduce | join('；') }}{% endif %}
+
+{% if plan_card.scene_intents | default([]) %}
+## 场景结果清单
+{% for scene in plan_card.scene_intents %}
+- {{ scene.scene_id }}：{{ scene.summary }} → {{ scene.required_outcome | default('') }} / {{ scene.exit_target_state | default('') }}{% if scene.scene_resistance | default('') %}；阻力：{{ scene.scene_resistance }}{% endif %}{% if scene.choice_pressure | default('') %}；选择压力：{{ scene.choice_pressure }}{% endif %}{% if scene.sensory_notes | default([]) %}；感官候选：{{ scene.sensory_notes }}{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if element.required_elements | default([]) or element.focused_extension_elements | default([]) or element.focus_constraints | default([]) %}
+## 叙事要素重点约束
+{% for item in element.required_elements %}
+- 必要要素：{{ item.get('name', '') }}{% if item.prompt_hint | default('') %}｜{{ item.prompt_hint }}{% endif %}
+{% endfor %}
+{% for item in element.focused_extension_elements %}
+- 本章聚焦：{{ item.get('name', '') }}{% if item.prompt_hint | default('') %}｜{{ item.prompt_hint }}{% endif %}
+{% endfor %}
+{% if element.focus_constraints | default([]) %}- 执行约束：{{ element.focus_constraints | join('；') }}{% endif %}
+{% endif %}
+
+{% if characters %}
+## 角色身份卡（编辑时不得改坏）
+{% for char in characters %}
+- {{ char.get('name', '') }}{% if char.get('role') | default('') %}（{{ char.get('role') }}）{% endif %}：{{ char.get('identity', '') | default('') }}{% if char.get('personality') | default('') %}；{{ char.get('personality') }}{% endif %}
+{% endfor %}
+{% endif %}
+
+{{ render_knowledge_card(knowledge, mode="edit") }}
+
+{{ render_editorial_card(editorial, mode="edit") }}
+
+{% if narration.rule | default('') %}
+## 叙事人称规则
+- {{ narration.rule }}
+{% endif %}
+
+{% if word_count_restructure is defined and word_count_restructure %}
+## 字数重整事务（P0）
+- 方向：{{ word_count_restructure.direction }}；当前：{{ word_count_restructure.actual }}；目标：{{ word_count_restructure.target }}
+- 合格区间：{{ word_count_restructure.acceptable_min }}-{{ word_count_restructure.acceptable_max }}
+- 禁止改变：{{ word_count_restructure.forbidden_changes | join('；') }}
+- 合同锚点：{{ word_count_restructure.contract_anchors | join('；') }}
+{% endif %}
+
+{% if plan_card.forbidden_elements | default([]) or plan_card.forbidden_elements_soft | default([]) %}
+## 修辞禁用与替换边界（编辑时提前避开）
+{% if plan_card.forbidden_elements | default([]) %}
+- 硬禁候选：{{ plan_card.forbidden_elements | join('；') }}
+{% endif %}
+{% if plan_card.forbidden_elements_soft | default([]) %}
+- 软禁候选：{{ plan_card.forbidden_elements_soft | join('；') }}
+{% endif %}
+{% if plan_card.intentional_callbacks | default([]) %}
+- 允许的有意回环：{{ plan_card.intentional_callbacks | join('；') }}
+{% endif %}
+编辑时应优先换用不同意象/动作通道；若属于有意回环或剧情锚点，保留叙事功能但避免机械复读词面。
+{% endif %}
+
+{% if pronouns_fix_instruction %}
+## 代词定向修复（P0）
+{{ pronouns_fix_instruction }}
+{% endif %}
+
+{% if alignment_must_cover | default([]) or alignment_repair_actions | default([]) or alignment_weak_subplot_points | default([]) or alignment_required_literals | default([]) %}
+## 对齐定向修复（P0）
+{% if alignment_must_cover | default([]) %}- 必须补足：{{ alignment_must_cover | join('；') }}{% endif %}
+{% if alignment_repair_actions | default([]) %}- 修复动作：{{ alignment_repair_actions | join('；') }}{% endif %}
+{% if alignment_weak_subplot_points | default([]) %}- 弱支线点：{{ alignment_weak_subplot_points | join('；') }}{% endif %}
+{% if alignment_preserve_points | default([]) %}- 保留点：{{ alignment_preserve_points | join('；') }}{% endif %}
+{% if alignment_required_literals | default([]) %}
+- 字面合同（必须逐字出现）：
+{% for item in alignment_required_literals %}
+  - {{ item.contract_id | default('未编号') }} / {{ item.scene_id | default('?') }}：「{{ item.literal }}」；不可改写原因={{ item.reason | default('上游 Planning LLM 已裁定') }}；放置提示={{ item.placement_hint | default('结合本章语义选择最小改动位置') }}
+{% endfor %}
+{% endif %}
+- 恢复 Plan 中已批准但正文遗漏的 scene / event 不是“新增主事件”；可补入完成它所需的最小完整场面。
+{% endif %}
+
+{{ render_repair_attempt_guidance(repair_attempt_guidance | default(none)) }}
+
+{% if chapter_quality_repair_tickets | default([]) %}
+## 标准修复 tickets（P0/P1）
+本轮必须优先处理下列 ticket；每个 ticket 必须按 ticket_id 一对一处理，只在 ticket 指向的范围内修复，不得重写无关剧情。
+{% for ticket in chapter_quality_repair_tickets %}
+- ticket_id={{ ticket.ticket_id }}；finding_ids={{ ticket.finding_ids | default([]) | join('、') or '无' }}
+  [{{ ticket.severity }}] {{ ticket.issue_type }}：{{ ticket.target_summary }}
+  目标：{{ ticket.repair_goal }}
+  {% if ticket.metadata and ticket.metadata.evidence_quote | default('') %}证据：{{ ticket.metadata.evidence_quote }}{% endif %}
+  {% if ticket.acceptance_criteria | default([]) %}验收：{{ ticket.acceptance_criteria | join('；') }}{% endif %}
+  {% if ticket.postconditions | default([]) %}后置验证：{% for item in ticket.postconditions %}{{ item.description | default(item.validator_id | default('')) }}{% if not loop.last %}；{% endif %}{% endfor %}{% endif %}
+  {% if ticket.target_paragraph_start | default(0) %}范围：第{{ ticket.target_paragraph_start }}{% if ticket.target_paragraph_end and ticket.target_paragraph_end != ticket.target_paragraph_start %}-{{ ticket.target_paragraph_end }}{% endif %}段{% else %}范围：全章局部定位{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if chapter_repair_report | default(none) %}
+## 当前质量报告
+{% if chapter_repair_report.factual_errors %}- 事实错误：{{ chapter_repair_report.factual_errors | join('；') }}{% endif %}
+{% if chapter_repair_report.expression_errors %}- 表达问题：{{ chapter_repair_report.expression_errors | join('；') }}{% endif %}
+{% if chapter_repair_report.repair_actions %}- 修复动作：{{ chapter_repair_report.repair_actions | join('；') }}{% endif %}
+{% endif %}
+
+{% if word_count_warning %}- 字数提醒：{{ word_count_warning }}{% endif %}
+{% if scene_stitch_report | default(none) %}
+## 场景级拼接统一润色（P0）
+- 模式：场景级写作已完成本地拼接；本轮只做全章声调、转场、节奏和段落呼吸统一。
+- 场景数：{{ scene_stitch_report.scene_count }}；缺失场景：{{ scene_stitch_report.missing_scenes | default([]) | join('、') or "无" }}
+- 可能转场缝隙：{{ scene_stitch_report.possible_transition_gaps | default([]) | join('；') or "无" }}
+- 禁止新增未规划事件、未规划揭示、未规划角色状态变化；只能让既有场景接得更顺。
+{% endif %}
+{% if quality.in_chapter_payoffs | default([]) %}- 追读力微兑现：{{ quality.in_chapter_payoffs | join('；') }}{% endif %}
+{% if quality.chapter_hook | default('') %}- 章尾钩子方向：{{ quality.chapter_hook }}{% endif %}
+{% if style.summary | default('') or style.modules | default([]) or style.hook_preferred_types | default([]) or style.micro_payoff_types | default([]) %}
+## 风格胶囊
+{% if style.summary | default('') %}- {{ style.summary }}{% endif %}
+{% if style.hook_preferred_types | default([]) %}- 钩子偏好：{{ style.hook_preferred_types | join('、') }}{% if style.hook_chapter_end_required | default(false) %}；章末必须形成可执行钩子{% endif %}{% endif %}
+{% if style.micro_payoff_types | default([]) %}- 微兑现：{{ style.micro_payoff_types | join('、') }}{% if style.micro_payoff_min_per_chapter | default(0) %}；每章最低：{{ style.micro_payoff_min_per_chapter }} 个{% endif %}{% endif %}
+{% for module in style.modules | default([]) %}- {{ module.name | default('未命名模块') }}：{{ module.rules | default([]) | join('；') }}
+{% endfor %}
+{% if style.banned_phrases | default([]) %}- 禁用短语：{{ style.banned_phrases | join('；') }}{% endif %}
+{% endif %}
+
+## 当前正文
+{{ draft_text }}
+
+## 编辑规则
+1. 只编辑当前正文，不重做 plan，不新增计划外主事件；对齐修复时必须恢复 Plan 已有而正文遗漏的场景、事件和字面合同。
+2. 优先处理 P0：字数、事实、禁变更、开场承接、结尾出口。
+3. 若修语言，保留原情节结果和段落职责；不要为了润色改坏因果链。
+4. 禁止新增非计划 POV、幕后视角、禁出角色正面行动、计划外组织/道具/重大揭示。
+5. 字数偏短时补过程、动作、有效对话和感官锚点；字数偏长时删重复解释和低信息旁白。
+6. 删除系统痕迹、规划术语、报告术语和元叙事词。
+7. 修复后全文仍须满足 `{{ render_word_constraint_self_check(chapter.target_word_count | default(target_word_count | default(0), true)) }}`。
+8. 触发重复风险时，优先压缩重复通道：保留承担新信息的一处，其余改成行动、对白、决策或场面调度。
+9. 不因计划里有多个感官提示就新增细节；只补能改善因果、关系或转场清晰度的细节。
+10. 编辑契约卡优先于泛风格偏好：声纹、象征物解释、余波和身体信号预算必须落到删改动作。
+{{ creative_specificity_rules(title="") }}
+
+{{ render_quality_calibration() }}
+
+{{ render_pre_delivery_checklist() }}
+
+{#- ---------------------------------------------------------------------------
+    格式层
+    --------------------------------------------------------------------------- -#}

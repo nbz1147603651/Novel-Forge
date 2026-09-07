@@ -1,0 +1,153 @@
+{# source_template_hash: 0bf552257fd5869dde350db53654febcfe8f3fe9bcb7a9bbc826dcb99b88becf #}
+{%- from "_styles/_render_style_profile.j2" import render_style_profile_for_stage -%}
+{%- import "_base/_render_style_profile_global.j2" as style_global -%}
+{%- from "_base/_artifact_source_contract.j2" import render_artifact_source_contract -%}
+{%- from "_base/_quality_calibration.j2" import render_quality_calibration, render_pre_delivery_checklist -%}
+{%- from "_base/_editorial_card.j2" import render_editorial_card -%}
+{%- from "_quality_standards.j2" import creative_specificity_rules -%}
+
+{#
+================================================================================
+[NOTES]
+================================================================================
+Prompt: polish_chapter.j2
+Service Step: POLISH_CHAPTER (Chapter Polishing)
+Purpose: Perform final polish on the chapter to bring it to publishing-quality literary standards.
+Upstream Inputs:
+  - chapter_text: Chapter body text from EditStep output
+  - stage_cards.source: ChapterSourceSlice, containing source boundary and style/voice projection (if provided by caller)
+  - eval_summary: Evaluation summary from EvaluateStep
+  - repair_hints: Evaluation suggestions from EvaluateStep
+  - continuity_notes: Continuity issues from ContinuityEval / ContinuityRepair
+  - style_profile: From StyleProfile
+Downstream Outputs:
+  - text: Polished chapter body as plain text
+  - Downstream consumers: CheckChapterStep / PersistStep
+Consumption Chain Priority:
+  P0 = immutable_facts / POV rules / word count ±10% constraint
+  P1 = continuity_notes (continuity repair) / repair_hints (evaluation suggestions)
+  P2 = literary style / sensory variety / dialogue density
+Brief Example:
+  Input: chapter_text="Lin Yuan stood at the city gate...", eval_summary="Pacing is somewhat slow"
+  Output: "In the morning mist, Lin Yuan's figure appeared at the city gate..." (plain text)
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer: Task Definition + Context Consumption
+    --------------------------------------------------------------------------- -#}
+{% set cards = stage_cards | default({}) %}
+{% set source = cards.source | default({}) %}
+{% set source_contract = source.chapter_contract | default({}) %}
+{% set cognitive_constraints = source_contract.cognitive_constraints | default([]) %}
+{% set chapter_card = cards.chapter | default({}) %}
+{% set position = chapter_card.chapter_position | default(chapter_position | default({})) %}
+{{ render_style_profile_for_stage(style_profile | default(None), stage="edit", include_banned_phrases=true) }}
+{%- set _dlg_min = style_global.dialogue_ratio_min(style_profile | default(None)) | trim | int -%}
+{%- set _dlg_max = style_global.dialogue_ratio_max(style_profile | default(None)) | trim | int -%}
+Please perform final polish on the chapter: elevate language, pacing, and paragraph rhythm while keeping all plot facts completely unchanged. After polishing, continuity and causality review will run again—no key events, character relationship conclusions, or exit states may be altered.
+
+{{ render_artifact_source_contract(source, title="## Source Artifact Boundary (P0)", mode="polish") }}
+
+{% if cognitive_constraints %}
+## Cognitive Preservation Boundary (P0)
+- Polish syntax, rhythm, and expression density only. Do not change any named role's `unknown|partial|full` coverage or turn inner cognition into public action.
+{% endif %}
+
+## Polish Consumption Rules
+- Only consume corrected text, evaluation/expression issues, word count guidance, and style projection.
+- Do not add new plot facts, character knowledge, event ledger, relationship conclusions, identity confirmations, or future payoffs.
+- If language optimization would alter event outcomes or information hierarchy, preserve the original factual expression and only fine-tune syntax and rhythm.
+- Polish does not consume book-level initialization sources, character bundles, or cross-scene intents; it keeps only the minimal cognitive contract above because polishing can otherwise alter that boundary.
+- Voice, symbolism explanations, aftermath, and body signal budgets are only for "fine-tuning syntax and rhythm," not for "altering plot facts."
+
+## Chapter Information
+- Chapter {{ chapter_number }} "{{ chapter_title }}"
+- Tone: {{ tone }}
+{% if genre %}- Genre: {{ genre }}{% endif %}
+{% if pov_character %}- POV Character: {{ pov_character }}{% endif %}
+{% if target_word_count %}- Target Word Count: approximately {{ target_word_count }} words{% endif %}
+{% if position %}
+- Chapter Position: Chapter {{ position.chapter_number | default(chapter_number) }} / {{ position.total_chapters }}; is_last_chapter={{ position.is_last_chapter | default(false) }}.
+{% if position.is_last_chapter | default(false) %}
+- This chapter is the book finale of the current outline; book-level closing tone may be retained, but no facts outside the contract may be added.
+{% else %}
+- This chapter is not the book finale: polishing must not rewrite it as a book ending, and must not add final settlements, final fate determinations, or full-line payoffs.
+{% endif %}
+{% if position.is_previously_final_chapter | default(false) %}
+- This chapter was a former final chapter but has been extended: retain onlystage-levellanding point (stage-level landing points), weaken final chapter tone.
+{% endif %}
+{% endif %}
+
+{% if eval_summary %}
+## Current Evaluation Feedback
+{{ eval_summary }}
+{% endif %}
+
+{% if repair_hints %}
+## Evaluation Suggestions (P1)
+{{ repair_hints }}
+{% endif %}
+
+{% if continuity_notes %}
+## Continuity/Causality Hints (P1)
+Use transitional sentences, setups, action connections, or internal judgments to repair; do not alter event outcomes.
+{{ continuity_notes }}
+{% endif %}
+
+{% if word_count_guidance %}
+## Word Count Polish Target (P0)
+Only handle word count and expression density; do not replan or rewrite plot threads.
+{{ word_count_guidance }}
+{% endif %}
+
+{% set editorial = cards.editorial | default({}) %}
+{{ render_editorial_card(editorial, mode="polish") }}
+
+{% set quality = cards.quality | default({}) %}
+{% if quality.chapter_hook | default('') or quality.in_chapter_payoffs | default([]) %}
+## Read-Through Power Capsules (P2, maintain during polish)
+{% if quality.in_chapter_payoffs | default([]) %}- Micro-fulfillment: {{ quality.in_chapter_payoffs | join('; ') }}{% endif %}
+{% if quality.chapter_hook | default('') %}- Chapter hook direction: {{ quality.chapter_hook }}{% endif %}
+- Polish must not weaken or delete the above read-through power anchors.
+{% endif %}
+
+{% set style = cards.style | default({}) %}
+{% if style.summary | default('') or style.modules | default([]) or style.banned_phrases | default([]) %}
+## Style Capsule (P2)
+{% if style.summary | default('') %}- {{ style.summary }}{% endif %}
+{% for module in style.modules | default([]) %}
+- {{ module.name | default('Unnamed module') }}: {{ module.rules | default([]) | join('; ') }}
+{% endfor %}
+{% if style.banned_phrases | default([]) %}- Banned phrases: {{ style.banned_phrases | join('; ') }}{% endif %}
+{% endif %}
+
+{% set memory = cards.memory | default({}) %}
+{% if memory.expression_channel_records | default([]) %}
+## Expression Channel Cooldown (P1)
+The following are recently high-frequency expression mechanisms; during polish, do not use similar physiological/action templates to carry the same emotion—must switch to action choices, dialogue delays, environmental attention, or decision-making processes.
+{% for item in memory.expression_channel_records %}
+{% set recent_hits = item.recent_semantic_hits | default([]) %}
+- {{ item.channel }} / {{ item.channel_id }}: {{ item.text }}{% if item.reason %} ({{ item.reason }}){% endif %}{% if item.replacement_axes %}; replacement directions: {{ item.replacement_axes | join(', ') }}{% endif %}{% if recent_hits %}; recent example: Chapter {{ recent_hits[0].chapter }} "{{ recent_hits[0].quote }}"{% endif %}
+{% endfor %}
+{% endif %}
+
+## Current Body Text
+{{ chapter_text }}
+
+## Polish Rules
+1. P0: Do not alter plot direction, character relationship conclusions, key events, character entrance/exit, proper nouns, opening continuation, or chapter exit.
+2. P0: If there is a word count target, compress or expand according to the above requirements; otherwise keep within ±10% of the original text.
+3. P1: Delete low-information transitions, redundant explanations, isomorphic judgment sentences, and mental circular reasoning that adds no new information.
+4. P1: Generalize verbs, hollow adjectives, and mechanical physical responses—prioritize converting to action consequences, dialogue subtext, environmental resistance, or character choices.
+5. P2: Retain necessary anchors during scene transitions; senses and imagery serve conflict—do not fill for coverage.
+6. P2: Dialogue density reference {{ _dlg_min }}%-{{ _dlg_max }}%, only supplement dialogue that advances information, relationships, or decisions.
+{{ creative_specificity_rules(title="") }}
+
+{{ render_quality_calibration() }}
+
+{{ render_pre_delivery_checklist() }}
+
+{#- ---------------------------------------------------------------------------
+    Format Layer: Output Format Constraints
+    --------------------------------------------------------------------------- -#}

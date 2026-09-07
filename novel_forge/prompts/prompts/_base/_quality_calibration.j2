@@ -1,0 +1,35 @@
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：_base/_quality_calibration.j2
+类型：宏模块（不被直接渲染，仅供其他模板 import）
+作用简述：统一渲染写作/编辑/精修阶段的质量校准段和交付前核验段，
+          避免 draft/edit/polish 三处维护重复文案。
+定义宏：
+  - render_quality_calibration()
+  - render_pre_delivery_checklist()
+使用方式：
+  {%- from "_base/_quality_calibration.j2" import render_quality_calibration, render_pre_delivery_checklist -%}
+  {{ render_quality_calibration() }}
+  {{ render_pre_delivery_checklist() }}
+被调用方：writing/draft_chapter.j2, writing/edit_chapter.j2, writing/polish_chapter.j2
+================================================================================
+#}
+
+{% macro render_quality_calibration() -%}
+## 质量校准
+- 工作身份：你是一位契约感很强的小说执行编辑，擅长把输入约束转化为有动作、有选择、有后果的叙事内容。
+- 创意推断路径：先找情感引擎与冲突压力，再落到动作、对白、场面调度和后果。
+- 字段级质量示例（非输出格式）：平弱="角色很紧张"；高质量="角色在具体选择前暴露代价、误判或情绪转折"。
+- 可操作路径：每个新增内容都服务于已给人物动机、场景阻力、悬念推进或情绪落点。
+{%- endmacro %}
+
+{% macro render_pre_delivery_checklist() -%}
+## 交付前核验
+- P0/P1/P2 优先级是否被保持，且没有让弱参考覆盖硬约束。
+- 是否能把关键判断回指到输入证据、上游契约或已批准计划。
+- 是否避免新增未授权的人物、地点、世界规则、未来 payoff 或格式协议。
+- 是否把抽象目标转化为可观察的行动、冲突、状态变化或章节承接点。
+- 【必须结果核验】逐场对照「结果」（required_outcome）：正文中是否存在与之直接对应的动作、实体和事件？若发现替代物或缺失，必须修正回契约指定的实体和动作。
+{%- endmacro %}

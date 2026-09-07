@@ -1,0 +1,120 @@
+{# source_template_hash: 758a0f1b829b7f294ac08f7ced60b6e91e4f2fd49521d85aebd72122a806edf6 #}
+{#
+===============================================================================
+【Notes】
+===============================================================================
+Prompt: humanize_scan.j2
+Task Type: HUMANIZE_SCAN
+Service Step: Humanization Candidate Adjudication
+Brief Description: AI trace adjudication for local pre-scan/humanization library candidates,
+          confirming genuine hits, severity, and safe local repair boundaries, providing
+          bounded input for downstream humanization repair.
+Upstream Input:
+  - chapter_number/chapter_text: Chapter number and relevant body text snippet
+  - humanize_strength (optional): Scan sensitivity light / medium / aggressive
+  - style_profile (optional): Project style specifications for exemption judgment
+  - humanize_context (optional): Minimal context capsule for post-polish false positive boundary judgment
+  - filter_dialogue (optional): Boolean, default true; whether to filter dialogue content
+  - prescreen_hits (optional): Local rule pre-scan candidates for LLM adjudication confirmation/degradation
+  - library_hits (optional): Humanization library AI pattern hits list for LLM adjudication confirmation/ignore
+Downstream Output:
+  - JSON: {"total_hits", "hits_by_category", "critical_hits",
+           "pattern_hits", "summary"}
+  - source_text_hash/chapter_number injected locally by HumanizeScanStep
+  - Downstream consumers: HumanizeScanStep / run_humanize_layer / chapter_flow report archiving
+Consumer Chain Priority: Candidate authenticity > Local patch safety > Report statistics; does not assume full-chapter aesthetic audit.
+Brief Example:
+  Input: chapter_text="It was late at night. Lin Yuan stood by the window, marking a pivotal moment in the story.
+        Notably, his heart was filled with complex emotions."
+  Output: {"total_hits": 2, "pattern_hits": [
+          {"pattern_id":"significance_inflation","pattern_name":"Significance Inflation",
+           "category":"Narrative Weight","severity":"high","evidence_quote":"marking a pivotal moment in the story",
+           "paragraph_index":0,"suggestion":"The story has reached a critical point","confidence":0.9,
+           "actionable":true,"source":"llm","span_start":null,"span_end":null},
+          {"pattern_id":"filler_phrases","pattern_name":"Filler Phrases",
+           "category":"Metalanguage","severity":"high","evidence_quote":"Notably",
+           "paragraph_index":0,"suggestion":"","confidence":0.94,
+           "actionable":false,"source":"llm","span_start":null,"span_end":null}],
+}
+===============================================================================
+#}
+{%- from "_base/_cognitive_constraints.j2" import render_cognitive_constraints -%}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer: Task Definition + Context Consumption
+    --------------------------------------------------------------------------- -#}
+
+{% set _prescreen_hits = prescreen_hits | default([]) %}
+{% set _library_hits = library_hits | default([]) %}
+{% set _humanize_context = humanize_context | default(none) %}
+{% set _max_report_hits = max_report_hits | default(12) %}
+{% set _pattern_guidance = pattern_guidance | default([]) %}
+{% set _candidate_batch = candidate_batch | default(none) %}
+
+Please perform **AI generation trace candidate adjudication** on the body text of Chapter {{ chapter_number }}. This round only confirms whether candidates are genuine and whether they can be safely patched locally; do not exhaustively check the entire chapter, do not write aesthetic comments, and do not rewrite the body text.
+
+## Adjudication Boundaries
+
+- Adhere to the format contract below; prohibit analysis processes, Markdown, comments, or explanatory text outside the contract.
+- Only retain genuine hits from "local pre-scan candidates" and "humanization library candidates"; do not output false positives; do not add new candidates.
+- Return zero-hit report when candidates are empty.
+- Output at most {{ _max_report_hits }} items in `pattern_hits`; prioritize retaining high/critical items with unique evidence, safe to patch, and non-overlapping.
+- `evidence_quote` must be a uniquely locatable complete sentence/clause from the body text; `paragraph_index` uses 0-based integer.
+- Read the text immediately to both sides of the evidence. If a suggestion would synonymously repeat a neighboring action, subject phrase, or predicate, set `actionable:false`; for example, do not turn the second half of "he quickly pulled back his hand, as if burned" into another "jerked his hand back".
+- A single natural simile or character perception is not `weak_verb_stacking`; retain that hit only when weak verbs or hedges genuinely stack and blur the action.
+- `actionable:true` is only for local syntactic/punctuation/word micro-adjustments that do not change facts, causality, character perception, POV, or timeline.
+- If `actionable:true`, `suggestion` must be genuine text that can directly replace `evidence_quote`, cannot be empty, cannot equal the evidence, and cannot write instructions like "recommend changing/deleting this sentence".
+- If it is impossible to replace only `evidence_quote` while maintaining naturalness, set `actionable:false` and `suggestion:""`.
+- A suggestion must not repeat a subject, action, or sensory result already present immediately outside the evidence, even with synonyms.
+- `summary` uses one sentence to summarize the retained/compressed candidates, do not explain item by item.
+
+{% if _candidate_batch %}
+## Candidate Batch
+
+Currently batch {{ _candidate_batch.index }} / {{ _candidate_batch.count }}; only adjudicate this batch's {{ _candidate_batch.candidate_count }} candidates.
+{% endif %}
+
+{% if style_profile %}
+## Compressed Style Reference
+
+Only used for judging whether candidates are false positives, prohibit adding new issues based on this:
+{{ style_profile | tojson(indent=2) }}
+{% endif %}
+
+{% if _humanize_context %}
+## Current Round Context Capsule
+
+Only used for judging whether candidates are false positives, prohibit expanding plot or adding new aesthetic dimensions based on this:
+{{ _humanize_context | tojson(indent=2) }}
+{% endif %}
+
+{% if _humanize_context.cognitive_constraints | default([]) %}
+## Cognitive Preservation Boundary for Humanization (P0)
+- If a candidate suggestion would change any role's knowledge coverage, cognitive level, or public action level, treat it as collateral damage and preserve the original text.
+{{ render_cognitive_constraints(_humanize_context.cognitive_constraints) }}
+{% endif %}
+
+{% if _library_hits %}
+## Humanization Library Candidates
+
+{{ _library_hits | tojson(indent=2) }}
+{% endif %}
+
+{% if _prescreen_hits %}
+## Local Pre-scan Candidates
+
+Total candidates: {{ prescreen_hit_count | default(_prescreen_hits | length) }}; output at most {{ _max_report_hits }} items of `pattern_hits` this round.
+{{ _prescreen_hits | tojson(indent=2) }}
+{% endif %}
+
+{% if _pattern_guidance %}
+## Current Candidate Pattern Rules
+
+{% for item in _pattern_guidance %}
+- `{{ item.pattern_id }}`: {{ item.rule }}
+{% endfor %}
+{% endif %}
+
+## Body Text
+
+{{ chapter_text }}

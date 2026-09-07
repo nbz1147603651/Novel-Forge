@@ -1,0 +1,28 @@
+.voice-rebuild-dialog { display: grid; grid-template-rows: auto auto auto minmax(250px, 1fr) auto auto; gap: 12px; width: min(576px, calc(100vw - 48px)); min-height: 560px; max-height: min(78vh, 560px); padding: 22px 24px 20px; overflow: hidden; border: 1px solid color-mix(in srgb, var(--nf-border-soft) 43%, transparent); border-radius: 16px; color: var(--nf-text-body); background: var(--nf-bg-dialog); box-shadow: 0 22px 60px color-mix(in srgb, var(--nf-shadow) 29%, transparent); animation: dialog-rise-in 180ms cubic-bezier(.22, .61, .36, 1); }
+.voice-rebuild-dialog > header, .voice-rebuild-dialog footer, .voice-rebuild-tools { display: flex; align-items: center; gap: 9px; }
+.voice-rebuild-dialog > header { justify-content: space-between; }
+.voice-rebuild-dialog h2 { margin: 0; color: var(--nf-text-heading); font-family: Georgia, "Songti SC", serif; font-size: var(--nf-font-display); font-weight: 600; }
+.voice-rebuild-dialog header span { padding: 5px 9px; border-radius: 99px; color: var(--nf-text-muted); background: var(--nf-bg-control); font-size: var(--nf-font-ui); font-weight: 700; }
+.voice-rebuild-dialog > p { margin: 0; padding: 8px 12px; border: 1px solid color-mix(in srgb, var(--nf-border-default) 26%, transparent); border-radius: 9px; color: var(--nf-text-secondary); background: color-mix(in srgb, var(--nf-bg-control) 44%, var(--nf-bg-dialog)); font-size: var(--nf-font-label); line-height: 1.6; }
+.voice-rebuild-dialog h3 { margin: 0; color: var(--nf-text-heading); font-size: var(--nf-font-subsection); }
+.voice-rebuild-list { display: grid; align-content: start; gap: 4px; min-height: 0; overflow: auto; border: 1px solid color-mix(in srgb, var(--nf-border-default) 16%, transparent); border-radius: 10px; background: color-mix(in srgb, var(--nf-bg-input) 54%, var(--nf-bg-surface)); }
+.voice-rebuild-list label { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 9px; align-items: center; padding: 10px 18px; border-top: 1px solid color-mix(in srgb, var(--nf-border-default) 11%, transparent); color: var(--nf-text-secondary); }
+.voice-rebuild-list label:first-child { border-top: 0; }.voice-rebuild-list input { accent-color: var(--nf-accent-primary); }
+.voice-rebuild-list span { overflow: hidden; min-width: 0; color: var(--nf-text-heading); font-size: var(--nf-font-subsection); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.voice-rebuild-tools { justify-content: flex-start; }.voice-rebuild-tools .button { min-height: 31px; font-size: var(--nf-font-ui); }
+.voice-rebuild-dialog footer { justify-content: flex-end; }.voice-rebuild-dialog footer > span { flex: 1; }.voice-rebuild-dialog footer .button { min-height: 35px; }.voice-rebuild-dialog footer .button:disabled { opacity: .58; }
+.voice-rebuild-notice { margin: 0; padding: 8px 9px; border-left: 3px solid var(--nf-accent-primary); color: var(--nf-text-secondary); background: color-mix(in srgb, var(--nf-bg-control) 42%, var(--nf-bg-surface)); font-size: var(--nf-font-ui); line-height: 1.5; }
+@media (max-width: 560px) { .voice-rebuild-dialog { padding: 19px; }.voice-rebuild-dialog footer { flex-wrap: wrap; }.voice-rebuild-dialog footer > span { display: none; } }
+
+/* Honor reduced motion (design-tokens has global guard, this is explicit
+ * for local animations that should not run when the user prefers reduced
+ * motion). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

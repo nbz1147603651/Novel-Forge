@@ -1,0 +1,98 @@
+{# source_template_hash: d22f0eda8d4b04985557668081e75ad915e5deed89c4f29cf03f4e709b93930f #}
+{#
+================================================================================
+REMARKS
+================================================================================
+Prompt: extract_knowledge_deltas.j2
+Service Step: EXTRACT_KNOWLEDGE_DELTAS (Knowledge Delta Extraction)
+Function Summary: Extract newly acquired or revealed knowledge from characters in chapter text, output structured knowledge_deltas.
+Upstream Input:
+  - chapter_number: Current chapter number
+  - chapter_text: Chapter text
+  - pov_character: Current POV character (optional)
+  - existing_knowledge_summaries: Existing knowledge summary list, used for deduplication
+Downstream Output:
+  - JSON: knowledge_deltas list
+  - Downstream Consumer: finalize.py → StoryKernel.knowledge_ledger append
+Consumer Chain Priority: P0 (entity_id + fact accuracy) > P1 (knowledge_type classification) > P2 (visibility determination)
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer: Task Definition + Context Consumption
+    --------------------------------------------------------------------------- -#}
+
+You are a knowledge delta extractor for novels. Your task is to extract knowledge that characters have **newly acquired** or that has been **newly revealed** in this chapter from the chapter text.
+
+## Current Chapter
+Chapter {{ chapter_number }}
+{% if pov_character %}
+## Current POV Character
+{{ pov_character }}
+{% endif %}
+
+## Extraction Target
+
+### 1. New Knowledge Acquisition
+Knowledge that characters acquire in this chapter through:
+- **Direct Observation**: What the character personally sees or hears
+- **Being Told**: Actively informed by other characters
+- **Eavesdropping/Discovering**: Unintentionally learning something
+- **Deducing**: Inferring from clues
+
+### 2. Knowledge Revelation
+Previously confidential knowledge that is discovered by other characters in this chapter (secret exposed).
+
+## Existing Knowledge Summaries (Avoid Duplicates)
+{% if existing_knowledge_summaries %}
+The following knowledge already exists in the knowledge ledger, **do not extract duplicates**:
+{% for summary in existing_knowledge_summaries %}
+- {{ summary }}
+{% endfor %}
+{% else %}
+(No existing knowledge records)
+{% endif %}
+
+## Field Description
+
+Summarize this chapter's new knowledge into the top-level `knowledge_deltas` list; if there is no new knowledge, keep the list empty and do not fabricate.
+
+### entity_id
+The entity ID of the character to whom the knowledge belongs. Format: `char_<character name>`, for example `char_Li Ming`, `char_Zhang Wei`.
+If the text uses the character's full name or common nickname, keep it consistent.
+
+### fact
+The specific knowledge the character has acquired. Describe concisely in one sentence, no more than 100 characters.
+- Describe **what the character knows**, not **what the character does**
+- Example: "Li Ming knows Zhang Wei is the mastermind behind the scenes" rather than "Li Ming followed Zhang Wei"
+
+### knowledge_type
+Knowledge type, with values:
+- `known`: Confirmed factual knowledge the character knows
+- `suspected`: Knowledge the character suspects but hasn't confirmed
+- `misbelief`: The character's incorrect understanding
+- `secret_kept`: Information the character knows but keeps secret from others
+
+### visibility
+Knowledge visibility:
+- `public`: Public information known by multiple people
+- `private`: Private information known only by that character
+- `secret`: Intentionally hidden secret
+
+### source_chapter
+The chapter number where the knowledge was acquired, which is the current chapter {{ chapter_number }}.
+
+## Extraction Rules
+1. **Extract only new knowledge from this chapter**: Do not extract knowledge that characters already knew in previous chapters
+2. **Avoid duplicates**: Cross-reference existing knowledge summaries and skip already recorded knowledge
+3. **Accurate attribution**: Each piece of knowledge must clearly indicate which character acquired it
+4. **Distinguish types**: Accurately differentiate known/suspected/misbelief/secret_kept
+5. **Determine visibility reasonably**:
+   - If information is visible to multiple people in the scene → `public`
+   - If only the POV character or a single character learns about it → `private`
+   - If the character deliberately conceals it → `secret`
+6. **Quality over quantity**: If there is no obvious new knowledge acquisition in this chapter, returning an empty list is acceptable
+
+## Chapter Text
+
+{{ chapter_text }}

@@ -1,0 +1,681 @@
+/*
+ * Final PySide6 convergence pass.
+ *
+ * This stylesheet is intentionally loaded after the incremental page sheets.
+ * It gives the four primary work surfaces one type hierarchy rather than
+ * letting late page-specific rules promote ordinary controls to display sizes.
+ */
+
+:root {
+  --nf-pyside-font-control: var(--nf-type-body);
+  --nf-pyside-font-copy: var(--nf-type-body);
+  --nf-pyside-font-meta: var(--nf-type-caption);
+  --nf-pyside-font-section: var(--nf-type-section);
+}
+
+.nimo-app :is(button, input, select, textarea) {
+  font-family: var(--nf-font-ui-family);
+}
+
+.top-bar h1,
+.workflow-page :is(h2, h3),
+.studio-page :is(h2, h3),
+.voice-page :is(h2, h3),
+.reader-page .reader-header > strong,
+.reader-page .reader-source-body > h1 {
+  font-family: var(--nf-font-reading-family);
+}
+
+/* ── 机杼：Source JobsPanel 的紧凑任务流 ─────────────────────────── */
+
+.workflow-page {
+  display: grid;
+  gap: 8px;
+  margin-left: 0;
+  padding: 4px 0 10px;
+}
+
+.workflow-composer-hero {
+  gap: 12px;
+  padding: 0 0 8px;
+}
+
+.workflow-composer-hero h2,
+.workflow-active-projects h2,
+.workflow-short-composer h2,
+.workflow-composer-hero h2 {
+  margin: 2px 0;
+  font-size: var(--nf-pyside-font-section);
+  line-height: 1.35;
+}
+
+.workflow-composer-hero p,
+.workflow-active-projects header p,
+.workflow-short-composer > header p,
+.workflow-composer-hero .section-kicker {
+  font-size: var(--nf-pyside-font-control);
+  line-height: 1.5;
+}
+
+/* ── 章节续写入口卡片 — 对标 PySide6 ChapterStudioLauncher(Surface("panel")) ── */
+
+/* OutlinePolishPanel reuses .settings-card but lives outside .settings-page.
+   Provide the same compact accordion chrome here. */
+.workflow-page .settings-card {
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 18%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--nf-bg-surface) 78%, transparent);
+  overflow: hidden;
+}
+
+.workflow-page .settings-card-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 16px;
+  border: none;
+  background: transparent;
+  color: var(--nf-text-heading);
+  font-family: Georgia, "Songti SC", serif;
+  font-size: var(--nf-pyside-font-section);
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: left;
+  cursor: pointer;
+}
+
+.workflow-page .settings-card-toggle > span {
+  font-family: sans-serif;
+  font-size: var(--nf-font-section-sm);
+}
+
+.workflow-page .settings-card-body {
+  display: grid;
+  gap: var(--nf-space-2);
+  padding: 0 var(--nf-space-4) var(--nf-space-4);
+}
+
+.workflow-page .settings-card-body > p {
+  margin: 0;
+  color: var(--nf-text-secondary);
+  font-size: var(--nf-pyside-font-control);
+  line-height: 1.5;
+}
+
+/* ── 任务流 & 机杼关注面板 ──────────────────────────────────────── */
+
+.workflow-stream,
+.workflow-focus {
+  padding: 18px 22px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 16%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--nf-bg-surface) 78%, transparent);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--nf-shadow) 6%, transparent);
+}
+
+.workflow-stream-header,
+.workflow-focus-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.workflow-stream-header > div:first-child,
+.workflow-focus-header > div:first-child {
+  min-width: 0;
+  flex: 1;
+}
+
+.workflow-stream h2,
+.workflow-focus h2 {
+  margin: 0;
+  font-size: var(--nf-pyside-font-section);
+  line-height: 1.35;
+}
+
+.workflow-stream-header p,
+.workflow-focus-header p {
+  margin-top: 3px;
+  font-size: var(--nf-pyside-font-control);
+  line-height: 1.5;
+}
+
+.workflow-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.workflow-error-button,
+.workflow-clear-button {
+  min-height: 32px;
+  padding-inline: 11px;
+  border-radius: 9px;
+  font-size: var(--nf-pyside-font-control);
+}
+
+.workflow-observed-task {
+  display: inline-grid;
+  gap: 3px;
+}
+
+.workflow-observed-task select {
+  width: auto;
+  min-width: 170px;
+  max-width: 320px;
+}
+
+.workflow-run-list {
+  width: 100%;
+  max-width: none;
+  margin: 12px 0 0;
+  padding: 10px;
+  gap: 8px;
+  border-radius: 10px;
+}
+
+.workflow-run-card,
+.workflow-run-card.is-historical {
+  display: grid;
+  gap: 9px;
+  min-height: 132px;
+  padding: 13px 16px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 18%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--nf-bg-surface) 88%, transparent);
+}
+
+.workflow-stream-header,
+.workflow-focus-header {
+  gap: 12px;
+}
+
+.workflow-run-heading,
+.workflow-run-footer {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.workflow-run-heading h3,
+.workflow-run-card.is-historical .workflow-run-heading h3 {
+  margin: 0;
+  font-family: var(--nf-font-reading-family);
+  font-size: var(--nf-font-section-sm);
+  line-height: 1.4;
+}
+
+.workflow-run-heading p {
+  margin: 2px 0 0;
+}
+
+.workflow-run-heading p,
+.workflow-run-footer p,
+.workflow-detail-line {
+  font-size: var(--nf-pyside-font-control);
+  line-height: 1.5;
+}
+
+.workflow-progress-line {
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 7px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--nf-border-default) 18%, transparent);
+  overflow: hidden;
+}
+
+.workflow-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.workflow-progress-line span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--nf-accent-primary);
+}
+
+.workflow-progress-percent {
+  flex: 0 0 38px;
+  color: var(--nf-text-muted);
+  font-size: var(--nf-pyside-font-meta);
+  text-align: right;
+}
+
+.workflow-run-state,
+.workflow-badge,
+.workflow-run-footer strong,
+.workflow-progress-percent {
+  font-size: var(--nf-pyside-font-meta);
+}
+
+.workflow-run-state {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding-inline: 8px;
+  border-radius: 8px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.workflow-stage-steps {
+  margin: 8px 0 2px;
+  overflow-x: auto;
+}
+
+.workflow-stage-steps .step-indicator-row {
+  justify-content: flex-start;
+  padding: 8px 4px 6px;
+}
+
+.workflow-stage-steps .step-label {
+  max-width: 64px;
+}
+
+.workflow-run-footer .button {
+  min-height: 30px;
+  font-size: var(--nf-pyside-font-meta);
+}
+
+.workflow-focus-status,
+.focus-summary p,
+.focus-fragment p {
+  font-size: var(--nf-pyside-font-control);
+}
+
+.workflow-empty {
+  display: grid;
+  gap: 6px;
+  padding: 28px 20px;
+  text-align: center;
+}
+
+.workflow-empty .section-kicker {
+  justify-self: center;
+}
+
+.workflow-empty h3 {
+  margin: 0;
+  font-size: var(--nf-pyside-font-section);
+}
+
+.workflow-empty p {
+  margin: 0;
+  color: var(--nf-text-muted-soft);
+  font-size: var(--nf-pyside-font-control);
+  line-height: 1.6;
+}
+
+/* ── 章台：把主控台放回一个更高、稳定的工作视口 ───────────────── */
+
+.studio-page {
+  gap: 8px;
+}
+
+.studio-selector {
+  padding: 10px 14px;
+}
+
+.studio-selector-leading h2,
+.studio-artifacts-heading h2 {
+  font-size: var(--nf-pyside-font-section);
+}
+
+.studio-selector-leading p,
+.studio-panel-heading p,
+.studio-artifacts-heading p {
+  font-size: var(--nf-pyside-font-control);
+}
+
+.studio-selector-controls {
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.studio-mode-control,
+.studio-select-menu,
+.studio-selector-controls > .studio-select-menu:first-child {
+  min-width: 0;
+}
+
+.studio-selector-tools {
+  flex-wrap: wrap;
+  overflow: visible;
+  scrollbar-width: auto;
+}
+
+.studio-selector-tools .button {
+  min-width: 0;
+  font-size: var(--nf-pyside-font-meta);
+}
+
+.studio-workbench {
+  grid-template-columns: minmax(220px, 240px) minmax(0, 1fr) minmax(292px, 320px);
+  height: clamp(640px, calc(100dvh - 200px), 860px);
+  min-height: 640px;
+}
+
+.studio-center,
+.studio-chapter-rail,
+.studio-memory {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.studio-center {
+  grid-template-rows: auto minmax(0, 1fr);
+  align-content: start;
+}
+
+.studio-chapter-rail ol {
+  scrollbar-width: thin;
+}
+
+.studio-chapter-rail li button {
+  min-width: 0;
+}
+
+.studio-chapter-rail li strong,
+.studio-chapter-rail li small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.studio-action-card {
+  gap: 10px;
+  padding: 16px 18px;
+}
+
+.studio-action-card h3,
+.studio-panel-heading h3 {
+  font-size: var(--nf-font-section-sm);
+}
+
+.studio-action-card header > p,
+.studio-action-summary {
+  font-size: var(--nf-pyside-font-control);
+  line-height: 1.55;
+}
+
+.studio-action-job-hint {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.studio-context-stack {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  align-content: stretch;
+  gap: 10px;
+  min-height: 0;
+  height: 100%;
+}
+
+.studio-context-card {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 6px;
+  min-width: 0;
+  min-height: 112px;
+  overflow: hidden;
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 18%, transparent);
+  color: inherit;
+  background: color-mix(in srgb, var(--nf-bg-panel) 58%, var(--nf-bg-surface));
+  cursor: pointer;
+  text-align: left;
+}
+
+.studio-context-card:hover,
+.studio-context-card:focus-visible {
+  border-color: color-mix(in srgb, var(--nf-accent-primary) 42%, var(--nf-border-default));
+  outline: 0;
+}
+
+.studio-context-card > span:first-child {
+  color: var(--nf-text-heading);
+  font-size: var(--nf-pyside-font-control);
+  font-weight: 700;
+}
+
+.studio-context-preview,
+.studio-context-secondary {
+  display: -webkit-box;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--nf-text-secondary);
+  font-size: var(--nf-pyside-font-control);
+  line-height: 1.45;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.studio-context-secondary {
+  color: var(--nf-text-muted-soft);
+  font-size: var(--nf-pyside-font-meta);
+  line-clamp: 1;
+  -webkit-line-clamp: 1;
+}
+
+.studio-context-open {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--nf-accent-primary-pressed);
+  font-size: var(--nf-pyside-font-meta);
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.studio-context-dialog {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  max-height: var(--nf-dialog-viewport-height);
+}
+
+.studio-context-dialog .app-dialog-content {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.studio-context-detail-document {
+  /* The surrounding context dialog is intentionally wide; use that whole
+   * document column instead of inheriting the renderer's prose cap. */
+  --nf-rendered-markdown-inline-size: 100%;
+  max-height: min(48vh, 560px);
+  min-height: 0;
+  padding: 2px 4px 6px 0;
+  overflow: auto;
+  scrollbar-width: thin;
+}
+
+.studio-context-detail-document > .rendered-markdown {
+  max-height: none;
+}
+
+.studio-memory {
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.chapter-memory-tabs {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 1px;
+  overflow: visible;
+}
+
+.chapter-memory-content {
+  min-width: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.chapter-memory-card {
+  gap: 3px;
+}
+
+.chapter-memory-card p {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: var(--nf-font-ui);
+  line-height: 1.5;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+}
+
+.studio-memory > .button {
+  min-height: 30px;
+  font-size: var(--nf-pyside-font-meta);
+}
+
+.studio-artifact-content h3 {
+  font-size: var(--nf-font-section-sm);
+}
+
+.studio-artifact-content p,
+.studio-artifact-tabs button {
+  font-size: var(--nf-pyside-font-control);
+}
+
+/* ── 声腔：Qt workbench 的 13pt 文字、紧凑标签和对话区 ────────── */
+
+.voice-page {
+  gap: 6px;
+}
+
+.voice-context {
+  padding: 6px 10px;
+}
+
+.voice-metrics strong {
+  font-size: var(--nf-font-section-sm);
+}
+
+.voice-provider,
+.voice-project,
+.voice-metrics span,
+.voice-metrics small {
+  font-size: var(--nf-pyside-font-meta);
+}
+
+.voice-frame {
+  height: clamp(600px, calc(100dvh - 140px), 820px);
+}
+
+.voice-tabs {
+  min-height: 34px;
+  padding-inline: 6px;
+}
+
+.voice-tabs > button:not(.voice-save) {
+  padding-inline: 11px;
+  font-size: var(--nf-pyside-font-control);
+}
+
+.voice-cast h2,
+.voice-detail h2,
+.voice-script h2,
+.voice-room h2,
+.voice-post h2,
+.voice-settings h2,
+.voice-room-grid article h3 {
+  font-size: var(--nf-pyside-font-section);
+}
+
+.voice-cast p,
+.voice-detail header p,
+.voice-post p,
+.voice-settings > article > p,
+.voice-profile p,
+.voice-room-grid article p,
+.voice-script-document button p {
+  font-size: var(--nf-pyside-font-control);
+  line-height: 1.55;
+}
+
+.voice-cast-list button strong,
+.voice-profile strong,
+.voice-detail-facts dd {
+  font-size: var(--nf-pyside-font-control);
+}
+
+.voice-cast-list button small,
+.voice-detail-facts dt,
+.voice-script-document button small,
+.voice-room-segment-list button small {
+  font-size: var(--nf-pyside-font-meta);
+}
+
+.voice-status,
+.voice-toolbar > span,
+.voice-script-metrics span,
+.voice-delivery-steps span,
+.voice-settings label small {
+  font-size: var(--nf-pyside-font-meta);
+}
+
+/* ── 卷帙：只让文档正文使用宋体，导航与控件保持 PySide UI 字体 ── */
+
+.reader-header > select,
+.reader-tabs button,
+.reader-inner-tabs button,
+.reader-source-toolbar,
+.reader-source-toolbar button,
+.reader-source-status,
+.reader-chapter-mode button,
+.reader-chapter-list,
+.reader-source-tabs button,
+.reader-report-leaves button {
+  font-family: var(--nf-font-ui-family);
+}
+
+.reader-header > select,
+.reader-tabs button {
+  font-size: var(--nf-pyside-font-control);
+}
+
+.reader-header > strong {
+  font-size: var(--nf-pyside-font-section);
+}
+
+.reader-inner-tabs button,
+.reader-source-toolbar strong,
+.reader-source-toolbar button,
+.reader-source-status,
+.reader-chapter-mode button,
+.reader-chapter-list button,
+.reader-source-tabs button,
+.reader-report-leaves button {
+  font-size: var(--nf-pyside-font-meta);
+}
+
+.reader-source-body > h1 {
+  font-size: var(--nf-font-section);
+}
+
+@media (max-width: 1320px) {
+  .studio-workbench {
+    grid-template-columns: 210px minmax(360px, 1fr) 270px;
+    height: clamp(600px, calc(100dvh - 220px), 780px);
+  }
+}

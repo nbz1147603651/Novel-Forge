@@ -1,0 +1,70 @@
+/* Compact source-message-dialog counterpart.  PySide6 uses the shared
+   QDialog#appDialog body for save/discard/cancel prompts, so web parity keeps
+   one reusable, measured surface rather than embedding one-off alert cards. */
+.source-message-dialog {
+  display: grid;
+  gap: 12px;
+  width: min(440px, calc(100vw - 42px));
+  min-width: min(440px, calc(100vw - 42px));
+  padding: 22px 24px 16px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 18%, transparent);
+  border-radius: var(--nf-radius-dialog-compact);
+  color: var(--nf-text-body);
+  background: color-mix(in srgb, var(--nf-bg-surface) 98%, transparent);
+  box-shadow: 0 19px 52px color-mix(in srgb, var(--nf-shadow) 28%, transparent);
+  animation: dialog-rise-in 200ms cubic-bezier(.22, .61, .36, 1);
+}
+
+.source-message-dialog-copy {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.source-message-dialog-text,
+.source-message-dialog-info {
+  margin: 0;
+}
+
+.source-message-dialog-text {
+  color: var(--nf-text-body);
+  font-size: var(--nf-font-section);
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.source-message-dialog-info {
+  color: var(--nf-text-secondary);
+  font-size: var(--nf-font-subsection);
+  line-height: 1.55;
+}
+
+.source-message-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.source-message-dialog-actions .button {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: var(--nf-control-height-relaxed);
+  padding: 4px 12px;
+  border-radius: var(--nf-radius-control-emphasis);
+  font-size: var(--nf-font-ui);
+}
+
+.source-message-dialog-actions .button-danger {
+  margin-left: 0;
+}
+
+@media (max-width: 520px) {
+  .source-message-dialog {
+    min-width: 0;
+  }
+
+  .source-message-dialog-actions {
+    flex-wrap: wrap;
+  }
+}

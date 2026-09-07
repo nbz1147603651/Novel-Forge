@@ -1,0 +1,20 @@
+{#- Zvec 只负责召回；本宏明确权威层级并保留来源，不把相似度当成叙事判断。 -#}
+{% macro render_retrieval_evidence(evidence, title="## 动态叙事证据") -%}
+{% set evidence = evidence | default({}) %}
+{% set cards = evidence.supporting_evidence | default([]) %}
+{% set selection = evidence.selection | default({}) %}
+{% if cards %}
+{{ title }}
+- 使用边界：本章 P0 固定约束以 Source Artifact 为准；`authority=accepted` 是已裁定状态证据；其他召回卡只用于核验和联想，不得由相似度直接推出新事实。
+- 时间边界：所有卡均已按 `max_visible_chapter` 过滤；不得从证据缺口猜测未来章节内容。
+{% if cards %}
+### Zvec 召回证据（有来源）
+{% for item in cards %}
+- [{{ item.authority | default('supporting') }}{% if item.chapter_number | default(0) %}/第{{ item.chapter_number }}章{% endif %}] {{ item.excerpt | default('') }}（source={{ item.source_ref | default('') }}）
+{% endfor %}
+{% endif %}
+{% if selection.has_more_evidence | default(false) %}
+- 证据预算提示：当前候选中至少仍有 {{ selection.omitted_candidate_count_lower_bound | default(0) }} 条未装入。本步骤不得自行补全缺失事实；对证据不足的推进采用保守方案，并保留可后续核验的开放状态。
+{% endif %}
+{% endif %}
+{%- endmacro %}

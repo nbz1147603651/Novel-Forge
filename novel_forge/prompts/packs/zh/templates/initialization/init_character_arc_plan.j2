@@ -1,0 +1,84 @@
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：init_character_arc_plan.j2
+服务步骤：INIT_CHARACTER_ARC_PLAN（角色圣经分片：人物弧线）
+作用简述：基于同一 roster 生成关键角色起点到终点的变化弧线。
+上游输入：premise/story_bible/character_roster/character_profiles/conflict_hint
+下游输出：JSON：{"character_arcs": [...]}
+下游消费者：INIT_CHARACTER_BIBLE 本地合并器、PLAN_OUTLINE
+消费链优先级：P0 = 不改名；P1 = 弧线服务主冲突；P2 = minor 可简短
+================================================================================
+#}
+{%- from "_base/_shared_evidence_anchor.j2" import render_shared_evidence_anchor -%}
+
+{#- 指导层 -#}
+请只生成人物弧线分片。不要新增角色，不要重复完整档案。
+
+## 输出字段说明
+- `character_arcs`：角色弧线列表，每条包含 `name`（逐字来自固定角色清单）和 `arc`（起点到终点的变化弧线，含阶段、心理变化、情感变化和章节线索）。
+
+## 链路边界
+本模板只用于 split 角色生成链路的最终弧线分片。
+它只能为既有 profile 写入或修正 `arc`，不能创建新角色、不能输出完整 `character_bible`，也不能改写关系矩阵。
+角色弧线应由本阶段按字段合同独立生成，不使用其它模板补救。
+
+## Canonical name / 章节边界规则
+- `name` 只能来自 roster canonical name；别名、旧名、前世名或误称只能在 `arc` 字符串中作为短说明。
+- 弧线可以描述章节阶段，但不能把远期揭示写成早期确认；章节边界必须留给 NarrativeContract / ChapterContractIndex 管理。
+- 不复制人物大包；只写起点、压力、选择代价、阶段变化和终点方向。
+
+{{ render_shared_evidence_anchor(shared_evidence_anchor) }}
+
+## 故事前提
+{{ premise }}
+
+## 世界观锚点
+{{ story_bible | tojson(indent=2) if story_bible is mapping else story_bible }}
+
+## 固定角色清单
+{{ character_roster | tojson(indent=2) }}
+
+{% if character_profiles %}
+## 已生成档案（弧线不得改写档案事实）
+{{ character_profiles | tojson(indent=2) }}
+{% endif %}
+
+{% if relationship_seed_matrix | default([]) %}
+## 关系种子矩阵（弧线参考，不是最终关系定稿）
+{{ relationship_seed_matrix | tojson(indent=2) }}
+{% elif relationship_matrix | default([]) %}
+## 已确定关系矩阵（弧线需要服从关系起点）
+{{ relationship_matrix | tojson(indent=2) }}
+{% endif %}
+
+{% if conflict_hint %}
+## 核心冲突
+{{ conflict_hint }}
+{% endif %}
+
+## 要求
+- protagonist / antagonist / deuteragonist 必须有明确弧线。
+- supporting 角色写功能性变化或立场转变。
+- minor 可以空字符串，但不要删除。
+- `name` 必须逐字来自固定角色清单；旧名、别名或前世名只能在 `arc` 字符串中作为说明出现。
+- 若关系种子暴露了配角之间的亏欠、保护、利用、旧识、盟友、敌手、亲缘或情感牵连，请把它转化为人物弧线压力或选择代价，但不要输出关系矩阵字段。
+
+## 字段内容约束
+- 每个对象只能包含 `name`、`arc`。
+- 所有阶段、心理变化、情感变化和章节线索都压缩进 `arc` 字符串，不要新增字段。
+
+## 质量校准
+- 工作身份：你是一位长篇叙事架构师，擅长把故事资产拆成可承接、可验证、不过度剧透的执行计划。
+- 规划推断路径：先锁定 P0 硬约束，再分配 P1 推进节奏，最后用 P2 风格/主题补足表现层。
+- 字段级质量示例（非输出格式）：平弱=“推进关系”；高质量=“写清谁因何行动、关系如何变化、下一环如何承接”。
+- 可操作路径：计划项要能被后续写作/审计直接检查，避免只给抽象愿望或主题口号。
+
+## 交付前核验
+- P0/P1/P2 优先级是否被保持，且没有让弱参考覆盖硬约束。
+- 是否能把关键判断回指到输入证据、上游契约或已批准计划。
+- 是否避免新增未授权的人物、地点、世界规则、未来 payoff 或格式协议。
+- 是否把抽象目标转化为可观察的行动、冲突、状态变化或章节承接点。
+
+{#- 格式层 -#}

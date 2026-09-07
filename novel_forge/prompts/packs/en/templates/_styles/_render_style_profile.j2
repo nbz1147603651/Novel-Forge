@@ -1,0 +1,242 @@
+{# source_template_hash: 17678e07c3226a34f035b04c2fa3c240ccc34d34cd9ef8bc40552c6d28681ee8 #}
+{#- Render project style guidelines as prompt specification section (merged version, including genre parameters and main style).
+    Usage:
+      {%- from "_styles/_render_style_profile.j2" import render_style_profile -%}
+      {{ render_style_profile(style_profile) }}
+-#}
+
+{#-
+  === Macro Module: Project Style Guidelines Rendering ===
+  File Type: Macro Module
+  Brief Description: Renders the style_profile object into a complete markdown-formatted style specification section, including style tone, hook configuration, pleasure point configuration, micro-payoff configuration, three-thread pacing thresholds, writing technique modules, etc.
+
+  Defined Macros and Parameters:
+  1. render_style_profile(profile, include_banned_phrases=false)
+     - Renders complete project style guidelines, including summary, global_style, hook_config, cool_point_config, micro_payoff_config, strand_config, modules
+
+  Usage:
+  - Called by templates such as initialization/profile_style.j2, checking/profile_style.j2 via {% from "_styles/_render_style_profile.j2" import render_style_profile %}
+-#}
+
+{%- macro render_style_profile(profile, include_banned_phrases=false) -%}
+{%- if profile -%}
+{%- set gs = profile.global_style | default({}) -%}
+{%- set hook = profile.hook_config | default({}) -%}
+{%- set cool = profile.cool_point_config | default({}) -%}
+{%- set micro = profile.micro_payoff_config | default({}) -%}
+{%- set strand = profile.strand_config | default({}) -%}
+{%- set pacing = profile.pacing_config | default({}) -%}
+{%- set hook_score = profile.hook_score_config | default({}) -%}
+{%- set rp = profile.reading_power_window_config | default({}) -%}
+{%- set modules = profile.modules | default([]) -%}
+
+## Project-Specific Style Guidelines
+
+- Priority: If these guidelines exist, they take precedence during writing; genre, tone, and supplementary instructions serve only as fallbacks and must not conflict with these guidelines.
+
+{%- if profile.summary | default('') %}
+> {{ profile.summary | default('') }}
+{%- endif %}
+{%- if profile.source_elements | default([]) %}
+- Source Elements: {{ profile.source_elements | default([]) | join(', ') }}
+{%- endif %}
+
+{#- Main Style Parameters #}
+{%- if gs %}
+
+### Style Tone
+- Dialogue Ratio: {{ gs.dialogue_ratio | default('') }}
+- Pacing Mode: {{ gs.pace_mode | default('') }}
+- Emotional Style: {{ gs.emotional_style | default('') }}
+- Environmental Description: {{ gs.environment_ratio | default('') }}
+- Information Density: {{ gs.info_density | default('') }}
+{%- set _banned_phrases = gs.banned_phrases | default([]) -%}
+{%- if include_banned_phrases and _banned_phrases %}
+- Project-Level Banned Phrases: {{ _banned_phrases | join(', ') }} (avoid identical or near-identical reuse)
+{%- endif %}
+{%- endif %}
+
+{#- Hook Configuration #}
+{%- if hook %}
+
+### Hook Requirements
+- Preferred Types: {{ hook.preferred_types | default([]) | join(', ') }}
+- Strength Baseline: {{ hook.strength_baseline | default('') }}
+{%- if hook.chapter_end_required | default(false) %}
+- Hook Required at Chapter End
+{%- endif %}
+{%- endif %}
+
+{#- Pleasure Point Configuration #}
+{%- if cool and cool.preferred_patterns | default([]) %}
+
+### Pleasure Point Patterns
+- Preferred Patterns: {{ cool.preferred_patterns | default([]) | join(', ') }}
+- Pleasure Point Density: {{ cool.density_per_chapter | default('') }}
+{%- endif %}
+
+{#- Micro-Payoff Configuration #}
+{%- if micro %}
+
+### Micro-Payoff Requirements
+- Preferred Types: {{ micro.preferred_types | default([]) | join(', ') }}
+- Minimum Per Chapter: {{ micro.min_per_chapter | default('') }}
+{%- endif %}
+
+{#- Plot Thread Configuration #}
+{%- if strand %}
+
+### Three-Thread Pacing Thresholds
+- Quest Thread Max Consecutive: {{ strand.quest_max_consecutive | default('') }} chapters
+- Fire Thread Max Absent: {{ strand.fire_max_absent | default('') }} chapters
+- Constellation Thread Max Absent: {{ strand.constellation_max_absent | default('') }} chapters
+{%- if strand.stagnation_threshold is defined %}
+- Stagnation Warning Threshold: {{ strand.stagnation_threshold }} chapters
+{%- endif %}
+{%- endif %}
+
+{#- Pacing Configuration #}
+{%- if pacing %}
+
+### Pacing Parameters
+- Low Tension Upper Limit: {{ pacing.min_tension_chapters | default('') }} chapters
+- Climax Spacing: {{ pacing.climax_spacing_chapters | default('') }} chapters
+{%- endif %}
+
+{#- Hook Score Configuration #}
+{%- if hook_score %}
+
+### Reader Retention Scoring Weights
+- Strong Hook: {{ hook_score.hook_score_strong | default('') }}
+- Medium Hook: {{ hook_score.hook_score_medium | default('') }}
+- Weak Hook: {{ hook_score.hook_score_weak | default('') }}
+- Payoff Score Cap: {{ hook_score.payoff_cap | default('') }}
+- Transition Chapter Penalty: {{ hook_score.transition_penalty | default('') }}
+{%- endif %}
+
+{#- Reader Retention Window Configuration #}
+{%- if rp %}
+
+### Reader Retention Window Configuration
+- Window Size: {{ rp.window_size | default('') }} chapters (left offset {{ rp.window_left_offset | default('') }}, right offset {{ rp.window_right_offset | default('') }})
+- Suspense Delay Threshold: {{ rp.suspense_delay_threshold | default('') }} chapters; Forced Resolution Threshold: {{ rp.force_resolve_threshold | default('') }} chapters
+- Hook Alternation Threshold: {{ rp.hook_alternation_threshold | default('') }}; Max Consecutive Same Type: {{ rp.max_consecutive_same_hook | default('') }}
+- Tension Deviation Tolerance: {{ rp.tension_deviation_tolerance | default('') }}; Recovery Factor: {{ rp.tension_recovery_factor | default('') }}
+{%- if rp.hook_strength_weights | default({}) %}
+- Composite Score Weights: {% for key, value in rp.hook_strength_weights.items() %}{{ key }}={{ value }}{% if not loop.last %}, {% endif %}{% endfor %}
+{%- endif %}
+- Payoff Score Cap: {{ rp.payoff_cap | default('') }}
+- Warning Thresholds: Critical {{ rp.critical_score_threshold | default('') }}, Warning {{ rp.warning_score_threshold | default('') }}
+- Toggles: Force Resolution={{ rp.enable_force_resolve | default('') }}; Hook Alternation={{ rp.enable_hook_alternation_check | default('') }}; Tension Recovery={{ rp.enable_tension_recovery | default('') }}
+{%- endif %}
+
+{#- Writing Technique Modules #}
+{%- if modules %}
+
+### Writing Technique Guidelines
+{% for mod in modules %}
+#### {{ mod.name }}
+{% for rule in mod.rules %}- {{ rule }}
+{%- endfor %}
+{%- if mod.positive_example | default('') %}- ✓ {{ mod.positive_example }}{% endif %}
+{%- if mod.negative_example | default('') %}
+- ✗ {{ mod.negative_example }}{% endif %}
+
+{%- endfor %}
+{%- endif %}
+
+{%- endif -%}
+{%- endmacro -%}
+
+{%- macro render_style_profile_for_stage(profile, stage="draft", include_banned_phrases=false) -%}
+{%- if profile -%}
+{%- set gs = profile.global_style | default({}) -%}
+{%- set hook = profile.hook_config | default({}) -%}
+{%- set cool = profile.cool_point_config | default({}) -%}
+{%- set micro = profile.micro_payoff_config | default({}) -%}
+{%- set strand = profile.strand_config | default({}) -%}
+{%- set pacing = profile.pacing_config | default({}) -%}
+{%- set hook_score = profile.hook_score_config | default({}) -%}
+{%- set modules = profile.modules | default([]) -%}
+{%- set stage_label = {
+  "bridge": "Bridge",
+  "plan": "Planning",
+  "draft": "Draft Generation",
+  "edit": "Editing & Fixing",
+  "eval": "Evaluation"
+}.get(stage, "Writing") -%}
+
+## Project Style Constraints ({{ stage_label }}) | Project-Specific Style Guidelines
+
+{%- if profile.summary | default('') %}
+- Style Summary: {{ profile.summary | default('') }}
+{%- endif %}
+
+{%- if gs and stage in ["bridge", "draft", "edit", "eval"] %}
+### Voice and Density
+- Dialogue Ratio: {{ gs.dialogue_ratio | default('') }}
+- Pacing Mode: {{ gs.pace_mode | default('') }}
+- Emotional Style: {{ gs.emotional_style | default('') }}
+- Environmental Description: {{ gs.environment_ratio | default('') }}
+- Information Density: {{ gs.info_density | default('') }}
+{%- endif %}
+
+{%- if hook and stage in ["plan", "draft", "edit", "eval"] %}
+### Hook Execution
+- Preferred Types: {{ hook.preferred_types | default([]) | join(', ') }}
+- Strength Baseline: {{ hook.strength_baseline | default('') }}
+{%- if hook.chapter_end_required | default(false) %}
+- Executable Hook Required at Chapter End
+{%- endif %}
+{%- endif %}
+
+{%- if micro and stage in ["plan", "draft", "edit", "eval"] %}
+### Micro-Payoffs
+- Preferred Types: {{ micro.preferred_types | default([]) | join(', ') }}
+- Minimum Per Chapter: {{ micro.min_per_chapter | default('') }}
+{%- endif %}
+
+{%- if cool and cool.preferred_patterns | default([]) and stage in ["plan", "draft"] %}
+### Pleasure Point Patterns
+- Preferred Patterns: {{ cool.preferred_patterns | default([]) | join(', ') }}
+- Density: {{ cool.density_per_chapter | default('') }}
+{%- endif %}
+
+{%- if strand and stage == "plan" %}
+### Three-Thread Pacing
+- Quest Thread Max Consecutive: {{ strand.quest_max_consecutive | default('') }} chapters
+- Fire Thread Max Absent: {{ strand.fire_max_absent | default('') }} chapters
+- Constellation Thread Max Absent: {{ strand.constellation_max_absent | default('') }} chapters
+{%- if strand.stagnation_threshold is defined %}
+- Stagnation Warning Threshold: {{ strand.stagnation_threshold }} chapters
+{%- endif %}
+{%- endif %}
+
+{%- if pacing and stage == "plan" %}
+### Pacing Parameters
+- Low Tension Upper Limit: {{ pacing.min_tension_chapters | default('') }} chapters
+- Climax Spacing: {{ pacing.climax_spacing_chapters | default('') }} chapters
+{%- endif %}
+
+{%- if modules and stage in ["bridge", "draft", "edit"] %}
+### Writing Techniques
+{% for mod in modules %}
+- {{ mod.name }}: {{ mod.rules | default([]) | join('; ') }}
+{%- endfor %}
+{%- endif %}
+
+{%- set _banned_phrases = gs.banned_phrases | default([]) -%}
+{%- if include_banned_phrases and _banned_phrases %}
+### Project-Level Banned Phrases
+- {{ _banned_phrases | join(', ') }}
+{%- endif %}
+
+{%- if hook_score and stage == "eval" %}
+### Scoring Parameters
+- Strong/Medium/Weak Hook Scores: {{ hook_score.hook_score_strong | default('') }} / {{ hook_score.hook_score_medium | default('') }} / {{ hook_score.hook_score_weak | default('') }}
+- Payoff Score Cap: {{ hook_score.payoff_cap | default('') }}
+- Transition Chapter Penalty: {{ hook_score.transition_penalty | default('') }}
+{%- endif %}
+
+{%- endif -%}
+{%- endmacro -%}

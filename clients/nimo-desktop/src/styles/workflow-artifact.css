@@ -1,0 +1,294 @@
+.workflow-artifact-surface {
+  width: min(1320px, calc(100vw - 120px));
+  height: min(820px, calc(100vh - 112px));
+  min-width: 0;
+  min-height: 0;
+}
+
+.workflow-artifact-dialog {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+  padding: 18px 22px 14px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--nf-border-soft) 46%, transparent);
+  border-radius: var(--nf-radius-dialog);
+  color: var(--nf-text-body);
+  background: var(--nf-bg-dialog);
+  box-shadow: 0 25px 65px color-mix(in srgb, var(--nf-shadow) 31%, transparent);
+  animation: dialog-rise-in 180ms cubic-bezier(.22, .61, .36, 1);
+}
+
+.workflow-artifact-dialog > header {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.workflow-artifact-dialog h2 {
+  margin: 0;
+  color: var(--nf-text-heading);
+  font-family: "Songti SC", "STSong", Georgia, serif;
+  font-size: var(--nf-font-page-lg);
+  font-weight: 700;
+}
+
+.workflow-artifact-dialog header p,
+.workflow-artifact-file {
+  margin: 0;
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-subsection);
+}
+
+.workflow-artifact-separator {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--nf-border-warm) 28%, transparent) 15%,
+    color-mix(in srgb, var(--nf-border-warm) 28%, transparent) 85%,
+    transparent
+  );
+}
+
+.workflow-artifact-workspace,
+.workflow-artifact-panel,
+.workflow-artifact-content {
+  min-width: 0;
+  min-height: 0;
+}
+
+.workflow-artifact-workspace {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.workflow-artifact-loading {
+  display: grid;
+  min-height: 180px;
+  place-items: center;
+  padding: 18px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 16%, transparent);
+  border-radius: 10px;
+  color: var(--nf-text-muted);
+  background: color-mix(in srgb, var(--nf-bg-input) 72%, transparent);
+  font-size: var(--nf-font-label);
+}
+
+/* Task artifacts reuse the project reader's volume tags and source-document
+   host. Keep the workspace bounded by the dialog while its rich document owns
+   the inner scroll, matching the PySide6 artifact tabs. */
+.workflow-artifact-workspace > .artifact-reader {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+}
+
+.artifact-reader {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  gap: 0;
+}
+
+.artifact-reader-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 4px 8px;
+}
+
+.artifact-reader-heading p {
+  margin: 0;
+  color: var(--nf-text-muted-soft);
+  font-size: var(--nf-font-body);
+}
+
+.artifact-reader-tabs {
+  padding-inline: 4px;
+}
+
+.artifact-reader-content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 18%, transparent);
+  border-radius: 6px;
+  background: var(--nf-bg-surface);
+}
+
+.artifact-reader-document {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+
+.artifact-reader-fallback { min-height: 100%; padding: 12px; }
+.artifact-reader-fallback > .document-json-shell,
+.artifact-reader-fallback > .document-plain { max-height: none; }
+
+.artifact-reader .reader-document.is-source-parity {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+}
+
+.artifact-reader .reader-source-body {
+  min-height: 0;
+  overflow: auto;
+}
+
+/* PySide's QTextEdit wraps chapter prose against the available artifact pane.
+   The shared document renderer normally keeps a compact 78ch measure, which
+   becomes visibly stranded on the left inside this near-fullscreen dialog.
+   Give Chinese long-form artifacts a wider, centred reading measure while
+   retaining comfortable leading and paragraph separation. */
+.workflow-artifact-surface .artifact-reader .reader-document-body.is-rich {
+  padding: clamp(20px, 2.8vw, 38px) clamp(24px, 3.8vw, 58px) 48px;
+}
+
+.workflow-artifact-surface .artifact-reader .reader-document-body.is-rich > .rendered-markdown {
+  gap: clamp(16px, 1.4vw, 24px);
+  padding: 0;
+}
+
+.workflow-artifact-surface .artifact-reader .rendered-markdown > :not(.document-table-wrap, .document-code) {
+  width: min(100%, 70em);
+  margin-inline: auto;
+}
+
+.workflow-artifact-surface .artifact-reader .rendered-markdown :is(p, li, blockquote) {
+  font-size: clamp(17px, calc(0.34vw + 12px), 19px);
+  line-height: 2;
+  letter-spacing: 0.025em;
+}
+
+.workflow-artifact-surface .artifact-reader .reader-facts {
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+}
+
+.artifact-reader .artifact-viewer-tabs {
+  height: 100%;
+}
+
+.artifact-reader .artifact-tab-content {
+  max-height: none;
+  height: 100%;
+}
+
+@media (max-width: 700px) {
+  .artifact-reader-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .workflow-artifact-surface .artifact-reader .reader-document-body.is-rich {
+    padding: 18px 18px 32px;
+  }
+}
+
+.workflow-artifact-panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 8px;
+}
+
+.workflow-artifact-file {
+  padding: 2px 0;
+  color: var(--nf-text-body);
+  font-size: var(--nf-font-ui);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.workflow-artifact-content {
+  display: grid;
+  overflow: hidden;
+}
+
+.workflow-artifact-content > .document-json-shell,
+.workflow-artifact-content > .document-plain,
+.workflow-artifact-content > .rendered-markdown {
+  width: 100%;
+  height: 100%;
+  max-height: none;
+}
+
+.workflow-artifact-tabs {
+  display: flex;
+  align-items: end;
+  gap: 1px;
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.workflow-artifact-tabs button {
+  min-height: 30px;
+  padding: 5px 9px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 15%, transparent);
+  border-bottom: 0;
+  border-radius: 8px 8px 0 0;
+  color: var(--nf-text-body);
+  background: color-mix(in srgb, var(--nf-bg-hover-secondary) 40%, transparent);
+  font-size: var(--nf-font-ui);
+  font-weight: 600;
+}
+
+.workflow-artifact-tabs button[aria-selected="true"] {
+  border-color: color-mix(in srgb, var(--nf-border-default) 22%, transparent);
+  color: var(--nf-text-heading);
+  background: color-mix(in srgb, var(--nf-bg-input) 92%, transparent);
+}
+
+.workflow-artifact-empty {
+  padding: 18px;
+  overflow: auto;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 16%, transparent);
+  border-radius: 10px;
+  color: var(--nf-text-muted);
+  background: color-mix(in srgb, var(--nf-bg-input) 72%, transparent);
+  font-size: var(--nf-font-label);
+}
+
+.workflow-artifact-empty p {
+  margin: 0;
+  line-height: 1.65;
+}
+
+.workflow-artifact-dialog > footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.workflow-artifact-dialog > footer .button {
+  min-height: 30px;
+  padding-inline: 14px;
+}
+
+@media (max-width: 1028px), (max-height: 608px) {
+  .workflow-artifact-surface {
+    width: calc(100vw - 48px);
+    height: calc(100vh - 48px);
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .workflow-artifact-dialog {
+    padding: 14px;
+  }
+}

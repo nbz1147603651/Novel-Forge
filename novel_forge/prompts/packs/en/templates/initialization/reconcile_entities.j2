@@ -1,0 +1,80 @@
+{# source_template_hash: 8943658416c4e817369498eeb163531383c654fbb0131c303776c4ff088044bc #}
+{#
+================================================================================
+【Notes】
+================================================================================
+Prompt: reconcile_entities.j2
+Service Step: RECONCILE_ENTITIES (LLM-driven Entity Reconciliation)
+Brief Description: Semantically parse unresolved entity references in the chapter contract to determine whether they are aliases of existing entities, new entities requiring registration, or invalid references that should be removed.
+Upstream Input:
+  - unresolved_names: List of unresolved entity names
+  - entity_catalog: Current entity catalog (allowed_entities + policy)
+  - entity_retrieval: Per-name candidates and optional dynamic narrative evidence
+  - chapter_context: Chapter context where unresolved names appear (outline, contract fragment)
+Downstream Output:
+  - JSON: resolutions array, each containing resolution/canonical_name/entity_type/confidence/reasoning
+  - Downstream Consumer: _persist_source_artifacts_from_init repair loop
+Consumer Chain Priority: P0 (accurate mapping to existing entities) > P1 (correctly identifying new entities) > P2 (confidence calibration)
+================================================================================
+#}
+
+{#- Guidance Layer -#}
+## Task
+You are a long-form novel entity architect. Your task is to determine how unresolved entity references appearing in the chapter contract should be handled.
+
+For each unresolved name, choose one of three dispositions:
+1. **alias**: The reference is an alias, abbreviation, honorific, nickname, or relational title of an existing entity. Map it to the existing entity's canonical_name.
+2. **new_entity**: The reference is indeed a new entity required by the narrative (character, location, organization, item, or concept), and should be registered as a new entity.
+3. **remove**: The reference cannot be mapped to an existing entity, nor is there sufficient narrative evidence to support it as a new entity. It should be removed or rewritten from the contract.
+
+## Judgment Criteria
+- Prioritize mapping to existing entities. Only when the name is semantically distinct from existing entities, and the chapter context proves the name is a narrative-essential new character/location/entity, should you judge it as new_entity.
+- Relational titles (e.g., "consort of XX", "father of XX") should be mapped to the relational subject. If the relational subject is already in the catalog, judge as alias and label as relationship.
+- Compound names (e.g., "ten years ofseparation mutual convergence") are typically abstract concepts or event descriptions rather than entity names; without sufficient evidence, judge as remove.
+- Similar sounds/homophones/variant characters should be mapped to the closest existing entity.
+- confidence reflects your certainty in the judgment: alias ≥ 0.85 indicates high-confidence mapping; new_entity ≥ 0.75 indicates narrative evidence exists; remove falls between 0.6-0.9. Resolutions below 0.7 will be ignored.
+
+## Entity Catalog
+This is a bounded projection from the structured entity source of truth. Fixed entity facts are not duplicated into the vector store, and candidate order is not a semantic verdict.
+{% for entity in entity_catalog.allowed_entities %}
+- **{{ entity.canonical_name }}** ({{ entity.entity_type }}, id={{ entity.entity_id }}{% if entity.aliases %}, aliases: {{ entity.aliases | join(', ') }}{% endif %})
+{% endfor %}
+
+## Candidates and Narrative Evidence
+Each unresolved name may map only to its own `candidates_by_unresolved_name` entries. `evidence_packs` contains dynamic chapter, relationship, or state evidence retrieved from Zvec when needed; it is not a second source of truth.
+{{ entity_retrieval }}
+
+## Chapter Context
+Below is the chapter context where unresolved names appear, helping you understand the role of these names in the narrative.
+{{ chapter_context }}
+
+## Unresolved Entity References
+Please judge each name one by one:
+{% for name in unresolved_names %}
+{{ loop.index }}. {{ name }}
+{% endfor %}
+
+## Quality Calibration
+- Professional Identity: You are a precise narrative entity management specialist, skilled at identifying aliases, relational titles, and new entities from Chinese naming patterns.
+- Judgment Path: First examine the name structure and literal meaning, then cross-reference the entity catalog for mapping candidates, and finally confirm narrative necessity with chapter context.
+- Field-level Quality Examples (not output format): Low quality = "might be an alias"; High quality = "in 'consort of Emperor Xuancang', 'consort' indicates a spousal relationship, and the relational subject 'Emperor Xuancang' is already in the catalog, judged as alias".
+- Actionable Path: Each resolution must be directly usable by downstream code—alias provides canonical_name, new_entity provides entity_type, remove requires no additional fields.
+
+## Pre-delivery Verification
+- Has every unresolved name been given a resolution?
+- Do all alias resolutions point to canonical_names that actually exist in the catalog?
+- Do new_entity resolutions have narrative evidence support from the chapter context?
+- Do confidence values genuinely reflect judgment certainty, rather than uniformly high scores?
+
+## Field Semantics
+
+- `resolutions`: one decision for each input name.
+- `unresolved_name`: must copy the unresolved input name verbatim.
+- `relationship`: optional relational title or alias-relationship explanation.
+- `reasoning`: one sentence explaining the key evidence.
+- `resolution` can only be `alias`, `new_entity`, or `remove`.
+- `alias` must provide `canonical_name`; do not output canonical_names that do not exist in the catalog.
+- `new_entity` must provide `entity_type`; do not misjudge events, themes, or abstract actions as entities.
+- `remove` does not require `canonical_name` or `entity_type`.
+- `confidence` must be a number between 0 and 1, not written in Chinese or as a percentage.
+- Each input name must appear at most once; when unable to judge, output `remove` with a lower but genuine confidence.

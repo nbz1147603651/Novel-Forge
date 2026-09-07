@@ -1,0 +1,316 @@
+{# ================================================================================
+source_template_hash: b3a22d55910f2b990a8d84112cb2e367dd94ed736c9e3a5c88efa8446d8792df
+【Remarks】
+================================================================================
+Prompt: plan_outline_continue.j2
+Service Step: PLAN_OUTLINE_CONTINUE (Outline Continuation)
+Function Overview: On the basis of the already generated outline, continue writing chapter outlines for the specified chapter range (batch_start-batch_end), maintaining coherence with the previous batch.
+Upstream Inputs:
+  - spec: User's story specification (genre, theme, tone, etc.)
+  - blueprint: From PLAN_OUTLINE (complete blueprint structure)
+  - blueprint_element_selection: From BLUEPRINT_ELEMENT_SELECT (extension_elements candidates)
+  - phase_guidance/phase_rhythm_guidance: Blueprint phase navigation information
+  - batch_start/batch_end: This batch's chapter range
+  - words_per_chapter: Target word count per chapter
+  - outline_tracker_context: Unified memory tracking (relationship dynamics, theme appearances, etc.)
+  - outline_entity_catalog: Registered IDs and entity types for every chapter, including unlocked previews.
+  - chapter_design_matrix: Canonical entity_id/cast constraints and blueprint emotional evidence for this continuation range
+  - is_final_batch: Whether this is the final chapter batch
+Downstream Output:
+  - JSON: {chapters: [{chapter_number, title, goal, beats_summary, main_plot_points,
+             subplot_points, element_focus, pov_character_id, pov_character_name,
+             involved_character_ids, cast_plan, emotional_plan, scene_design_goals,
+             setting, expected_word_count, expected_hook, expected_payoffs, notes}]}
+  - Downstream Consumer: PLAN_CHAPTER (Chapter Planning)
+Consumption Chain Priority:
+  P0 = Chapter Number Continuity / Narrative Phase Coverage Completeness
+  P1 = outline_tracker_context Consistency Constraint
+  P2 = Subplot Weave Reasonableness
+Brief Example:
+  Input: batch_start=6, batch_end=10, is_final_batch=true
+  Output: {chapters:[{chapter_number:6, title:"...", goal:"...", beats_summary:[...]}]}
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer: Task Definition + Context Consumption
+    --------------------------------------------------------------------------- -#}
+
+Please continue generating chapter outlines for Chapter {{ batch_start }} to Chapter {{ batch_end }} in the same format.
+
+{% if spec is defined %}
+## Story Basics
+- Genre: {{ spec.genre }} | Theme: {{ spec.theme }} | Tone: {{ spec.tone }}
+{% if spec.opening_style %}- Opening Style Sample (for technique reference only, do not copy verbatim to Chapter 1): {{ spec.opening_style }}{% endif %}
+{% if spec.ending_style %}- Ending Style Sample (for technique reference only, do not copy verbatim to final chapter): {{ spec.ending_style }}{% endif %}
+{% if spec.world_hint %}- Worldview: {{ spec.world_hint }}{% endif %}
+{% if spec.conflict_hint %}- Core Conflict: {{ spec.conflict_hint }}{% endif %}
+{% if spec.pov_hint %}- Narrative POV: {{ spec.pov_hint }}{% endif %}
+{% endif %}
+
+{% if story_bible is defined and story_bible %}
+## Worldview Anchoring
+{% set story_rules = story_bible.rules | default(story_bible.world_rules | default([]), true) %}
+{% if story_bible.era | default('') %}- Era/Setting: {{ story_bible.era }}{% endif %}
+{% if story_rules %}- World Rules: {% for rule in story_rules %}{{ rule }}{% if not loop.last %}; {% endif %}{% endfor %}{% endif %}
+{% endif %}
+
+{% if character_bible is defined and character_bible and character_bible.characters %}
+## Character Status Reference
+{% for char in character_bible.characters %}
+{% set char_arc = char.arc | default('', true) %}
+{% if not char_arc and char is mapping %}{% set char_arc = char.get('arc_goal', '') %}{% endif %}
+- {{ char.name | default('', true) }}: {% if char.role | default('') %}{{ char.role }}{% endif %}{% if char_arc %} | Arc Goal: {{ char_arc }}{% endif %}
+{% endfor %}
+{% endif %}
+
+{% set density = outline_density | default({}, true) %}
+{% set beats_min = density.beats_min | default(4, true) %}
+{% set beats_max = density.beats_max | default(8, true) %}
+{% set main_min = density.main_plot_points_min | default(2, true) %}
+{% set main_max = density.main_plot_points_max | default(4, true) %}
+{% set subplot_max = density.subplot_points_max | default(3, true) %}
+{% set element_focus_max = density.element_focus_max | default(3, true) %}
+{% set payoff_min = density.expected_payoffs_min | default(1, true) %}
+{% set payoff_max = density.expected_payoffs_max | default(3, true) %}
+
+{% set design_matrix = chapter_design_matrix | default(none) %}
+{% set entity_catalog = outline_entity_catalog | default(design_matrix.entity_catalog if design_matrix else [], true) %}
+{% if entity_catalog %}
+## Entity Identity (P0, every chapter in this batch)
+### Entity Catalog
+{{ entity_catalog | tojson(indent=2) }}
+- Identity is independent of planning commitment. Use this catalog for every chapter, including previews without a matrix row.
+- Character IDs, `emotional_plan.subject_entity_id`, and `forbidden_active_character_ids` must reference `entity_type=character`. Locations and items belong in setting descriptions or `mention_only_entity_ids`.
+- Mention-only references may use any registered entity. Never invent IDs or substitute names or transliterations. Derive display names from the selected IDs.
+- Active cast requires an action, dialogue, or causal role. Recollection or background mentions alone never establish participation.
+- Chapters without a matrix row are adjustable previews: do not borrow another chapter's POV, required, or forbidden commitments. Tentative references still obey the same identity rules.
+{% endif %}
+{% if design_matrix %}
+## Chapter Design Matrix (P0 Identity Constraints + P1 Creative Evidence)
+The matrix comes from EntityRegistry and the upstream blueprint. `entity_id` and cast fields are hard constraints; `emotional_brief` is evidence for a newly authored emotional plan, not a local semantic answer:
+
+### This Batch's Chapter Constraints
+{% for row in design_matrix.chapters %}
+- Chapter {{ row.chapter_number }}:
+  - plot_duties={{ row.plot_duties | tojson }}
+  - cast_plan={{ row.cast_plan | tojson }}
+  - emotional_brief={{ row.emotional_brief | tojson }}
+{% if row.knowledge_boundary %}  - knowledge_boundary={{ row.knowledge_boundary | tojson }}
+{% endif %}{% if row.hook_payoff_duties %}  - hook_payoff_duties={{ row.hook_payoff_duties | tojson }}
+{% endif %}{% if row.scene_design_goals %}  - scene_design_goals={{ row.scene_design_goals | tojson }}
+{% endif %}
+{% endfor %}
+
+- `pov_character_id` must equal this chapter's `cast_plan.pov_entity_id`.
+- Matrix `required_character_ids` are hard active-cast obligations. Matrix `support_character_ids` are only a phase-level candidate pool; never stage a full-team appearance merely for continuity or cast completeness.
+- Output `support_character_ids` must contain only characters explicitly named with an observable action, dialogue, or causal role in the chapter goal, beats, plot/subplot points, emotional plan, scene goals, hook, or payoffs. A catalog character outside the candidate pool is allowed only with the same evidence and when not forbidden.
+- `involved_character_ids` must exactly equal the deduplicated union of POV, required, and actual support ids. Mention-only or background characters must not enter it.
+- `pov_character_name`, `involved_character_names`, `pov_character`, `involved_characters` must be backfilled from the `name` in Entity Catalog for the corresponding id; do not create names or use aliases.
+- Output `cast_plan` must preserve matrix POV, required, mention-only, and forbidden constraints while narrowing support ids to the actual chapter support cast; never rewrite entity ids.
+- Unregistered characters, titles, historical names, or misnamed characters can only appear in `goal`, `beats_summary`, `main_plot_points`, or `notes`, and cannot enter structured character fields.
+- `emotional_plan.subject_entity_id` must use this chapter's POV or required cast entity_id.
+- Use `emotional_brief` to author a distinct entry state, pressure, relationship/action choice, emotional turn, and exit resonance. Do not copy generic language across chapters.
+- Characters may only learn facts delivered by this chapter's actions, observations, and dialogue; future reveals must not become known early.
+{% endif %}
+
+{% set character_whitelist = outline_character_whitelist | default([], true) %}
+{% if character_whitelist and not entity_catalog %}
+## Structured Character Whitelist (P0)
+The following whitelist comes from character bible `characters[].name`. Only these official character names can be written to `pov_character` and `involved_characters`:
+{{ character_whitelist | tojson(indent=2) }}
+
+- `pov_character` must be a **single name** from the whitelist, exactly as written; combinations, explanations, ratios, or descriptions like "character X as main" are prohibited.
+- `involved_characters` must be an array of whitelist names; titles, factions, groups, positions, nicknames, unregistered characters, or objects only mentioned in setting text are prohibited.
+- If this chapter needs to mention objects outside the whitelist, please put them in `goal`, `beats_summary`, `main_plot_points`, or `notes`, and do not put them in structured character fields.
+{% endif %}
+
+{% if reveal_window | default(none) %}
+## Narrative Reveal Boundary (P0)
+- {{ reveal_window.priority_rule | default('P0 Narrative Reveal Boundary > P1 Plot Advancement > P2 Read-Hook/Micro-Payoff/Gratification.') }}
+- {{ reveal_window.allowed_policy | default('Before target chapter, only observations, misjudgments, suspicions, obscuration, indirect anomalies can be written; do not write as confirmation, verification, public exposure, or complete causal explanation.') }}
+- If strong hooks, micro-payoffs, or gratification points would prematurely consume the following future reveals, the hook intensity must be reduced, changed to doubts, misdirection, or indirect anomalies.
+{% if reveal_window.current_targets | default([]) %}
+- Reveals allowed to reach target chapter in this batch:
+{% for item in reveal_window.current_targets %}
+  - Chapter {{ item.target_chapter }} {{ item.thread }} / {{ item.stage }}: allowed disclosure={{ item.allowed_disclosure }}; trigger={{ item.trigger }}; consequence={{ item.required_action_consequence }}
+{% endfor %}
+{% endif %}
+{% if reveal_window.future_guardrails | default([]) %}
+- Future reveals that must NOT be confirmed or fulfilled in this batch:
+{% for item in reveal_window.future_guardrails %}
+  - Target Chapter {{ item.target_chapter }} {{ item.thread }} / {{ item.stage }}: currently can only plant or misdirect, do not write as confirmation; allowed disclosure={{ item.allowed_disclosure }}
+{% endfor %}
+{% if reveal_window.withheld_future_count | default(0) %} - Additionally, {{ reveal_window.withheld_future_count }} long-term reveals have been hidden due to length and must not be fulfilled early.{% endif %}
+{% endif %}
+{% if reveal_window.past_reveals | default([]) %}
+- Reveals past target chapter can only serve as established continuation, do not rewrite as new discoveries: {% for item in reveal_window.past_reveals %}Chapter {{ item.target_chapter }}{{ item.thread }}/{{ item.stage }}{% if not loop.last %}; {% endif %}{% endfor %}
+{% endif %}
+{% endif %}
+
+## This Batch's Task
+
+* Chapter Range: Chapter {{ batch_start }}–{{ batch_end }} (total {{ batch_end - batch_start + 1 }} chapters)
+* Target Word Count Per Chapter: {{ words_per_chapter }} words (±30% fine-tuning allowed)
+* Continuation Rule: Only generate chapters for the current batch, do not rewrite or overwrite completed chapters
+* Coherence Rule: The first chapter of this batch must be able to directly continue from the last chapter of the previous batch; do not restart the narrative
+* Numbering Rule: chapter_number must be continuous and strictly fall within {{ batch_start }}–{{ batch_end }} range
+* Title Rule: First determine a 4-10 Chinese character chapter name for each chapter and write it to `title`; the title is not a plot summary, do not copy `goal` / `main_plot_points` / `beats_summary`, do not contain long location sentences, long punctuation sentences, character parallel sentences, or complete event sentences; abbreviation is prohibited
+* Field Order Rule: For each chapter object, output `chapter_number`, `title`, `goal` first, then output `beats_summary` and other long arrays, to avoid long arrays crowding out the title field
+* Granularity Rule: Each chapter should have {{ main_min }}-{{ main_max }} main_plot_points, {{ beats_min }}-{{ beats_max }} beats_summary, 0-{{ subplot_max }} subplot_points; do not expand into scene-by-scene outlines
+* Beat Format: Each item in `beats_summary` should only write pure plot sentences; do not use numbering/label prefixes like `【Beat 1: Label】`, `【Label】`, `Beat 1:`
+
+## Title Compression Rules
+- Take 2-4 keywords from this chapter's core action, conflict turn, key imagery, or emotional landing point.
+- Avoid cramming character names, locations, complete action chains, and event results all into the title.
+- The title must fit the input of this work; do not reuse template genre words or external character names.
+
+{% if outline_quality_feedback is defined and outline_quality_feedback %}
+
+## Previous Quality Issues (Must Be Fixed This Time)
+The following issues come from the system's quality gate. This time you must regenerate the current batch; do notcarry forward placeholders, template chapter names, template main plots, or empty goals:
+
+{{ outline_quality_feedback }}
+{% endif %}
+
+{% if phase_guidance %}
+
+## Blueprint Navigation (Key Nodes This Batch Should Implement)
+
+{{ phase_guidance }}
+{% endif %}
+
+{% if phase_rhythm_guidance %}
+
+## Phase Rhythm Control
+
+{{ phase_rhythm_guidance }}
+{% endif %}
+
+{% set scoped_weave = extract_scoped_weave_links(blueprint, batch_start, batch_end) %}
+{% if scoped_weave %}
+### Subplot Weave Related to This Batch
+{% for subplot in scoped_weave %}
+- Subplot "{{ subplot.name }}"'s weave relationship:
+{% for link in subplot.weave_links %}
+  - {{ link.source_type }} "{{ link.source_ref }}" → {{ link.link_type }} → Chapter {{ link.trigger_chapter }} affects "{{ link.target_subplot }}"
+    ({{ link.description }})
+{% endfor %}
+{% endfor %}
+{% endif %}
+
+{% set _sel = blueprint_element_selection or {} %}
+{% set _ext_focus_candidates = _sel.extension_elements if _sel.extension_elements is defined else [] %}
+{% if _ext_focus_candidates %}
+## Chapter Element Focus Candidates (For `element_focus`)
+For each chapter, output 0-{{ element_focus_max }} key expansion elements (`element_focus`), can only choose from the following `element_id`s:
+{% for item in _ext_focus_candidates %}
+- `{{ item.element_id }}` ({{ item.name }}{% if item.selection_score is defined and item.selection_score %} | Priority {{ item.selection_score }}{% endif %}): {{ item.prompt_hint }}
+{% endfor %}
+When selecting, prioritize high-priority elements, elements not covered in the previous batch, and elements naturally needed for this batch's plot; do not forcefully insert elements just to cover them.
+{% endif %}
+
+{% if outline_tracker_context %}
+## Unified Memory Tracking
+
+### Relationship Dynamics
+{{ outline_tracker_context.relationship_summary }}
+
+### Theme Appearances
+{{ outline_tracker_context.themes_summary }}
+
+### Key Event Tracking
+{{ outline_tracker_context.key_events_summary }}
+
+### Unresolved Suspense
+{{ outline_tracker_context.unresolved_summary }}
+
+### Recent Chapters Overview
+{{ outline_tracker_context.recent_chapters_summary }}
+
+⚠️ **Mandatory Requirements**: This chapter's plot must be consistent with the above relationship changes, theme developments, and key events.
+- Do not contradict established character relationships
+- Do not ignore theme clues that have appeared
+- Should follow up on or resolve the above suspense, rather than introduce completely unrelated plot
+- If you need to change relationship status or introduce new themes, there must be sufficient narrative justification
+{% endif %}
+
+{% if relationship_overview | default([]) %}
+## Initialized Character Relationship Overview
+This batch's continuation must follow up on these final character relationships; relationship endpoint names must not be lost:
+{% for rel in relationship_overview %}
+- {{ rel }}
+{% endfor %}
+{% endif %}
+
+{% if style_profile %}
+## Project Style and Read-Hook Constraints
+{% if style_profile.summary %}- Style Summary: {{ style_profile.summary }}{% endif %}
+{% if style_profile.hook_config %}
+- Hook Preferences: {{ style_profile.hook_config.preferred_types | join(", ") }}
+- Strength Baseline: {{ style_profile.hook_config.strength_baseline }}
+{% endif %}
+{% if style_profile.micro_payoff_config %}
+- Minimum Micro-Payoffs Per Chapter: {{ style_profile.micro_payoff_config.min_per_chapter }}
+{% if style_profile.micro_payoff_config.preferred_types %}- Preferred Micro-Payoff Types: {{ style_profile.micro_payoff_config.preferred_types | join(", ") }}{% endif %}
+{% endif %}
+{% endif %}
+
+{% if is_final_batch %}
+
+## ⚠️ Final Chapter Requirements (This Batch Contains the Book's Last Chapters)
+
+* Must recycle all main plot suspense and key foreshadowing
+* Character arcs must have clear landing points
+* The ending must echo the closure strategy in the global narrative blueprint
+* The final chapter must have complete release of emotional resonance and narrative tension
+{% endif %}
+## Serial Engagement Planning Requirements
+
+### Chapter-End Hook (expected_hook)
+- Each chapter must contain `expected_hook`
+- Type: crisis / mystery / emotion / choice / desire
+- Intensity: strong / medium / weak
+- Description: Briefly describe the hook content for next chapter bridging and serial engagement re-evaluation
+
+### Micro-Payoffs (expected_payoffs)
+- Each chapter must contain `expected_payoffs`
+- Type: information / relationship / ability / resource / recognition / emotion / clue
+- Plan {{ payoff_min }}-{{ payoff_max }} micro-payoff points per chapter; if style guidelines prefer denser, still use this chapter outline granularity as the upper limit
+- Payoff types must naturally correspond to this chapter's main plot advancement, subplot nodes, and element focus; don't mechanically stuff them in
+- `expected_payoffs` must be written inside each chapter object, immediately following `expected_hook`; the chapter object can only be closed after `expected_payoffs` is written
+
+## Quality Calibration
+- Work Identity: You are a long-form narrative architect, skilled at decomposing story assets into executable, verifiable plans that avoid excessive spoilers.
+- Planning Inference Path: First lock in P0 hard constraints, then allocate P1 pacing, and finally supplement the presentation layer with P2 style/theme.
+- Field-Level Quality Examples (not output format): Weak = "advances the relationship"; High Quality = "clarifies who acts for what reason, how the relationship changes, and how the next beat connects".
+- Actionable Path: Plan items must be directly checkable by subsequent writing/audit; avoid giving only abstract wishes or theme slogans.
+
+## Pre-Delivery Validation
+- Are P0/P1/P2 priorities maintained, with no weak references overriding hard constraints?
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans?
+- Are unauthorized characters, locations, world rules, future payoffs, or format agreements avoided?
+- Are abstract goals transformed into observable actions, conflicts, state changes, or chapter bridging points?
+
+{#- ---------------------------------------------------------------------------
+    System Contract Injected by PromptBuilder
+    --------------------------------------------------------------------------- -#}
+
+## Chapter Field Requirements
+- The `chapters` array must contain exactly {{ batch_end - batch_start + 1 }} entries, with `chapter_number` ranging consecutively from {{ batch_start }} to {{ batch_end }}.
+- Each chapter object must explicitly contain a `title` field; the title can be short but cannot be omitted; cannot use only `goal`, `beats_summary`, or `main_plot_points` as a substitute for the title.
+- Each chapter object must start with three fields: `chapter_number`, `title`, `goal`, then write array fields like `beats_summary`, `main_plot_points`.
+- Each chapter must include: chapter number, title, narrative goal, beats summary, main plot points, subplot points, subplot focus, element focus, POV ID/display name, POV switch or not, main setting, expected word count, involved character IDs/display names, cast_plan, emotional_plan, scene_design_goals, notes, chapter-end hook, and micro-payoffs.
+- Field names must use: `chapter_number`, `title`, `goal`, `beats_summary`, `main_plot_points`, `subplot_points`, `subplot_focus`, `element_focus`, `pov_character_id`, `pov_character_name`, `pov_character`, `pov_switch`, `setting`, `expected_word_count`, `involved_character_ids`, `required_character_ids`, `support_character_ids`, `involved_character_names`, `involved_characters`, `cast_plan`, `emotional_plan`, `scene_design_goals`, `notes`, `expected_hook`, `expected_payoffs`; aliases like `pov`, `main_scenes`, `target_word_count` are forbidden.
+{% if design_matrix %}- All `*_character_ids` and `cast_plan.*_ids` can only use the entity_id from the chapter design matrix; display name fields must be filled back according to the Entity Catalog.
+{% elif character_whitelist %}- `pov_character` and `involved_characters` can only use the formal names from the whitelist above; `involved_characters` lists the whitelisted characters involved in this chapter, including the POV character; list only names, no descriptions.
+{% else %}- `involved_characters` must list all characters appearing in this chapter, including the POV character; list only names, no descriptions.
+{% endif %}
+- `emotional_plan` must include `subject_entity_id`, `entry_state`, `pressure_source`, `relationship_choice`, `turning_emotion`, `exit_aftertaste`, `expression_channels`; must not be written as abstract theme slogans.
+- `scene_design_goals` must list 2-5 goals that subsequent PLAN_CHAPTER can implement as scenes, which must come from plot_duties / emotional_plan / hook_payoff_duties.
+- `main_plot_points` length {{ main_min }}-{{ main_max }}; `beats_summary` length {{ beats_min }}-{{ beats_max }}; `subplot_points` length 0-{{ subplot_max }}.
+- `element_focus` must be an array, with elements only allowed from the `element_id` of the candidate expansion elements from earlier, length 0-{{ element_focus_max }}.
+- `beats_summary` array elements must be pure plot sentences, forbidden with tags or "Beat n:" prefixes, forbidden to expand into scene outlines.
+- `expected_hook` and `expected_payoffs` must exist in every chapter and must belong to the same chapter object.
+- `expected_hook` contains hook_type, hook_strength, hook_description; `expected_payoffs` length {{ payoff_min }}-{{ payoff_max }}, each item contains payoff_type and description.
+- `payoff_type` can only use: information, relationship, ability, resource, recognition, emotion, clue.

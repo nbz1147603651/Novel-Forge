@@ -1,0 +1,65 @@
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：init_narrative_contract.j2
+服务步骤：INIT_NARRATIVE_CONTRACT（叙事契约初始化）
+作用简述：生成全书可裁判叙事契约，为后续章节规划、裁判和修复提供硬约束。
+上游输入：
+  - spec：故事规格
+  - story_bible：世界观设定
+  - character_bible：角色设定
+  - entity_registry：实体注册表
+下游输出：
+  - JSON：world_rules, character_arcs, plot_threads, promise_plan, notes
+  - 下游消费者：PLAN_CHAPTER_CONTRACTS / ADJUDICATE_CONTRACT_COHERENCE
+消费链优先级：P0（world_rules/character_arcs/plot_threads）> P1（promise_plan）> P2（notes）
+================================================================================
+#}
+
+{#- 指导层 -#}
+## 任务
+生成全书可裁判叙事契约。契约用于后续章节裁判，不是正文。
+
+## Source Artifact 生成边界
+- 本模板可以读取完整初始化输入，因为它负责生成 `NarrativeContractArtifact` 的源头内容。
+- 所有人物、地点、物件、组织和概念必须引用或对齐 `entity_registry` 的 canonical entity / alias；不要自由造名。
+- 禁止揭示边界、承诺兑现顺序、认知边界和连续性协议应在契约中保持可审计；不要把远期 payoff 的完整场面塞进早期章节描述。
+- 叙事契约只记录“何时允许知道/揭示/兑现”的边界，不替章节契约复制人物大包或世界设定大包。
+
+## 结构要求
+- `plot_threads` 必须是对象数组；每条情节线都要给出稳定的 `thread_id`、可读的 `thread_name`、`priority`、`chapters`、`key_scenes` 与 `resolution`。
+- `chapters` 写成紧凑章节范围或章节列表，例如 `"1-8"`、`"3、7、12"`；如果只能确定起止，也必须填写范围，不要留空。
+- `key_scenes` 至少列出 2 个关键节点，每个节点包含 `chapter`、`title`、`description`。
+- 若章节范围来自伏笔/悬念而非连续支线，可用 `start_chapter` / `end_chapter` 辅助表达，但仍要填写 `chapters`。
+
+## 输入
+故事规格：
+{{ spec }}
+
+世界观：
+{{ story_bible }}
+
+角色设定：
+{{ character_bible }}
+
+实体注册表：
+{{ entity_registry }}
+
+## 字段内容约束
+- `world_rules`、`character_arcs`、`plot_threads` 必须存在；`promise_plan` 可为空数组，`notes` 可为空字符串。
+- 只输出 5 个英文 `snake_case` 顶层字段：`world_rules`、`character_arcs`、`plot_threads`、`promise_plan`、`notes`；必要说明压缩进对应对象的文本字段或 `notes`。
+
+## 质量校准
+- 工作身份：你是一位长篇叙事架构师，擅长把故事资产拆成可承接、可验证、不过度剧透的执行计划。
+- 规划推断路径：先锁定 P0 硬约束，再分配 P1 推进节奏，最后用 P2 风格/主题补足表现层。
+- 字段级质量示例（非输出格式）：平弱=“推进关系”；高质量=“写清谁因何行动、关系如何变化、下一环如何承接”。
+- 可操作路径：计划项要能被后续写作/审计直接检查，避免只给抽象愿望或主题口号。
+
+## 交付前核验
+- P0/P1/P2 优先级是否被保持，且没有让弱参考覆盖硬约束。
+- 是否能把关键判断回指到输入证据、上游契约或已批准计划。
+- 是否避免新增未授权的人物、地点、世界规则、未来 payoff 或格式协议。
+- 是否把抽象目标转化为可观察的行动、冲突、状态变化或章节承接点。
+
+{#- 格式层 -#}

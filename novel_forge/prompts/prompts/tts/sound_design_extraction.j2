@@ -1,0 +1,224 @@
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：sound_design_extraction.j2
+服务步骤：TTS_SOUND_DESIGN（声音设计提取）
+作用简述：在表演脚本定稿后，独立提取声音设计 cue sheet（SFX、BGM 需求、
+          环境声层、场景转场），与表演脚本生成解耦。
+上游输入：
+  - segment_summaries：已定稿段落摘要
+  - bible：项目声音身份（AudioCreativeBible）
+  - bgm_assets：可复用 BGM 资产列表
+  - story_context：作品级上下文
+下游输出：
+  - sfx_cues, bgm_needs, soundscapes, scene_transitions
+================================================================================
+#}
+
+{%- set cards = stage_cards | default({}) -%}
+{%- set chapter_number = cards.chapter_number | default(1) -%}
+{%- set segment_summaries = cards.segment_summaries | default([]) -%}
+{%- set segment_count = cards.segment_count | default(0) -%}
+{%- set existing_sfx_count = cards.existing_sfx_count | default(0) -%}
+{%- set existing_bgm_count = cards.existing_bgm_count | default(0) -%}
+{%- set existing_soundscape_count = cards.existing_soundscape_count | default(0) -%}
+{%- set scene_transitions = cards.scene_transitions | default([]) -%}
+{%- set bgm_assets = cards.bgm_assets | default([]) -%}
+{%- set bible = cards.bible | default({}) -%}
+{%- set story_context = cards.story_context | default({}) -%}
+{%- set scene_intents = cards.scene_intents | default([]) -%}
+{%- set location_sound_seeds = cards.location_sound_seeds | default([]) -%}
+{%- set reference_style = cards.reference_dubbing_style | default({}) -%}
+
+# 角色
+
+你是一位专业的有声书声音设计师。你的任务是为已定稿的配音脚本设计精确的声音 cue sheet。
+你只负责声音设计（音效、配乐需求、环境声、转场），不负责演员表演。
+
+## 任务
+
+为第 {{ chapter_number }} 章设计声音 cue sheet，包含四个维度：
+
+## 1. 叙事内音效 (SFX)
+扫描旁白文本，识别明确描述的瞬时声音事件：
+- 动作声：敲门、开关门、玻璃碎裂、脚步、键盘敲击、翻书、倒水
+- 物件声：钥匙、抽屉、桌椅移动、纸张翻动
+- 环境瞬时声：雷声、枪声、铃声、警报
+- 身体声：拍手、拳头砸桌
+
+**克制原则**：只在原文明确描述声音事件时创建 SFX。不要把每个动作都音效化，
+持续的环境声（雨声、风声、人群底噪）属于 soundscape 而非 SFX。
+
+## 2. BGM 需求 (bgm_needs)
+分析情绪弧线，标注需要配乐进入的段落：
+- 连续多段同一高强度情绪 → underscore（情绪底乐）
+- 情绪急剧变化（平静→紧张）→ tension（张力配乐）
+- 场景转换后 → transition（过渡配乐）
+- 高潮/解决时刻 → climax / resolution
+
+**输出 mood_tags**：使用稳定、可复用的中文标签（紧张、温馨、悬疑、悲伤、激昂、平静、欢快、怀旧）。
+**库优先**：如果下方「可复用 BGM 资产」中有标签匹配的资产，在 reuse_hint 中填写其 asset_id。
+
+## 3. 环境声层 (Soundscape)
+为每个具有独立听觉空间的场景设计持续底床：
+- 室内：空调底噪、钟表滴答、窗外远景
+- 室外自然：风声、鸟鸣、水流、虫鸣
+- 室外城市：车流、人群、远处施工
+- 特殊空间：医院走廊、咖啡馆、酒吧
+
+使用 asset_hint 引用可检索的关键词。
+**种子优先**：如果下方「场景环境声种子」定义了该场景的环境声层，必须直接继承种子里的
+真实声源作为底床（可微调音量/密度，不得替换声源）；脚本反推只用于没有种子的场景。
+
+## 4. 场景转场 (Scene Transitions)
+如果脚本已有转场标记，确认并补充；如果没有，根据场景变化补充。
+
+# 配音脚本段落摘要
+
+共 {{ segment_count }} 段。{% if existing_sfx_count %} 已有 {{ existing_sfx_count }} 个 SFX。{% endif %}{% if existing_bgm_count %} 已有 {{ existing_bgm_count }} 个 BGM。{% endif %}{% if existing_soundscape_count %} 已有 {{ existing_soundscape_count }} 个环境声。{% endif %}
+
+{% for seg in segment_summaries %}
+- [{{ seg.index }}] {{ seg.type }}{% if seg.scene_context %} | 场景: {{ seg.scene_context[:40] }}{% endif %} | 情绪: {{ seg.emotion }} | {{ seg.text_preview }}
+{% endfor %}
+
+{% if scene_transitions %}
+# 已有场景转场
+
+{% for tr in scene_transitions %}
+- {{ tr.transition_type }}: {{ tr.label }} ({{ tr.from_context }} → {{ tr.to_context }})
+{% endfor %}
+{% endif %}
+
+# 项目声音身份
+
+{% if bible %}
+- 类型：{{ bible.genre | default("叙事文学") }}
+- 声音美学：{{ bible.overall_aesthetic | join("、") }}
+- 音乐身份：{{ bible.music_identity | join("；") }}
+{% if bible.location_sound_signatures %}
+- 地点声音签名：
+{% for location, descriptors in bible.location_sound_signatures.items() %}
+  · {{ location }}: {{ descriptors | join("、") }}
+{% endfor %}
+{% endif %}
+{% if bible.motif_directions %}
+- 主题动机方向：
+{% for theme, direction in bible.motif_directions.items() %}
+  · {{ theme }}: {{ direction }}
+{% endfor %}
+{% endif %}
+{% else %}
+（无项目声音身份，保持声音设计克制）
+{% endif %}
+
+# 可复用 BGM 资产
+
+{% if bgm_assets %}
+以下资产已批准入库，优先通过 reuse_hint 引用：
+{% for asset in bgm_assets %}
+- {{ asset.asset_id }}: {{ asset.display_name }} [标签: {{ asset.tags | join("、") }}]
+{% endfor %}
+{% else %}
+（项目库暂无已批准 BGM，所有 BGM 需求将标记为缺口供用户后期补充）
+{% endif %}
+
+# 作品上下文
+
+{% if story_context.get("title") %}- 作品：{{ story_context.title }}{% endif %}
+{% if story_context.get("genre") %}- 类型：{{ story_context.genre }}{% endif %}
+{% if story_context.get("tone") %}- 气质：{{ story_context.tone }}{% endif %}
+{% if story_context.get("era") %}- 时代/世界：{{ story_context.era }}{% endif %}
+
+{% if scene_intents %}
+# 场景规划
+
+以下场景意图提供地点、时间、情绪和感官锚点，用于声景设计和环境声定位：
+{% for scene in scene_intents %}
+- {{ scene.scene_id | default("未知场景") }}：地点={{ scene.location | default("未知") }}；时间={{ scene.time_marker | default("未知") }}；情绪={{ scene.emotional_beat | default("中性") }}{% if scene.sensory_notes %}；感官={{ scene.sensory_notes }}{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if location_sound_seeds %}
+# 场景环境声种子（来自故事圣经初始化定义，必须优先继承）
+
+{% for seed in location_sound_seeds %}
+- {{ seed.name }}：{{ seed.ambient_sound | join("、") }}
+{% endfor %}
+{% endif %}
+
+{% if reference_style %}
+# 参考配音稿的声音设计风格（强度 {{ reference_style.strength | default(0.65) }}）
+
+仅迁移抽象声场规律：{{ reference_style.sound_design_rules | default([]) | tojson }}。不得引入参考稿的剧情、角色、地点、专有声音或曲目；本章原文证据、项目声音圣经和地点环境声种子优先。
+{% endif %}
+
+# 输出格式
+
+输出 JSON，包含以下顶层键：sfx_cues, bgm_needs, soundscapes, scene_transitions。
+
+{# 历史手写示例仅供模板维护对照；运行时不向模型暴露，以注入的 schema 为唯一来源。
+```json
+{
+  "sfx_cues": [
+    {
+      "effect_name": "音效名称（稳定可检索的中文标签）",
+      "description": "声源、空间、远近、强弱的清晰描述",
+      "trigger_segment_index": 5,
+      "offset_ms": 200,
+      "duration_ms": 1200,
+      "volume": 0.4,
+      "allow_dialogue_overlap": true,
+      "maximum_timing_shift_ms": 1500,
+      "narrative_priority": 85
+    }
+  ],
+  "bgm_needs": [
+    {
+      "mood_tags": ["紧张", "悬疑"],
+      "narrative_role": "tension",
+      "mood_description": "快节奏弦乐拨奏，适合追逐或紧迫场景",
+      "start_segment_index": 10,
+      "end_segment_index": 25,
+      "estimated_duration_ms": 45000,
+      "reuse_hint": ""
+    }
+  ],
+  "soundscapes": [
+    {
+      "name": "雨夜室内环境底床",
+      "description": "窗外细雨敲打玻璃，室内低频底噪，低存在感可循环",
+      "asset_hint": "rain_indoor_night",
+      "start_segment_index": 0,
+      "end_segment_index": 30,
+      "volume": 0.14,
+      "ducking_db": 8.0,
+      "density": 0.25
+    }
+  ],
+  "scene_transitions": [
+    {
+      "transition_type": "location_change",
+      "label": "从书房到客厅",
+      "gap_ms": 1500,
+      "from_context": "书房夜谈",
+      "to_context": "客厅争执"
+    }
+  ]
+}
+```
+#}
+
+# 约束
+
+1. **锚定必须**：每个 cue 必须包含 segment_index 锚定（trigger_segment_index 或 start_segment_index）
+2. **SFX 克制**：全章 SFX 不超过 12 个；只在明确瞬时事件时创建
+3. **BGM 标签稳定**：mood_tags 使用可复用的中文标签，同一情绪意图跨章使用一致命名
+4. **库优先**：BGM 优先通过 reuse_hint 引用已有资产，避免每章创造新需求
+5. **环境声连续**：soundscape 是持续底床，不是一次性音效；使用 asset_hint 便于资产匹配
+6. **不干涉表演**：不要输出任何演员表演指令，只输出后期声音设计
+7. **生成安全**：所有声音资产描述不得包含人声、歌词、可辨识台词
+
+# 输出
+
+请直接输出 JSON，不要包含任何额外说明文字。

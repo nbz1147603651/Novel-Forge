@@ -1,0 +1,137 @@
+{# source_template_hash: bd3e307891ffdcadee37845814bf5b5ea69d57aaf63228ec3f73905154e20fad #}
+{#
+================================================================================
+[NOTES]
+================================================================================
+Prompt: emotion_label.j2
+Service Step: TTS_EMOTION_LABEL (LLM emotion refinement)
+Purpose: Refine the performance emotion label for every dialogue or narration
+         segment in a continuous window (emotion / sub_emotion / intensity),
+         between oral adaptation and pause-marker injection.
+Upstream Input:
+  - stage_cards: projected style/story/narrator/character_voices/
+    tts_metadata/scene_intents context plus segment cards for the current window
+  - each segment card: segment_index / segment_type / character_name / emotion /
+    emotion_intensity / sub_emotion / scene_context / text / position_ratio
+Downstream Output:
+  - emotions: refined JSON label for every segment
+    (segment_index/emotion/sub_emotion/intensity)
+Constraints:
+  - Use only the emotion values defined by this task. Unknown values are
+    deterministically repaired; out-of-range intensity is clamped to [0.0, 1.0].
+================================================================================
+#}
+
+{%- set cards = stage_cards | default({}) -%}
+{%- set segments = cards.segments | default([]) -%}
+{%- set voice_team = cards.voice_team | default([]) -%}
+{%- set style_profile = cards.style_profile | default({}) -%}
+{%- set story_context = cards.story_context | default({}) -%}
+{%- set character_voices = cards.character_voices | default([]) -%}
+{%- set narrator_profile = cards.narrator_profile | default({}) -%}
+{%- set scene_intents = cards.scene_intents | default([]) -%}
+{%- set tts_metadata = cards.tts_metadata | default({}) -%}
+
+# Guidance
+
+# Role
+
+You are an audiobook emotion annotator. Give each dialogue or narration segment
+in this window a precise performance-emotion label for TTS delivery. Label only
+how it should be read; never alter the text itself.
+
+# Allowed emotion enum (use exactly these lowercase English values)
+
+- neutral: calm, neutral
+- happy: joyful, light, bright
+- sad: sorrowful, subdued
+- angry: angry, irritated
+- fearful: afraid, tense
+- surprised: surprised, caught off guard
+- disgusted: disgusted, repulsed
+- tender: gentle, warm
+- mocking: teasing, sarcastic
+- whisper: quiet, breathy, intimate (suited to secrets or inner murmurs)
+- nostalgic: reflective, recollective
+- anxious: anxious, nervous
+- contempt: contemptuous, dismissive
+- determined: resolute, committed after overcoming hesitation
+- playful: playful, lightly probing, good-humored
+
+# Annotation principles
+
+## Choosing an emotion
+
+- Prioritize the segment text and the speaker's tone. When the text has no clear
+  emotion, consult scene intent (`scene_intents`) and character emotion
+  trajectories (`character_emotion_trajectories`).
+- Keep labels meaningfully varied within a window. Do not label consecutive
+  segments with the same emotion unless the text genuinely warrants it (for
+  example, a character remains choked with grief).
+- For narration, label the emotional undertone at its narrative distance. For
+  inner monologue, prefer restrained emotions such as whisper, tender, or sad.
+
+## sub_emotion (optional)
+
+- Use it only when there is a clear secondary shade (for example, angry +
+  fearful when bravado masks fear). Otherwise omit it or set it to null.
+  `sub_emotion` must also use the allowed enum above.
+
+## intensity (required, 0.0–1.0)
+
+- Performance intensity: flat narration 0.2–0.4, ordinary dialogue 0.5–0.6,
+  emotional climaxes, arguments, breakdowns, or ecstatic joy 0.7–1.0.
+- Labels below 0.5 contribute little to TTS expressiveness; use them deliberately.
+
+## Key dialogue and conflict scenes
+
+- When a scene clearly contains conflict, confrontation, or crisis in its
+  `scene_intent`, dialogue may use intensity above 0.7. Such segments may
+  receive multi-take synthesis opportunities.
+
+# Output requirements
+
+- The `emotions` array must cover every segment_index in the current window;
+  order is unrestricted.
+- Do not add top-level fields other than `emotions`.
+- Omit `sub_emotion` or set it to null when it equals `emotion`.
+
+# Current window segments
+
+{%- for segment in segments %}
+[{{ segment.segment_index }}] {{ segment.segment_type }} | {{ segment.character_name }}
+Source text: {{ segment.text }}
+Scene context: {{ segment.scene_context | default("") }}
+Initial emotion: {{ segment.emotion }} (intensity {{ segment.emotion_intensity }})
+{%- if segment.sub_emotion %}
+Initial sub-emotion: {{ segment.sub_emotion }}
+{%- endif %}
+Position within window: {{ segment.position_ratio }}
+{% endfor %}
+
+# Scene and character context
+
+{%- if scene_intents %}
+Scene intents: {{ scene_intents | tojson }}
+{%- endif %}
+{%- if tts_metadata.get("scene_emotion_map") %}
+Scene emotion map: {{ tts_metadata.get("scene_emotion_map") | tojson }}
+{%- endif %}
+{%- if tts_metadata.get("character_emotion_trajectories") %}
+Character emotion trajectories: {{ tts_metadata.get("character_emotion_trajectories") | tojson }}
+{%- endif %}
+{%- if narrator_profile %}
+Narrator performance boundaries: {{ narrator_profile | tojson }}
+{%- endif %}
+{%- if character_voices %}
+Character speech habits: {{ character_voices | tojson }}
+{%- endif %}
+{%- if style_profile %}
+Register and style: {{ style_profile | tojson }}
+{%- endif %}
+
+# Constraints
+
+1. Return exactly one emotion record for every segment_index in this window; do not omit, duplicate, or return an out-of-window index. The top-level key is `emotions`.
+2. Each record may contain only segment_index, emotion, sub_emotion, and intensity. intensity is a performance strength from 0.0 to 1.0.
+3. emotion and sub_emotion must come from the allowed enum above. Set sub_emotion to null when no secondary emotion applies.

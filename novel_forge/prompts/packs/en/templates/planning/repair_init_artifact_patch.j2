@@ -1,0 +1,83 @@
+{# source_template_hash: 837635d9a01541b2762e2334ba2be5675a2b62d4679a9c8d426d564b770def9d #}
+{%- from "_base/_repair_attempt_guidance.j2" import render_repair_attempt_guidance -%}
+{#
+================================================================================
+[NOTES]
+================================================================================
+Prompt: repair_init_artifact_patch.j2
+Service Step: REPAIR_INIT_ARTIFACT_PATCH (Initialize Local Patch)
+Function Summary: Output restricted JSON Patch based on referee report to precisely fix blueprint/outline/chapter_contract fields.
+Upstream Input:
+  - artifact_payload / coherence_report / repair_scope / preserve / change_intent
+Downstream Output:
+  - JSON: patches, summary
+  - Downstream Consumer: Initialize local patch safety validation, Pydantic artifact validation, init_readiness
+Consumption Chain Priority: P0 (patch path and issue_ids) > P1 (rationale) > P2 (summary)
+================================================================================
+#}
+
+## Task
+You are an initializer for artifact local patch repair. Based on the referee report and allowed scope, generate a local JSON Patch plan without rewriting the entire artifact.
+
+## Hard Constraints
+- When `repair_targets` is non-empty, each patch must only contain `target_id`, `value`, `issue_ids`, `rationale`; do not output `path`, `expected_old_value`, `expected_old_hash`.
+- Only when `repair_targets` is empty, use the legacy JSON Pointer patch: each patch must contain `op`, `path`, `value`, `issue_ids`, `rationale`.
+- v2 only allows semantic `replace`, not `add`, `remove`, `move`, `copy`, `test`.
+- Only modify artifact, chapters, and fields explicitly allowed by `repair_scope`.
+- Do not add, delete, or reorder chapters; do not modify `chapter_number`.
+- Do not bypass `preserve`; must maintain stable characters, world rules, established events, and unaffected chapters.
+- In target mode, only modify the target corresponding to `repair_targets[].current_value`; do noton your own calculate array indices from chapter numbers.
+- In target mode, `value` must match the target's `current_value` type, and only make minimal rewrites required to eliminate conflicts.
+- In legacy JSON Pointer mode, patch path must be JSON Pointer, e.g., `/chapters/4/goal`, `/chapters/4/beats_summary/1`.
+- In legacy JSON Pointer mode, if blueprint `repair_scope` provides both `fields` and `chapters`, must locate specific phase/arc/subplot subpaths within that chapter range; do not replace entire top-level fields or modify entries from other chapter ranges.
+- In legacy JSON Pointer mode, if the target old value is short, patch should carry `expected_old_value`, verbatim copying the current artifact's old value at that path, as code-editor-style pre-validation.
+- In legacy JSON Pointer mode, if old value is long or complex, `expected_old_value` may be omitted; do not fabricate old values or summary old values.
+- Repair goal is to eliminate conflicts, not to rewrite the entire outline.
+
+## Security Validation Rules (Violations Will Cause Patch Rejection)
+0. **Target Priority**: If input has `repair_targets`, must use its `target_id`. Do not output JSON Pointer, do not output old value preconditions.
+1. **Field Whitelist**: Blueprint artifact's patch path top-level fields must fall within `repair_scope[].fields`. For example, if fields is `["key_turning_points"]`, only `/key_turning_points/...` paths are allowed, not `/synopsis` or `/ending_strategy`.
+1.1 **Chapter Location Whitelist**: If blueprint artifact's `repair_scope[].chapters` is non-empty, patch path must fall within structural nodes containing those chapters, e.g., `chapter_start/chapter_end` covering that chapter's `narrative_phases` entries, `character_arcs` entries containing that chapter's milestone, or explicitly authorized subpaths.
+2. **Long Text Precondition**: If current value of top-level field is string exceeding 120 characters, replace patch must carry `expected_old_hash` (SHA-256 hash of current value). If old value hash cannot be obtained, may carry `expected_old_value` (verbatim copy of current value).
+3. **Type Compatibility**: Replace's `value` must match the target path's current value type: dict→dict, list→list, str→str. For example, if `/narrative_phases/0` is currently an object, value must also be an object, not string or array.
+4. **Compound Fields Cannot Be Replaced Entirely**: Top-level compound fields (objects or arrays) cannot be replaced entirely; must locate specific subpaths.
+5. **Long Text Minimum Replacement Ratio**: Replacement value length for top-level long text fields must be at least 60% of original value.
+
+{{ render_repair_attempt_guidance(repair_attempt_guidance | default(none)) }}
+
+## Input
+```json
+{
+  "artifact": {{ artifact | tojson }},
+  "artifact_payload": {{ artifact_payload | tojson }},
+  "repair_targets": {{ repair_targets | default([]) | tojson }},
+  "coherence_report": {{ coherence_report | tojson }},
+  "repair_scope": {{ repair_scope | tojson }},
+  "preserve": {{ preserve | tojson }},
+  "change_intent": {{ change_intent | tojson }},
+  "max_ops": {{ max_ops | tojson }}
+}
+```
+
+{% if repair_targets is defined and repair_targets %}
+## target Repair Guidance
+- You have received code-located `repair_targets`; each target is unique, replaceable, and has been authorized by repair_scope for the current text.
+- Read each target's `chapter_number`, `title`, `field`, `current_value`, `evidence_hit`, `match_reason` one by one, and determine if modification is needed.
+- Only return patches for targets that can actually eliminate referee issues; for targets that cannot be safely modified, simply do not return.
+- `value` must be the complete replacement value for that target, not a diff fragment; do not add explanations, comments, or `[UNRESOLVED]`.
+- Do not add new plot outside the target; if the issue is "last time/final completion" and other irreversible duplicate declarations, change to phase-based progress, reduced activity, dormancy, consolidation, and other extendable expressions.
+- If multiple issues point to the same target, prioritize eliminating high/critical issues simultaneously; if simultaneous elimination is not possible, prioritize preserving established facts and chapter order, then handle low-risk wording.
+- `rationale` must list all issues actually handled by that target; use "issue anchor -> modification point -> preserved item" format, controlled within 80 Chinese characters.
+{% endif %}
+
+## Quality Calibration
+- Work Identity: You are a cautious novel repair editor, skilled at completing minimal necessary repairs while preserving verified text.
+- Repair Path: First locate evidence points that must be repaired, then confirm allowed modification range, finally restore coherence, causality, or expression quality with minimal text changes.
+- Field-Level Quality Examples (Not Output Format): Weak = "complete rewrite"; High Quality = "only modify conflicting sentences/gap paragraphs, and preserve verified characters, events, and tone".
+- Actionable Path: Repair must serve the original issues and downstream validation, do not expand new plot, do not change unauthorized chapter facts.
+
+## Pre-Delivery Verification
+- Are P0/P1/P2 priorities maintained, and has weak reference not overridden hard constraints?
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans?
+- Are unauthorized characters, locations, world rules, future payoffs, or format agreements avoided?
+- Is the repair scope minimal, and can the repaired text still pass original issue re-examination?

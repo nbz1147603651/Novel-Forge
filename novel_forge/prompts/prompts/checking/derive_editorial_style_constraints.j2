@@ -1,0 +1,86 @@
+{# ================================================================================
+【备注】
+================================================================================
+提示词：derive_editorial_style_constraints.j2
+服务步骤：DERIVE_EDITORIAL_STYLE_CONSTRAINTS（编辑契约：风格约束）
+作用简述：只生成主题呈现、象征物解释、场景阻力和表达通道预算。
+上游输入：
+  - project_brief / story_bible / character_bible / style_profile / blueprint / blueprint_elements
+下游输出：
+  - JSON：theme_policies, symbol_policies, scene_resistance_rules,
+          expression_channel_budget, expression_channel_profiles,
+          body_signal_budget_per_high_emotion_scene, forbidden_confirmation_phrases,
+          revision_priorities
+消费链优先级：P1（出版级编辑约束）
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    指导层：任务定义 + 上下文消费
+    --------------------------------------------------------------------------- -#}
+你是一位长篇小说责任编辑。本轮只负责生成**风格与场景约束契约**，不要输出声纹、高潮、揭示阶梯或要素指令。
+
+## 项目信息
+{{ project_brief | tojson(indent=2) }}
+
+## 世界观与主题摘要（已压缩）
+{{ story_bible | tojson(indent=2) }}
+
+## 角色摘要（已压缩）
+{{ character_bible | tojson(indent=2) }}
+
+## 风格规范（已压缩）
+{{ style_profile | tojson(indent=2) }}
+
+## 蓝图摘要（已压缩）
+{{ blueprint | tojson(indent=2) }}
+
+## 已选叙述要素（已压缩）
+{{ blueprint_elements | tojson(indent=2) }}
+
+## 生成要求
+1. `theme_policies` 限制主题独白和解释，要求主题通过行动、选择、冲突和场景后果呈现。
+2. `symbol_policies` 最多 5 条，覆盖最重要的信物、地点、物件、主题句或反复意象。
+3. `scene_resistance_rules` 最多 5 条，把场景阻力具体化为门、台阶、人群、距离、流程、遮挡、物件传递、签字、屏幕、电话、时间窗口等可写进正文的阻力。
+4. `expression_channel_budget` 控制身体反应、动作标签、对白标签、感官锚点的单章/单场预算。
+5. `expression_channel_profiles` 只提取**本项目最可能被模型机械复现的表达通道画像**，不得泛化列出常见写作禁忌。提取方向固定来自：
+   - 题材与语气：题材、语调、叙事节奏中容易被套用的表达机制；
+   - 人物声纹：角色常用动作、禁忌表达、情绪句法；
+   - 风格画像：对白比例、意象偏好、节奏与留白方式；
+   - 编辑契约：身体反应预算、象征物解释、场景阻力。
+6. `forbidden_confirmation_phrases` 写容易导致圆满确认重复或主题自证的短语。
+7. `revision_priorities` 最多 6 条，按编辑修订顺序排列。
+
+## Schema 硬约束
+- `symbol_policies[].explanation_policy` 只能使用：`never_explain`、`explain_once`、`explain_on_escalation`、`free`。
+- `symbol_policies[]` 只允许包含：`symbol`、`narrative_function`、`explanation_policy`、`escalation_rule`、`max_explicit_explanations`。
+- `symbol_policies[].max_explicit_explanations` 必须是 0-10 的整数；不要用 99、999、unlimited 等表示“不限”，不限写 `10`。
+- `scene_resistance_rules[]` 只允许包含：`scene_type`、`required_resistance`、`examples`。
+- `expression_channel_budget` 只能包含 4 个整数 key：`somatic_reaction`、`action_tag`、`dialogue_tag`、`sensory_anchor`。
+- `expression_channel_profiles` 最多 8 条；每条只允许包含：`channel_id`、`channel`、`label`、`surface_forms`、`trigger_contexts`、`risk_reason`、`replacement_axes`、`allowed_when`、`cooldown_chapters`、`actor_scope`、`confidence`。
+- `expression_channel_profiles[].channel` 只能使用：`somatic_reaction`、`action_tag`、`dialogue_tag`、`sensory_anchor`、`sentence_pattern`、`other`。
+- `expression_channel_profiles[].surface_forms` 只能写自然语言短语，不得输出正则、通配符、完整句式模板库或长段规则。
+- `expression_channel_profiles[]` 每条最多 8 个 surface_forms、4 个 trigger_contexts、4 个 replacement_axes；`risk_reason` 和 `allowed_when` 必须是短句。
+- 每条表达画像必须同时具备表达形式、风险原因、替代方向、适用边界；没有替代方向或适用边界的不要输出。
+- 高情绪场景身体预算只写入 `body_signal_budget_per_high_emotion_scene` 整数字段。
+- 只输出 8 个英文 `snake_case` 顶层字段：`theme_policies`、`symbol_policies`、`scene_resistance_rules`、`expression_channel_budget`、`expression_channel_profiles`、`body_signal_budget_per_high_emotion_scene`、`forbidden_confirmation_phrases`、`revision_priorities`。
+
+## 字段内容约束
+- `theme_policies`、`forbidden_confirmation_phrases`、`revision_priorities` 必须是短字符串数组。
+- `symbol_policies[]` 每项包含 symbol、narrative_function、explanation_policy、escalation_rule、max_explicit_explanations。
+- `scene_resistance_rules[]` 每项包含 scene_type、required_resistance、examples。
+- `expression_channel_budget` 固定包含 somatic_reaction、action_tag、dialogue_tag、sensory_anchor，值为整数。
+- `expression_channel_profiles` 只写本项目专属的高风险表达机制；禁止输出"避免描写单调""增强文学性"等泛泛建议。
+- `body_signal_budget_per_high_emotion_scene` 为整数。
+
+## 质量校准
+- 工作身份：你是一位项目特异性写作顾问，擅长从梗概、角色、世界规则和已选叙事要素中推导可执行的风格/结构契约。
+- 推导路径：先识别本项目的核心卖点、冲突机制和表达风险，再把结论映射到字段级参数或编辑契约。
+- 字段级质量示例（非输出格式）：平弱=“风格冷峻”；高质量=“说明冷峻来自何种场景压力、证据细节、对白比例或信息密度”。
+- 可操作路径：每条规则都要能被正文生成、编辑检查或后续审计复用，避免泛化成所有项目都适用的空话。
+
+## 交付前核验
+- P0/P1/P2 优先级是否被保持，且没有让弱参考覆盖硬约束。
+- 是否能把关键判断回指到输入证据、上游契约或已批准计划。
+- 是否避免新增未授权的人物、地点、世界规则、未来 payoff 或格式协议。
+- 是否把项目特异性依据映射到具体字段/规则，而不是复用通用写作口诀。

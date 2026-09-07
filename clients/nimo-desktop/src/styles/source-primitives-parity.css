@@ -1,0 +1,21 @@
+@media (max-width: 1360px), (max-height: 820px) {
+/*
+ * Shared React counterparts of the PySide6 primitives.  These measurements
+ * come from `components/primitives.py`, `components/containers.py`, and the
+ * corresponding QSS. The production shell uses a compact density so the
+ * active writing surface, rather than chrome, receives the available height.
+ * The compact density contract itself lives in `design-tokens.css`; this file
+ * only keeps source-specific primitive typography that has no global utility.
+ */
+.section-heading h2 {
+  font-family: "Songti SC", "STSong", "NSimSun", Georgia, serif;
+  font-size: var(--nf-font-heading);
+  line-height: 1.35;
+}
+
+.section-heading p {
+  margin-top: 3px;
+  font-size: var(--nf-font-body);
+  line-height: 1.5;
+}
+}

@@ -1,0 +1,201 @@
+{# ================================================================================
+source_template_hash: 48d8903cc5ed1e0ab2afbb91147c3e88c37226416caba7b42e6d59f3ec3dcbf1
+[NOTES]
+================================================================================
+Prompt: style_profile_derive.j2
+Service Step: PROFILE_STYLE (Style Profile Generation)
+Purpose: Derive writing style specifications and global parameters for this work based on project setting elements.
+Upstream Inputs:
+  - title: Work title
+  - tone: Tone
+  - story_bible: World-building settings (JSON)
+  - character_bible: Character settings (JSON)
+  - blueprint_elements: Selected narrative elements and priorities (JSON)
+  - banned_intent_rules: Banned intent rules
+Downstream Outputs:
+  - JSON: {"modules", "source_elements", "summary", "global_style"}
+  - Downstream Consumer: StyleProfile / DraftStep / EditStep
+Consumption Chain Priority: P2 (Style suggestions for reference during writing)
+Brief Example:
+  Input: tone="dark", story_bible={"world_type": "fantasy"}
+  Output: {"modules": [{"name": "Austere Tone", "rules": ["No exclamatory sentences"]}], "global_style": {"dialogue_ratio": "low"}}
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer: Task Definition + Context Consumption
+    --------------------------------------------------------------------------- -#}
+You are a senior fiction writing consultant. Please **derive** the writing style specifications for this work based on the following project setting elements.
+
+## Task Objective
+
+Please **based on the story synopsis (or premise)**, combined with genre, tone, world-building, character settings, and selected narrative elements, derive the writing style specifications for this work:
+1. **Writing Technique Modules** (modules): Unique tone requirements, emotionaltone, narrative rhythm, character voice, description density, and taboos for this work
+2. **Category Style Parameters** (global_style): Specific values for dialogue ratio, rhythm pattern, emotional style, environment description, and information density
+3. **Banned Phrase List** (banned_phrases): Specific banned phrases derived from the banned intent rules
+
+**Important**: Style derivation must be centered on the story synopsis/premise as the core basis, ensuring parameters match the story type, conflict intensity, and narrative goals. Do not generically apply default values.
+If upstream provides `blueprint_elements`, the `extension_elements` within it are structured mechanisms already filtered by the narrative element selector based on the story synopsis, genre, and user preferences. You must consume these mechanisms and translate them into style rules, information disclosure methods, scene organization density, and dialogue subtext—do not simply insert element names into the main text.
+If upstream provides coarse-grained style backup directions for legacy compatibility, these represent only auxiliary references; when the story synopsis, characters, and world-building are already explicit, these more specific details must take precedence—do not mechanically follow coarse-grained patterns.
+
+## Work Basic Information
+
+- Title: {{ title }}
+- Genre: {{ genre }}
+- Tone: {{ tone }}
+{% if writing_style_mode | default('') %}- Coarse-grained Style Backup Direction: {{ writing_style_mode }} (only for compatibility backup, not final style specification){% endif %}
+
+{% if synopsis | default('') %}
+## Story Synopsis
+
+{{ synopsis }}
+{% endif %}
+
+{% if premise | default('') and not synopsis | default('') %}
+## Story Premise
+
+{{ premise }}
+{% endif %}
+
+## World-Building Settings
+
+{{ story_bible | tojson(indent=2) }}
+
+## Character Settings
+
+{{ character_bible | tojson(indent=2) }}
+
+{% if extra_instructions | default('') %}
+## User-Provided Style Intentions and Avoidance Requirements
+
+{{ extra_instructions }}
+
+**Consumption Requirement**: Translate the above supplementary requirements into `modules.rules`, `global_style` parameters, and banned phrases; if they conflict with the story synopsis, prioritize the story synopsis and hard settings, but do not ignore explicit style preferences or avoidance requirements.
+{% endif %}
+
+{% set _be = blueprint_elements | default({}) %}
+{% set _be_ext = _be.extension_elements if _be.extension_elements is defined else [] %}
+{% set _be_constraints = _be.focus_constraints if _be.focus_constraints is defined else [] %}
+{% set _be_summary = _be.selector_summary if _be.selector_summary is defined else "" %}
+{% if _be_ext or _be_constraints %}
+## Selected Narrative Elements (Style Derivation Must Consume)
+
+{% if _be_summary %}- Selection Conclusion: {{ _be_summary }}{% endif %}
+{% if _be_constraints %}
+- Execution Constraints:
+{% for item in _be_constraints %}
+  - {{ item }}
+{% endfor %}
+{% endif %}
+{% if _be_ext %}
+- Extension Mechanisms:
+{% for item in _be_ext %}
+  - {{ item.name }} ({{ item.element_id }} / {{ item.category }}{% if item.selection_score is defined and item.selection_score %} / Priority {{ item.selection_score }}{% endif %}{% if item.selection_source is defined and item.selection_source %} / Source {{ item.selection_source }}{% endif %}): {{ item.selection_reason }}; Style Hint: {{ item.prompt_hint }}
+{% endfor %}
+{% endif %}
+
+**Translation Requirement**: Please translate the above mechanisms into language density, scene organization, information disclosure, dialogue subtext, image recurrence, and rhythm parameters. Do not restate element names directly in `modules.name` or body examples; output executable writing rules instead.
+{% endif %}
+
+{% if banned_intent_rules | default([]) %}
+## Banned Intent Rules
+
+{% for rule in banned_intent_rules %}
+- {{ rule }}
+{% endfor %}
+
+**Derivation Requirement**: Each rule generates 2-3 specific banned phrases (e.g., "pupils slightly constrict" can derive "pupils slightly constrict" and "pupils suddenly contract").
+{% endif %}
+
+## Analysis → Derivation → Output Framework
+
+You must complete the derivation following this **strict three-phase process**: analyze first, then map, then output. Do not skip analysis and directly fill in parameters.
+
+---
+
+### Phase One: Analysis (Specific Elements Based on Story Synopsis)
+
+Analyze this work from the following 5 dimensions, each dimension must **cite specific content from the story synopsis** as basis; if there are selected narrative elements, also explain how those elements affect style values:
+
+1. **Tone and Base**: How should the syntactic structure, vocabulary level, and distance of narrative language serve this work?
+   → *Basis: Cite the era background, social structure, or core conflict style from the story synopsis*
+
+2. **Character Interaction Density**: What is the ratio tendency for dialogue vs. monologue between characters?
+   → *Basis: Cite the character relationship complexity and information transmission method from the story synopsis*
+
+3. **Emotional Presentation Style**: Is emotion expressed directly and openly or implicitly and subtly?
+   → *Basis: Cite the story tone and core emotional conflict intensity*
+
+4. **Description Focus**: Which type of description should dominate—environment/psychology/action?
+   → *Basis: Cite the world-building complexity and scene particularity*
+
+5. **Narrative Rhythm**: What is the overall progression speed preference?
+   → *Basis: Cite conflict density, time span, and event urgency*
+
+---
+
+### Phase Two: Derivation (Mapping Analysis Conclusions to Specific Parameters)
+
+You must **explicitly map** the analysis conclusions from the previous step to the following parameters, each parameter must explain the derivation rationale:
+
+| Parameter | Your Analysis Conclusion | Derived Value | Rationale (Must Cite Story Synopsis/Selected Narrative Elements) |
+|------------|-------------------------|---------------|------------------------|
+| `dialogue_ratio` | | high/medium/low | |
+| `pace_mode` | | fast/moderate/slow | |
+| `emotional_style` | | direct/balanced/subtle | |
+| `environment_ratio` | | high/medium/low | |
+| `info_density` | | high/medium/low | |
+
+**Derivation Rules**:
+- **dialogue_ratio**: If character interaction is the core selling point, or core progression depends on character negotiation, testing, misunderstanding clarification, or relationship gameplay, take **high**; if core progression depends on internal analysis, world rule explanation, or continuous action chains, take **low**; if both are equally important, take **medium**.
+- **pace_mode**: If the story has clear time pressure, continuous external events, or high-frequency crisis shifts, take **fast**; if the main thread is slow cognitive change, relationship accumulation, or atmosphere building, take **slow**; phased progression takes **moderate**.
+- **emotional_style**: If characters must directly express opinions during action, or conflicts require strong emotional drive, take **direct**; if tension primarily comes from concealment, testing, secrets, restraint, or subtext, take **subtle**; mixed expression takes **balanced**.
+- **environment_ratio**: If location, systems, objects, rules, or scene pressure itself drives choices, take **high**; if environment only provides background and events need rapid progression, take **low**; if environment and action share the load, take **medium**.
+- **info_density**: If readers must continuously understand rules, clues, resources, identities, or causal constraints, take **high**; if information chains are simple and focus is on emotional/action experience, take **low**; phased revelations take **medium**.
+
+---
+
+### Phase Three: Technique Module Derivation
+
+Based on the above analysis, derive **up to 5** unique writing technique modules for this work. Each module must:
+- Directly respond to a specific feature in the story synopsis
+- Prioritize absorbing high-priority narrative elements, converting mechanisms into style rules
+- Provide executable rules (not generic suggestions)
+- Include at least one density/frequency/cooling boundary: specify when a certain type of description should be fully developed, when it should be touched upon briefly, and when dialogue/action/decisions should carry it instead
+- Do not write style mechanisms as infinitely triggering rules requiring full description every time; if a reaction or image recurs, provide variants or upper limits
+- Do not generate rules or examples that would induce self-explanatory text in the body: do not require the body to use definitional negative transitions to prove realism, depth, or sophistication; positive examples should directly show actions, dialogue, environmental resistance, or character choices
+- When providing positive/negative examples, use only images, actions, and relationship tensions that have already appeared in this work's inputs or can be directly derived—do not borrow from external genre examples.
+
+## Quality Calibration
+- Working Identity: You are a project-specific writing consultant, skilled at deriving executable style/structural contracts from synopses, characters, world rules, and selected narrative elements.
+- Derivation Path: First identify this project's core selling points, conflict mechanisms, and expression risks, then map conclusions to field-level parameters or editing contracts.
+- Field-Level Quality Example (not output format): Weak = "Austere style"; High-Quality = "Explain what kind of scene pressure, evidentiary details, dialogue ratio, or information density creates the austerity."
+- Actionable Path: Each rule must be reusable for body generation, editing checks, or subsequent audits—avoid generalizing into empty advice applicable to all projects.
+
+## Pre-Delivery Verification
+- Are P0/P1/P2 priorities maintained without letting weak references override hard constraints?
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans?
+- Are unauthorized characters, locations, world rules, future payoffs, or format agreements avoided?
+- Are project-specific bases mapped to specific fields/rules rather than reusing generic writing maxims?
+
+{#- ---------------------------------------------------------------------------
+    Format Layer: Output Format and Schema
+    --------------------------------------------------------------------------- -#}
+
+## Hard Constraints
+
+- **Maximum 5 modules**: Keep only the most important, most distinctive specifications for this work
+- **source_elements must be listed**: Actual basis for this style derivation, such as story_bible, character_bible, synopsis, premise, tone, blueprint_elements
+- **If using coarse-grained style backup direction**: Only use it as legacy project compatibility basis or backup basis—do not let it override more specific story synopsis/world-building/character information
+- **Maximum 5 rules per module**: Each rule ≤ 40 characters
+- **1 positive example and 1 negative example each**: ≤ 50 characters
+- **summary ≤ 60 characters**
+- **Rules must be executable**: Write as "do/don't do," not "pay attention to xxx"
+- **Rules must have density boundaries**: Avoid "expand fully every time triggered" or "must use extensively"—these cause detail accumulation
+- **No mechanical template matching**: modules.rules, positive_example, negative_example, banned_phrases must not encourage definitional negative transitions as body self-justification sentences; to emphasize realism, write as action consequences or scene pressure
+- **Do not repeat generic web fiction/literary specifications**: Output only this work's unique specifications
+- **No specific plot involvement**: Focus only on writing techniques and style characteristics
+- **Maximum 30 banned phrases**: Each ≤ 50 characters
+- **global_style parameters must be derived**: Do not fill all with default values—derive based on this work's specific elements
+- `modules` each item includes module name, rules array, positive example, and negative example; positive/negative examples are for style differentiation and must not become reusable sentences in the body.
+- `global_style` includes dialogue_ratio, pace_mode, emotional_style, environment_ratio, info_density, and banned_phrases.

@@ -1,0 +1,199 @@
+{# ================================================================================
+【备注】
+================================================================================
+提示词：evaluate_reading_power.j2
+服务步骤：EVALUATE_READING_POWER（追读力评估）
+作用简述：评估章节的追读力，包括章尾钩子、上章钩子兑现、微兑现等维度。
+上游输入：
+  - chapter_number：章节编号
+  - genre：题材类型
+  - chapter_type：章节类型
+  - previous_hook_description：上一章钩子描述
+  - expected_hook：大盘钩子预期（类型/强度/描述）
+  - expected_payoffs：大盘微兑现预期列表
+  - chapter_text：章节正文
+  - suspense_timeline_entries：跨章悬念链追踪条目
+下游输出：
+  - JSON：{"hook_type", "hook_strength", "hook_description", "prev_hook_fulfilled", ...}
+  - 下游消费者：RepairStep / EvaluateStep
+消费链优先级：P1（章尾钩子缺失/上章钩子未回应）> P2（微兑现不足/过渡章判断）
+简要例子：
+  输入：chapter_number=5, previous_hook_description="主角陷入包围"
+  输出：{"hook_type": "crisis", "hook_strength": "strong", "prev_hook_fulfilled": true}
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    指导层：任务定义 + 上下文消费
+    --------------------------------------------------------------------------- -#}
+你是一位专业的网文编辑，精通追读力分析。请对以下章节进行追读力评估。
+
+{% set strict_review = strict_review | default(false, true) %}
+{% set independent_reviewer_note = independent_reviewer_note | default("", true) %}
+{% set preferred_payoff_types = preferred_payoff_types | default([], true) %}
+{% set hook_score_config = hook_score_config | default({}, true) %}
+{% set expected_hook = expected_hook | default({}, true) %}
+{% set expected_payoffs = expected_payoffs | default([], true) %}
+{% set excerpt_strategy = excerpt_strategy | default("", true) %}
+{% set suspense_timeline_entries = suspense_timeline_entries | default([], true) %}
+{% set suspense_schedule = suspense_schedule | default([], true) %}
+{% set narrative_phase_context = narrative_phase_context | default({}, true) %}
+{% set main_plot_points = main_plot_points | default([], true) %}
+
+{% if strict_review %}
+## 复审模式
+本次为修复后的独立复审。请以较严格但克制的标准核对追读力修复是否真的生效：
+- 优先核实上章钩子回应、预期章尾钩子、微兑现缺口和主线推进是否改善。
+- 只报告追读力维度的问题，不扩展到提示词泄露、称谓、连贯性或因果链问题。
+- 不要因为局部改写风格变化就额外降分；只有读者继续阅读的驱动力仍不足时才判低。
+{% if independent_reviewer_note %}
+独立复审备注：{{ independent_reviewer_note }}
+{% endif %}
+{% endif %}
+
+## 章节信息
+- 第 {{ chapter_number }} 章
+- 题材类型：{{ genre }}
+- 章节类型：{{ chapter_type }}
+- 每章最低微兑现：{{ min_payoffs }} 个
+{% if preferred_payoff_types %}- 偏好微兑现类型：{{ preferred_payoff_types | join('、') }}{% endif %}
+{% if hook_score_config %}
+- 钩子评分参数：强={{ hook_score_config.hook_score_strong }}，中={{ hook_score_config.hook_score_medium }}，弱={{ hook_score_config.hook_score_weak }}，兑现上限={{ hook_score_config.payoff_cap }}
+{% endif %}
+
+## 上一章钩子
+{{ previous_hook_description }}
+
+{%- if expected_hook %}
+## 大纲钩子预期
+本章大纲规划了以下钩子预期，请对比实际产出评估达成情况：
+- **预期类型**：{{ expected_hook.hook_type }}
+- **预期强度**：{{ expected_hook.hook_strength }}
+- **预期描述**：{{ expected_hook.hook_description }}
+{%- endif %}
+
+{%- if expected_payoffs %}
+## 大纲微兑现预期
+本章大纲规划了以下微兑现预期，请评估实际产出是否覆盖：
+{% for payoff in expected_payoffs %}
+- **{{ payoff.payoff_type }}**：{{ payoff.description }}（预期强度：{{ payoff.strength }}）
+{% endfor %}
+{%- endif %}
+
+## 章节正文
+{% if excerpt_strategy %}
+> 截取说明：{{ excerpt_strategy }}
+{% endif %}
+{{ chapter_text }}
+
+---
+
+## 评估维度
+
+### 1. 章尾钩子（Hook）
+分析章节结尾是否形成有效钩子，让读者想点击下一章。
+- **`hook_type`**：crisis（危机逼近）/ mystery（悬念/信息缺口）/ emotion（强情绪触发）/ choice（两难抉择）/ desire（好事将至）/ none（无明显钩子）
+- **`hook_strength`**：strong / medium / weak
+
+### 2. 上章钩子兑现
+上一章留下的钩子，在本章是否得到了回应（不必完全解答，但必须有所呼应）。
+
+{% if suspense_timeline_entries %}
+### 2.5 跨章悬念链追踪
+
+以下悬念来自大纲规划，请评估本章是否兑现：
+
+{% for entry in suspense_timeline_entries %}
+#### 悬念：{{ entry.suspense_id }}
+- 来源：第{{ entry.setup_chapter }}章
+- 描述：「{{ entry.suspense_description }}」
+- 规划兑现章节：第{{ entry.planned_resolution_chapter }}章
+- 当前紧迫度：{{ entry.urgency_level }}
+- 是否在本章兑现？（是/否）
+- 兑现方式：（若兑现，描述如何兑现）
+{% endfor %}
+
+请把本章明确兑现的悬念 ID 写入 `resolved_suspense_ids`，仍未兑现但本章检查到的悬念 ID 写入 `unresolved_suspense_ids`。只有正文中出现具体回应、揭示、行动结果或情绪结算时，才算兑现；单纯再抛出同类型钩子不算兑现。
+{% endif %}
+
+### 3. 章内微兑现（Micro-payoff）
+在本章中，读者获得了哪些小型满足感？每个微兑现标注类型，结果写入 `micro_payoffs` 数组：
+- information: 揭示新信息/真相
+- relationship: 关系推进/确认
+- ability: 能力提升/展示
+- resource: 获得物品/财富
+- recognition: 获得认可/地位
+- emotion: 情绪释放/共鸣
+- clue: 伏笔回收/线索推进
+
+### 4. 过渡章判断
+本章是否为过渡/铺垫章（低冲突、以信息传递或场景转换为主），判断结果写入 `is_transition`。
+
+### 4.5 角色驱动力
+读者是否关心本章角色的命运？角色行为是否有清晰的内在动机（非仅被情节推着走）？
+- **驱动强度**：strong（角色主动抉择推动情节）/ moderate（角色回应事件但有个人立场）/ weak（角色被动跟随，无个人意志）
+
+{%- if suspense_schedule %}
+### 5. 信息释放节奏
+
+本章应关注的悬念时间表：
+{% for entry in suspense_schedule %}
+- **{{ entry.suspense_id }}**：{{ entry.suspense_description }}
+  （来源：第{{ entry.setup_chapter }}章 → 规划兑现：第{{ entry.planned_resolution_chapter }}章）
+  紧迫度：{{ entry.urgency_level }}
+{% endfor %}
+
+本章重大揭示上限：{{ revelation_budget }} 个
+最少保留未决线索：{{ min_unresolved_threads }} 条
+
+请评估：
+- **信息释放节奏**：rushed（揭示过多过快，读者来不及消化）/ balanced（节奏适中）/ slow（揭示不足，信息量偏低）/ stagnant（几乎无新信息释放）
+- **`information_pacing_score`**：必须输出 0-2 数字，不是 0-1 比例；2.0=完全达标，1.5=基本达标，1.0=部分达标，0=失败。若判断为 balanced，通常不应低于 1.5。
+- **重大揭示计数**：本章有几个重大揭示（数字）
+- **是否超预算**：是否超出重大揭示上限
+- **悬念按期揭示情况**：是否有应在本章揭示但未揭示的悬念
+{% endif %}
+
+{%- if narrative_phase_context or main_plot_points %}
+### 6. 主线推进质量
+
+{% if narrative_phase_context %}
+当前叙事阶段：{{ narrative_phase_context.phase_name }}
+阶段描述：{{ narrative_phase_context.description }}
+阶段张力水平：{{ narrative_phase_context.tension_level }}
+{% endif %}
+
+{% if main_plot_points %}
+本章主线推进点：
+{% for point in main_plot_points %}
+- {{ point }}
+{% endfor %}
+{% endif %}
+
+连续主线停滞章数：{{ consecutive_main_plot_stall | default(0) }}
+
+请评估：
+- **主线推进深度**：deep（实质性推进，改变局势/关系/认知）/ moderate（阶段性进展，向目标靠近）/ surface（触及主线但未实质推进）/ stalled（完全偏离或停滞）
+- **张力匹配**：当前章节张力与阶段预期是否匹配（matched / elevated / depressed）
+- **`tension_match_score`**：必须输出 0-2 数字，不是 0-1 比例；2.0=完全匹配，1.5=基本匹配，1.0=部分匹配，0=明显失配。若判断为 matched，通常不应低于 1.5。
+{% endif %}
+
+## 审查边界
+- 本任务只评估追读力：章尾钩子、上一章钩子兑现、微兑现、悬念释放、主线推进深度与角色驱动力。
+- 不评估提示词泄露、禁用元素、POV 侵入、称呼、非法时间刻度、跨章连续性或因果链；这些由本地检查、章节检查、连续性和因果模块处理。
+
+## 质量校准
+- 工作身份：你是一位严谨的小说质量审校员，擅长用短证据、明确边界和下游可执行建议定位问题。
+- 审校路径：先确认输入证据，再判断问题类型、影响范围和修复边界，最后给下游可执行的定位信息。
+- 字段级质量示例（非输出格式）：平弱=“这里不连贯”；高质量=“指出哪两处证据冲突、风险等级、可验证问题”。
+- 可操作路径：每条判断都要能支持复核或修复，低置信度内容降级为待验证问题。
+
+## 交付前核验
+- P0/P1/P2 优先级是否被保持，且没有让弱参考覆盖硬约束。
+- 是否能把关键判断回指到输入证据、上游契约或已批准计划。
+- 是否避免新增未授权的人物、地点、世界规则、未来 payoff 或格式协议。
+- 是否给出短证据、风险等级、定位信息和下游可验证的问题。
+
+{#- ---------------------------------------------------------------------------
+    格式层：输出格式与 Schema
+    --------------------------------------------------------------------------- -#}

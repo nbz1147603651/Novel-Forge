@@ -1,0 +1,190 @@
+{# source_template_hash: 56a0061715263699104773845ee5785afbdee4249d0a95d5084feb668411e5e9 #}
+{%- from "_quality_standards.j2" import creative_specificity_rules -%}
+{%- from "_base/_artifact_source_contract.j2" import render_artifact_source_contract -%}
+{%- from "_base/_repair_attempt_guidance.j2" import render_repair_attempt_guidance, render_repair_self_check -%}
+{%- from "_base/_repair_quality_calibration.j2" import render_repair_quality_calibration, render_repair_pre_delivery_checklist -%}
+
+{#
+================================================================================
+NOTES
+================================================================================
+Prompt: continuity_repair.j2
+Service Step: REPAIR_CONTINUITY (Continuity Repair)
+Brief Description: Only fixes problems located in the main text based on continuity_report and repair_plan.
+          This stage must not rewrite structured artifacts or replan the entire chapter.
+Upstream Input:
+  - chapter_text: Main text to be repaired
+  - continuity_report: Issues to be fixed
+  - repair_plan: Keep/modify checklist
+  - stage_cards.source: ChapterSourceSlice, containing forbidden revelation boundaries
+  - stage_cards: bridge / contract / plan / repair derived non-destroyable cards
+Downstream Output:
+  - TEXT: Repaired complete main text
+Consumption Chain Priority:
+  P0 = critical/high issues and postconditions in report
+  P1 = BridgeCard / ContractCard non-destroyable / verified style voice preservation
+  P2 = Word count boundaries
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer
+    --------------------------------------------------------------------------- -#}
+
+{% set cards = stage_cards | default({}) %}
+{% set source = cards.source | default({}) %}
+{% set source_contract = source.chapter_contract | default({}, true) %}
+{% set contract = source_contract if source_contract else ((cards.contract | default({})) if (cards.contract is defined and cards.contract) else {}) %}
+{% set bridge = (cards.bridge | default({})) if (cards.bridge is defined and cards.bridge) else {} %}
+{% set plan_card = (cards.plan | default({})) if (cards.plan is defined and cards.plan) else {} %}
+{% set repair = (cards.repair | default({})) if (cards.repair is defined and cards.repair) else {} %}
+{% set style = (cards.style | default({})) if (cards.style is defined and cards.style) else {} %}
+{% set editorial = (cards.editorial | default({})) if (cards.editorial is defined and cards.editorial) else {} %}
+{% set knowledge = (cards.knowledge | default({})) if (cards.knowledge is defined and cards.knowledge) else {} %}
+{% set item_function_map = (item_function | default({})) if (item_function is defined and item_function) else {} %}
+{% set cognitive_constraints = contract.cognitive_constraints | default([]) %}
+
+Perform targeted continuity repair on Chapter {{ chapter_number }}.
+
+This step only fixes issues with `repair_surface=chapter_text` or `manual`. If issues belong to bridge_artifact / chapter_plan / state_packet / replan, do not mask them by modifying the main text.
+
+{{ render_artifact_source_contract(source, title="## Source Artifact Boundaries (P0)", mode="repair") }}
+
+## ticket/window Rules
+- First review issue, location, evidence, repair_scope, and postconditions in continuity_report, then decide on text modifications.
+- Only fix tickets and text windows; do not freely rewrite the entire chapter; do not expand with new plot by citing this chapter's contract, plan, or macro creative planning.
+- Source only provides non-crossable boundaries and cannot substitute for text evidence or serve as a source of new facts.
+
+## Non-Destroyable Cards
+{% if bridge.action_handoff is defined and bridge.action_handoff %}- Opening Action Handoff: {{ bridge.action_handoff }}{% endif %}
+{% if bridge.causal_link is defined and bridge.causal_link and bridge.causal_link.previous_event is defined %}- Causal Chain: {{ bridge.causal_link.previous_event }} → {{ bridge.causal_link.causal_mechanism }}{% endif %}
+{% if contract.must_carry_forward is defined and contract.must_carry_forward %}- Must Carry Forward: {{ contract.must_carry_forward | join('; ') }}{% endif %}
+{% if contract.required_events is defined and contract.required_events %}- Required Events: {{ contract.required_events | join('; ') }}{% endif %}
+{% if contract.forbidden_changes is defined and contract.forbidden_changes %}- Forbidden Changes: {{ contract.forbidden_changes | join('; ') }}{% endif %}
+{% if contract.forbidden_progressions is defined and contract.forbidden_progressions %}- Forbidden Early Advancements: {{ contract.forbidden_progressions | join('; ') }}{% endif %}
+{% if contract.future_leak_risks is defined and contract.future_leak_risks %}- Future Leak Risks: {{ contract.future_leak_risks | join('; ') }}{% endif %}
+{% if contract.exit_state_targets is defined and contract.exit_state_targets %}- Exit Targets: {{ contract.exit_state_targets | join('; ') }}{% endif %}
+{% if plan_card.opening_contract is defined and plan_card.opening_contract %}- Opening Contract: {{ plan_card.opening_contract }}{% endif %}
+{% if plan_card.closing_contract is defined and plan_card.closing_contract %}- Closing Contract: {{ plan_card.closing_contract }}{% endif %}
+{% if cognitive_constraints %}
+- Cognitive boundaries are listed once in the Source Artifact above. Repair may only downgrade, mask, or supplement evidence; preserve each named role's coverage and do not convert suspicion into confirmation or public revelation.
+{% endif %}
+{% if repair.preserve is defined and repair.preserve %}- Must Preserve: {{ repair.preserve | join('; ') }}{% endif %}
+{% if repair.do_not_introduce is defined and repair.do_not_introduce %}- Must Not Introduce: {{ repair.do_not_introduce | join('; ') }}{% endif %}
+
+{% if (knowledge.character_cards is defined and knowledge.character_cards) or (knowledge.chapter_ops is defined and knowledge.chapter_ops) %}
+## Character Knowledge Boundaries (Must Not Be Destroyed During Repair)
+- Repair can only supplement text evidence; must not let characters know information outside of `StoryKernel.knowledge_ledger`.
+{% for kb in knowledge.character_cards | default([]) %}
+{% set changes = kb.chapter_promised_changes | default([]) %}
+- {{ kb.character }}{% if kb.is_pov is defined and kb.is_pov %} (Current POV){% endif %}: known={{ kb.known_facts | default([]) | join('; ') or 'no special known facts' }}; suspicion={{ kb.suspicions | default([]) | join('; ') or 'none' }}; misconception={{ kb.misbeliefs | default([]) | join('; ') or 'none' }}{% if changes %}; chaptercognition changes={{ changes | map(attribute='target_text') | list | join('; ') }}{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if plan_card.forbidden_elements is defined and plan_card.forbidden_elements %}
+## 🚫 Forbidden Elements List (The following imagery/patterns and their near-synonym variants must not appear in the main text)
+Ensure new imagery can achieve the same narrative function, but the expression channel must be significantly different from forbidden items.
+{% for item in plan_card.forbidden_elements %}
+- {{ item }}: {{ item_function_map.get(item, "preserve narrative function, use completely different expression") }}
+{% endfor %}
+{% endif %}
+
+{% if repair_plan is defined and repair_plan and not repair_plan.no_op %}
+## Repair Plan
+{% if repair_plan.must_keep is defined and repair_plan.must_keep %}- Keep: {{ repair_plan.must_keep | join('; ') }}{% endif %}
+{% if repair_plan.must_change is defined and repair_plan.must_change %}- Change: {{ repair_plan.must_change | join('; ') }}{% endif %}
+{% endif %}
+
+## Issue Report
+{% if structured_issues_block | default('') %}
+{{ structured_issues_block }}
+{% else %}
+{% for issue in continuity_report.issues %}
+{{ loop.index }}. [Issue {{ issue.issue_id | default('not provided', true) }}] [{{ issue.severity | default('') }}] {{ issue.issue_type | default('') }}: {{ issue.summary | default('') }}
+{% if issue.repair_surface | default('') %}   Repair Surface: {{ issue.repair_surface }}{% endif %}
+{% if issue.location | default('') %}   Location: {{ issue.location }}{% endif %}
+{% if issue.evidence | default('') %}   Evidence: {{ issue.evidence }}{% endif %}
+{% if issue.fix_actions | default([]) %}   Actions: {{ issue.fix_actions | join('; ') }}{% endif %}
+{% if issue.adjudication_notes | default('') %}   Adjudication Notes: {{ issue.adjudication_notes }}{% endif %}
+{% if issue.handoff_notes | default('') %}   Audit Handoff: {{ issue.handoff_notes }}{% endif %}
+{% if issue.repair_boundary | default('') %}   Repair Boundary: {{ issue.repair_boundary }}{% endif %}
+{% if issue.repair_scope | default([]) %}   Repair Scope: {{ issue.repair_scope }}{% endif %}
+{% if issue.must_preserve | default([]) %}   Must Preserve for This Issue: {{ issue.must_preserve | join('; ') }}{% endif %}
+{% if issue.forbidden_changes | default([]) %}   Forbidden Changes for This Issue: {{ issue.forbidden_changes | join('; ') }}{% endif %}
+{% if issue.evidence_pairs is defined and issue.evidence_pairs %}   Cross-Chapter Evidence Pairs: {{ issue.evidence_pairs }}{% endif %}
+{% if issue.missing_anchors is defined and issue.missing_anchors %}
+   Must Callback:
+{% for anchor in issue.missing_anchors %}
+   - {{ anchor.text }} ({{ anchor.role }})
+{% endfor %}
+{% endif %}
+{% if issue.postconditions is defined and issue.postconditions %}
+   Acceptance:
+{% for condition in issue.postconditions %}
+   - {{ condition.description }}
+{% endfor %}
+{% endif %}
+{% endfor %}
+{% endif %}
+
+{# Historical Repair Reminder: prioritize reading top-level escalation_note, compatible with older memory_context.escalation_note #}
+{%- set _escalation_note = escalation_note | default("", true) -%}
+{%- if memory_context is defined and memory_context and memory_context.escalation_note is defined and memory_context.escalation_note -%}
+  {%- set _escalation_note = memory_context.escalation_note -%}
+{%- endif -%}
+{% if _escalation_note %}
+## Historical Repair Reminder
+{{ _escalation_note }}
+{% endif %}
+
+{# This Round's Repair Strategy: prioritize reading top-level repair_attempt_guidance, compatible with older memory_context.repair_attempt_guidance #}
+{%- set _repair_guidance = repair_attempt_guidance | default(none) -%}
+{%- if memory_context is defined and memory_context and memory_context.repair_attempt_guidance is defined and memory_context.repair_attempt_guidance -%}
+  {%- if not _repair_guidance -%}
+    {%- set _repair_guidance = memory_context.repair_attempt_guidance -%}
+  {%- endif -%}
+{%- endif -%}
+{{ render_repair_attempt_guidance(_repair_guidance) }}
+
+{% set style_modules = style.modules | default([]) %}
+{% set style_banned = style.banned_phrases | default([]) %}
+{% set editorial_voices = editorial.character_voices | default([]) %}
+{% if style.summary | default('') or style_modules or style_banned or editorial_voices %}
+## Style and Voice Preservation (P1, does not override ticket)
+- This section is only for maintaining the voice and character register of verified text; if conflicts arise with issues to be fixed, source boundaries, or non-destroyable cards, obey P0/P1 repair objectives.
+{% if style.summary | default('') %}- Style Summary: {{ style.summary }}{% endif %}
+{% if style.dialogue_ratio | default('') or style.pace_mode | default('') %}- Dialogue/Pace: {{ style.dialogue_ratio | default('') }} / {{ style.pace_mode | default('') }}{% endif %}
+{% if style.emotional_style | default('') or style.environment_ratio | default('') or style.info_density | default('') %}- Emotion/Environment/Info Density: {{ style.emotional_style | default('') }} / {{ style.environment_ratio | default('') }} / {{ style.info_density | default('') }}{% endif %}
+{% for module in style_modules %}
+- {{ module.name | default('Style Module') }}: {{ module.rules | default([]) | join('; ') }}
+{% endfor %}
+{% if style_banned %}- Project-Level Banned Phrases: {{ style_banned | join(', ') }}{% endif %}
+{% if editorial_voices %}
+- Dialogue Voice Reference (only for repair window, do not copy samples verbatim):
+{% for item in editorial_voices %}
+  - {{ item.character | default('Character') }}: {{ item.sentence_profile | default('') }}; emotion syntax={{ item.emotion_syntax | default('') }}{% if item.sample_lines | default([]) %}; samples={{ item.sample_lines[:2] | join(' / ') }}{% endif %}{% if item.taboo_patterns | default([]) %}; forbidden={{ item.taboo_patterns | join(', ') }}{% endif %}
+{% endfor %}
+{% endif %}
+{% endif %}
+
+## Original Text
+{{ chapter_text }}
+
+## Repair Rules
+1. Only modify issue location paragraphs, evidence paragraphs, and necessary opening/closing windows; keep unquoted paragraphs as-is.
+2. If issues are opening_gap / bridge_contract_not_followed / location_jump, prioritize supplementing time, location, POV, action handoff, emotional aftermath, and transition causality within the first 300-500 characters.
+3. If issues are forbidden_element, must use completely different imagery/patterns; do not use near-synonym replacements.
+4. Repaired text word count must be between {{ word_count_min }}-{{ word_count_max }}.
+5. Forbidden: new POV segments, unplanned character positive actions, forbidden changed events, future chapter revelations, or large padding sections.
+6. Do not write explanations, reports, JSON, or repair notes; text must be complete.
+{{ creative_specificity_rules(title="") }}
+
+{{ render_repair_self_check("continuity") }}
+
+{{ render_repair_quality_calibration("repair") }}
+
+{{ render_repair_pre_delivery_checklist("repair") }}
+
+{#- ---------------------------------------------------------------------------
+    Format Layer
+    --------------------------------------------------------------------------- -#}

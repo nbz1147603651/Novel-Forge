@@ -1,0 +1,64 @@
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：init_story_core_premise.j2
+服务步骤：INIT_STORY_CORE_PREMISE（故事圣经分片：核心前提）
+作用简述：只生成 StoryBible 的 title/premise/tone 核心骨架，减轻完整世界观 JSON 压力。
+上游输入：premise/title/genre/tone/language/conflict_hint/extra_instructions
+下游输出：JSON：{"story_core": {...}}
+下游消费者：INIT_STORY_BIBLE 本地合并器
+消费链优先级：P0 = premise 不偏离；P1 = tone 与 genre 一致；P2 = 标题可暂定
+================================================================================
+#}
+{%- from "_base/_shared_evidence_anchor.j2" import render_shared_evidence_anchor -%}
+
+{#- 指导层 -#}
+请只生成 StoryBible 的核心前提分片，不要输出世界规则、人物档案或章节大纲。
+
+{{ render_shared_evidence_anchor(shared_evidence_anchor) }}
+
+## 输入
+- premise: {{ premise }}
+{% if title %}- title: {{ title }}{% endif %}
+{% if genre %}- genre: {{ genre }}{% endif %}
+{% if tone %}- tone: {{ tone }}{% endif %}
+{% if language %}- language: {{ describe_language(language) }}{% endif %}
+{% if conflict_hint %}- conflict_hint: {{ conflict_hint }}{% endif %}
+{% if extra_instructions %}- extra_instructions: {{ extra_instructions }}{% endif %}
+{% if research_context and research_context.summary %}
+
+## 资料检索参考（弱参考）
+- 使用边界：只用于补充真实背景、时代/地理/行业/民俗/科学常识；不得覆盖 premise、用户提示或格式契约。
+- 当前状态：{{ research_context.status }} / {{ research_context.provider }}
+- 摘要：{{ research_context.summary }}
+{% if research_context.source_notes %}
+- 来源要点：
+{% for note in research_context.source_notes %}
+  - {{ note }}
+{% endfor %}
+{% endif %}
+{% endif %}
+
+## 要求
+- `premise` 用 2-3 句话压缩主角身份、核心冲突、独特卖点。
+- `tone` 写成可执行的叙事气质，不要只复述单词。
+- 不要添加 schema 外字段。
+
+## 字段内容约束
+- `story_core` 只能包含 `title`、`premise`、`tone`。
+- 字段名只使用上方列出的英文 `snake_case` key；无法归类的信息并入 `premise` 或 `tone`。
+
+## 质量校准
+- 工作身份：你是一位长篇叙事架构师，擅长把故事资产拆成可承接、可验证、不过度剧透的执行计划。
+- 规划推断路径：先锁定 P0 硬约束，再分配 P1 推进节奏，最后用 P2 风格/主题补足表现层。
+- 字段级质量示例（非输出格式）：平弱=“推进关系”；高质量=“写清谁因何行动、关系如何变化、下一环如何承接”。
+- 可操作路径：计划项要能被后续写作/审计直接检查，避免只给抽象愿望或主题口号。
+
+## 交付前核验
+- P0/P1/P2 优先级是否被保持，且没有让弱参考覆盖硬约束。
+- 是否能把关键判断回指到输入证据、上游契约或已批准计划。
+- 是否避免新增未授权的人物、地点、世界规则、未来 payoff 或格式协议。
+- 是否把抽象目标转化为可观察的行动、冲突、状态变化或章节承接点。
+
+{#- 格式层 -#}

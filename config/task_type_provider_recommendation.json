@@ -1,0 +1,400 @@
+{
+  "version": "1.0.0",
+  "description": "基于 model_capability_profile.json 的证据，为每个 TaskType 推荐 provider。用作 lint 参考，不覆盖实际路由。",
+  "last_updated": "2026-06-07",
+  "evidence_source": "config/model_capability_profile.json + data/弈心锁玉/logs/ 实战错误日志",
+  "recommendations": {
+    "INIT_STORY_BIBLE": {
+      "tier": "standard",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash", "kimi:kimi-k2"],
+      "avoid": ["minimax:MiniMax-M3", "tencent:hunyuan-2.0-instruct-20251111"],
+      "min_context_window_tokens": 32000,
+      "rationale": "结构化 JSON 输出，中等复杂度，需要指令遵循。minimax 结构化输出不可靠；hunyuan 上下文太小。"
+    },
+    "INIT_STORY_CORE_PREMISE": {
+      "tier": "standard",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash", "anthropic:claude-3-5-sonnet"],
+      "avoid": ["minimax:MiniMax-M3", "tencent:hunyuan-2.0-instruct-20251111"],
+      "min_context_window_tokens": 32000,
+      "rationale": "核心前提推导，需要深度推理和结构化输出。"
+    },
+    "INIT_STORY_WORLD_RULES": {
+      "tier": "standard",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash", "kimi:kimi-k2"],
+      "avoid": ["minimax:MiniMax-M3"],
+      "min_context_window_tokens": 32000,
+      "rationale": "世界观规则推导，需要结构化 JSON。minimax 自相矛盾的 JSON 输出导致规则不一致。"
+    },
+    "INIT_STORY_THEMES_AND_SYMBOLS": {
+      "tier": "standard",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash", "kimi:kimi-k2"],
+      "avoid": ["minimax:MiniMax-M3"],
+      "min_context_window_tokens": 32000,
+      "rationale": "主题与象征推导，需要创造性 + 结构化输出。"
+    },
+    "INIT_STORY_CONTINUITY_RULES": {
+      "tier": "standard",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash", "anthropic:claude-3-5-sonnet"],
+      "avoid": ["minimax:MiniMax-M3"],
+      "min_context_window_tokens": 32000,
+      "rationale": "连续性规则生成，结构化输出要求高。"
+    },
+    "INIT_CHARACTER_BIBLE": {
+      "tier": "standard",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash", "kimi:kimi-k2"],
+      "avoid": ["minimax:MiniMax-M3", "tencent:hunyuan-2.0-instruct-20251111"],
+      "min_context_window_tokens": 64000,
+      "rationale": "角色设定书，中等上下文 + 结构化 JSON。"
+    },
+    "INIT_CHARACTER_ROSTER": {
+      "tier": "standard",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash"],
+      "avoid": ["minimax:MiniMax-M3"],
+      "min_context_window_tokens": 32000,
+      "rationale": "角色花名册提取，结构化输出。"
+    },
+    "INIT_CHARACTER_PROFILE_BATCH": {
+      "tier": "standard",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash", "kimi:kimi-k2"],
+      "avoid": ["minimax:MiniMax-M3"],
+      "min_context_window_tokens": 64000,
+      "rationale": "批量角色档案生成，大量结构化 JSON。"
+    },
+    "INIT_CHARACTER_RELATIONSHIP_MATRIX": {
+      "tier": "standard",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash"],
+      "avoid": ["minimax:MiniMax-M3"],
+      "min_context_window_tokens": 64000,
+      "rationale": "角色关系矩阵，结构化 JSON 输出。"
+    },
+    "INIT_CHARACTER_ARC_PLAN": {
+      "tier": "standard",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash", "anthropic:claude-3-5-sonnet"],
+      "avoid": ["minimax:MiniMax-M3"],
+      "min_context_window_tokens": 64000,
+      "rationale": "角色弧光规划，需要深度叙事推理。"
+    },
+    "INIT_ENTITY_REGISTRY": {
+      "tier": "standard",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash"],
+      "avoid": ["minimax:MiniMax-M3", "tencent:hunyuan-2.0-instruct-20251111"],
+      "min_context_window_tokens": 32000,
+      "rationale": "实体注册表初始化，结构化 JSON 输出。"
+    },
+    "INIT_NARRATIVE_CONTRACT": {
+      "tier": "standard",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash", "anthropic:claude-3-5-sonnet"],
+      "avoid": ["minimax:MiniMax-M3", "tencent:hunyuan-2.0-instruct-20251111"],
+      "min_context_window_tokens": 64000,
+      "rationale": "叙事契约生成，复杂结构化输出，需要强指令遵循。"
+    },
+    "BLUEPRINT_ELEMENT_SELECT": {
+      "tier": "standard",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash", "kimi:kimi-k2"],
+      "avoid": ["minimax:MiniMax-M3", "tencent:hunyuan-2.0-instruct-20251111"],
+      "min_context_window_tokens": 64000,
+      "rationale": "叙事要素选择，大量结构化 JSON + 叙事推理。"
+    },
+    "PLAN_OUTLINE": {
+      "tier": "standard",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash", "anthropic:claude-3-5-sonnet"],
+      "avoid": ["minimax:MiniMax-M3"],
+      "min_context_window_tokens": 64000,
+      "rationale": "大纲规划，大上下文 + 结构化输出。minimax JSON 输出不可靠（已证实）。"
+    },
+    "PLAN_OUTLINE_BATCH": {
+      "tier": "premium",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash", "anthropic:claude-3-5-sonnet"],
+      "avoid": ["minimax:MiniMax-M3", "tencent:hunyuan-2.0-instruct-20251111"],
+      "min_context_window_tokens": 128000,
+      "rationale": "批量大纲生成，超长上下文 + 大量结构化 JSON。hunyuan 32K 上下文不够。"
+    },
+    "PLAN_OUTLINE_CONTINUE": {
+      "tier": "standard",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash"],
+      "avoid": ["minimax:MiniMax-M3"],
+      "min_context_window_tokens": 64000,
+      "rationale": "大纲续写，大上下文结构化输出。"
+    },
+    "PLAN_CHAPTER": {
+      "tier": "standard",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash", "kimi:kimi-k2"],
+      "avoid": ["minimax:MiniMax-M3"],
+      "min_context_window_tokens": 64000,
+      "rationale": "章节规划，需要叙事推理 + 结构化 JSON。"
+    },
+    "PLAN_CHAPTER_CONTRACTS": {
+      "tier": "premium",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash", "anthropic:claude-3-5-sonnet"],
+      "avoid": ["minimax:MiniMax-M3"],
+      "min_context_window_tokens": 128000,
+      "rationale": "章节契约规划，超长上下文 + 复杂结构化 JSON。minimax JSON 输出不可靠（已证实）。"
+    },
+    "PLAN_CHAPTER_SCENES": {
+      "tier": "standard",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash"],
+      "avoid": ["minimax:MiniMax-M3"],
+      "min_context_window_tokens": 32000,
+      "rationale": "场景规划，结构化输出。"
+    },
+    "PROFILE_STYLE": {
+      "tier": "standard",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash", "kimi:kimi-k2"],
+      "avoid": ["minimax:MiniMax-M3"],
+      "min_context_window_tokens": 32000,
+      "rationale": "风格规范生成，需要文学理解 + 结构化输出。"
+    },
+    "PROFILE_STRUCTURE": {
+      "tier": "standard",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash"],
+      "avoid": ["minimax:MiniMax-M3"],
+      "min_context_window_tokens": 32000,
+      "rationale": "结构分析，结构化输出。"
+    },
+    "DRAFT_CHAPTER": {
+      "tier": "premium",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash", "kimi:kimi-k2", "anthropic:claude-3-5-sonnet"],
+      "avoid": ["minimax:MiniMax-M3", "tencent:hunyuan-2.0-instruct-20251111"],
+      "min_context_window_tokens": 64000,
+      "rationale": "章节初稿创作，需要中文叙事能力 + 长文本生成。minimax 指令遵循弱；hunyuan 不适合长篇。"
+    },
+    "DRAFT_SCENE": {
+      "tier": "premium",
+      "recommended": ["deepseek:deepseek-v4-flash", "tongyi:deepseek-v4-flash", "kimi:kimi-k2"],
+      "avoid": ["minimax:MiniMax-M3", "tencent:hunyuan-2.0-instruct-20251111"],
+      "min_context_window_tokens": 64000,
+      "rationale": "场景初稿，需要中文叙事能力。"
+    },
+    "WAVE_CHAPTER": {
+      "tier": "premium",
+      "recommended": ["deepseek:deepseek-v4-flash", "tongyi:deepseek-v4-flash", "anthropic:claude-3-5-sonnet"],
+      "avoid": ["minimax:MiniMax-M3", "tencent:hunyuan-2.0-instruct-20251111"],
+      "min_context_window_tokens": 128000,
+      "rationale": "场景编织（WAVE），超长上下文 + 跨场景一致性 + 完整 scene_intent。需要大上下文窗口。"
+    },
+    "EDIT_CHAPTER": {
+      "tier": "premium",
+      "recommended": ["deepseek:deepseek-v4-flash", "tongyi:deepseek-v4-flash", "kimi:kimi-k2", "anthropic:claude-3-5-sonnet"],
+      "avoid": ["minimax:MiniMax-M3", "tencent:hunyuan-2.0-instruct-20251111"],
+      "min_context_window_tokens": 64000,
+      "rationale": "章节编辑润色，需要精确编辑 + 中文叙事能力。"
+    },
+    "CHECK_CHAPTER": {
+      "tier": "standard",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash", "anthropic:claude-3-5-sonnet"],
+      "avoid": ["minimax:MiniMax-M3"],
+      "min_context_window_tokens": 64000,
+      "rationale": "章节检查，结构化 JSON 输出 + 评估推理。"
+    },
+    "CHECK_ALIGNMENT": {
+      "tier": "standard",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash", "anthropic:claude-3-5-sonnet"],
+      "avoid": ["minimax:MiniMax-M3"],
+      "min_context_window_tokens": 64000,
+      "rationale": "大纲对齐检查，结构化 JSON 输出 + 对比推理。"
+    },
+    "CHECK_CONTINUITY": {
+      "tier": "standard",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash", "anthropic:claude-3-5-sonnet"],
+      "avoid": ["minimax:MiniMax-M3"],
+      "min_context_window_tokens": 64000,
+      "rationale": "连续性检查，结构化 JSON + 跨段对比推理。"
+    },
+    "VALIDATE_CAUSAL": {
+      "tier": "standard",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash", "anthropic:claude-3-5-sonnet"],
+      "avoid": ["minimax:MiniMax-M3"],
+      "min_context_window_tokens": 64000,
+      "rationale": "因果验证，结构化 JSON + 逻辑推理。"
+    },
+    "ELEMENT_PROGRESS_ARBITER": {
+      "tier": "standard",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash"],
+      "avoid": ["minimax:MiniMax-M3"],
+      "min_context_window_tokens": 32000,
+      "rationale": "要素进度仲裁，结构化 JSON 裁决。"
+    },
+    "EXTRACT_CANON": {
+      "tier": "standard",
+      "recommended": ["deepseek:deepseek-v4-flash", "tongyi:deepseek-v4-flash", "anthropic:claude-3-5-sonnet"],
+      "avoid": ["minimax:MiniMax-M3", "tencent:hunyuan-2.0-instruct-20251111"],
+      "min_context_window_tokens": 64000,
+      "rationale": "Canon 提取，需要精确提取 + 结构化 JSON。minimax 自相矛盾的 JSON（已证实）。"
+    },
+    "EXTRACT_CANON_DELTA": {
+      "tier": "standard",
+      "recommended": ["deepseek:deepseek-v4-flash", "tongyi:deepseek-v4-flash"],
+      "avoid": ["minimax:MiniMax-M3"],
+      "min_context_window_tokens": 64000,
+      "rationale": "Canon 增量提取，结构化 JSON。"
+    },
+    "EXTRACT_CANDIDATE_STATE_DELTAS": {
+      "tier": "standard",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash"],
+      "avoid": ["minimax:MiniMax-M3"],
+      "min_context_window_tokens": 64000,
+      "rationale": "候选状态增量提取，结构化 JSON。"
+    },
+    "EXTRACT_MOTIFS": {
+      "tier": "standard",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash"],
+      "avoid": ["minimax:MiniMax-M3"],
+      "min_context_window_tokens": 32000,
+      "rationale": "母题提取，需要文学理解 + 结构化输出。"
+    },
+    "EXTRACT_INIT_COHERENCE_CLAIMS": {
+      "tier": "premium",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash", "anthropic:claude-3-5-sonnet"],
+      "avoid": ["minimax:MiniMax-M3"],
+      "min_context_window_tokens": 1000000,
+      "rationale": "初始化一致性声明提取，超长上下文（~1M tokens）+ 结构化 JSON。minimax JSON 输出不可靠（已证实）。"
+    },
+    "REPAIR_CONTINUITY": {
+      "tier": "premium",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash", "anthropic:claude-3-5-sonnet"],
+      "avoid": ["minimax:MiniMax-M3"],
+      "min_context_window_tokens": 64000,
+      "rationale": "连续性修复，需要精确编辑 + 上下文理解。"
+    },
+    "REPAIR_CAUSAL": {
+      "tier": "premium",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash", "anthropic:claude-3-5-sonnet"],
+      "avoid": ["minimax:MiniMax-M3"],
+      "min_context_window_tokens": 64000,
+      "rationale": "因果修复，需要逻辑推理 + 精确编辑。"
+    },
+    "REPAIR_READING_POWER": {
+      "tier": "premium",
+      "recommended": ["deepseek:deepseek-v4-flash", "tongyi:deepseek-v4-flash", "anthropic:claude-3-5-sonnet"],
+      "avoid": ["minimax:MiniMax-M3", "tencent:hunyuan-2.0-instruct-20251111"],
+      "min_context_window_tokens": 64000,
+      "rationale": "阅读力修复，需要文学判断 + 精确编辑。"
+    },
+    "REPAIR_INIT_ARTIFACT_PATCH": {
+      "tier": "premium",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash", "anthropic:claude-3-5-sonnet"],
+      "avoid": ["minimax:MiniMax-M3", "tencent:hunyuan-2.0-instruct-20251111"],
+      "min_context_window_tokens": 1000000,
+      "rationale": "初始化制品修复，大 prompts + 结构化输出 + 强指令遵循。minimax 自相矛盾的 JSON（已证实）；tongyi 托管版超时。"
+    },
+    "REPAIR_ADJUDICATED_ISSUE": {
+      "tier": "standard",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash"],
+      "avoid": ["minimax:MiniMax-M3"],
+      "min_context_window_tokens": 32000,
+      "rationale": "裁决问题修复，结构化输出。"
+    },
+    "PATCH_CHAPTER": {
+      "tier": "premium",
+      "recommended": ["deepseek:deepseek-v4-flash", "tongyi:deepseek-v4-flash"],
+      "avoid": ["minimax:MiniMax-M3"],
+      "min_context_window_tokens": 64000,
+      "rationale": "章节补丁修复，需要精确文本匹配。"
+    },
+    "CRITIC_CONTINUITY": {
+      "tier": "standard",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash", "anthropic:claude-3-5-sonnet"],
+      "avoid": ["minimax:MiniMax-M3"],
+      "min_context_window_tokens": 64000,
+      "rationale": "连续性评审，结构化 JSON + 评估推理。"
+    },
+    "CRITIC_CHARACTER": {
+      "tier": "standard",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash"],
+      "avoid": ["minimax:MiniMax-M3"],
+      "min_context_window_tokens": 64000,
+      "rationale": "角色一致性检查，结构化 JSON。"
+    },
+    "CRITIC_CAUSAL": {
+      "tier": "standard",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash", "anthropic:claude-3-5-sonnet"],
+      "avoid": ["minimax:MiniMax-M3"],
+      "min_context_window_tokens": 64000,
+      "rationale": "因果链评审，结构化 JSON + 逻辑推理。"
+    },
+    "CRITIC_STRENGTHS": {
+      "tier": "standard",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash"],
+      "avoid": ["minimax:MiniMax-M3"],
+      "min_context_window_tokens": 32000,
+      "rationale": "优点识别，结构化 JSON。"
+    },
+    "SUMMARIZE_CHAPTER": {
+      "tier": "standard",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash", "kimi:kimi-k2"],
+      "avoid": ["minimax:MiniMax-M3"],
+      "min_context_window_tokens": 32000,
+      "rationale": "章节摘要，中文摘要能力。"
+    },
+    "SUMMARIZE_VOLUME": {
+      "tier": "standard",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash"],
+      "avoid": ["minimax:MiniMax-M3"],
+      "min_context_window_tokens": 64000,
+      "rationale": "卷摘要，较大上下文 + 中文摘要。"
+    },
+    "EVALUATE_READING_POWER": {
+      "tier": "premium",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash", "anthropic:claude-3-5-sonnet"],
+      "avoid": ["minimax:MiniMax-M3"],
+      "min_context_window_tokens": 64000,
+      "rationale": "阅读力评估，结构化 JSON + 文学判断。"
+    },
+    "MACRO_GUARD_AUDIT": {
+      "tier": "premium",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash", "anthropic:claude-3-5-sonnet"],
+      "avoid": ["minimax:MiniMax-M3"],
+      "min_context_window_tokens": 64000,
+      "rationale": "宏观护栏审计，结构化 JSON + 全局一致性判断。"
+    },
+    "BOOK_CONSISTENCY": {
+      "tier": "premium",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash", "anthropic:claude-3-5-sonnet"],
+      "avoid": ["minimax:MiniMax-M3", "tencent:hunyuan-2.0-instruct-20251111"],
+      "min_context_window_tokens": 64000,
+      "rationale": "全书一致性审计，跨章节对比 + 结构化 JSON。"
+    },
+    "BOOK_CONSISTENCY_VERIFY": {
+      "tier": "standard",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash"],
+      "avoid": ["minimax:MiniMax-M3"],
+      "min_context_window_tokens": 64000,
+      "rationale": "全书一致性验证，结构化 JSON。"
+    },
+    "DERIVE_EDITORIAL_CONTRACT": {
+      "tier": "premium",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash", "anthropic:claude-3-5-sonnet"],
+      "avoid": ["minimax:MiniMax-M3"],
+      "min_context_window_tokens": 128000,
+      "rationale": "编辑契约推导，超长上下文 + 复杂结构化 JSON。minimax JSON 输出不可靠（已证实）。"
+    },
+    "ADJUDICATE_STATE_DELTA": {
+      "tier": "standard",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash", "anthropic:claude-3-5-sonnet"],
+      "avoid": ["minimax:MiniMax-M3"],
+      "min_context_window_tokens": 64000,
+      "rationale": "状态增量裁决，结构化 JSON + 叙事推理。"
+    },
+    "ADJUDICATE_CONTRACT_COHERENCE": {
+      "tier": "standard",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash", "anthropic:claude-3-5-sonnet"],
+      "avoid": ["minimax:MiniMax-M3"],
+      "min_context_window_tokens": 128000,
+      "rationale": "契约连贯性裁决，大上下文 + 结构化 JSON。"
+    },
+    "ADJUDICATE_INIT_CONFLICT_CANDIDATES": {
+      "tier": "standard",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash", "anthropic:claude-3-5-sonnet"],
+      "avoid": ["minimax:MiniMax-M3"],
+      "min_context_window_tokens": 128000,
+      "rationale": "初始化冲突候选裁决，大上下文 + 结构化 JSON。"
+    },
+    "CONTEXT_COMPRESS": {
+      "tier": "standard",
+      "recommended": ["tongyi:deepseek-v4-flash", "deepseek:deepseek-v4-flash", "anthropic:claude-3-5-sonnet"],
+      "avoid": ["minimax:MiniMax-M3", "tencent:hunyuan-2.0-instruct-20251111"],
+      "min_context_window_tokens": 64000,
+      "rationale": "上下文压缩，需要精确的信息提取与保留。hunyuan 上下文太小。"
+    }
+  }
+}

@@ -1,0 +1,135 @@
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：volume_audit.j2
+服务步骤：VOLUME_AUDIT（卷末审计）
+作用简述：对当前卷进行卷末审计，评估目标完成度与一致性，输出下一卷衔接方案
+上游输入：
+  - volume: 卷信息（volume_number, title, start_chapter, end_chapter, arc_goal 等）
+  - story_synopsis: 全书主旨
+  - chapter_summaries: 本卷章节摘要列表
+  - timeline_events: 本卷关键事件列表
+  - active_characters: 当前正史角色状态
+  - active_foreshadowing: 活跃伏笔列表
+  - world_fact_keys: 世界事实键列表
+  - blueprint_phases/blueprint_arc_milestones: 蓝图阶段目标（可选）
+下游输出：
+  - JSON：volume_summary, milestone_status, consistency_score, carry_over/retire 列表, next_volume_focus
+  - 下游消费者：下一卷规划 / CanonStore 清理
+消费链优先级：
+  P0 = retire_* 准确性 / 未回收伏笔必须进入 carry_over_*
+  P1 = milestone_status 准确性 / consistency_score 合理性
+  P2 = token_optimization_notes 可执行性
+简要例子：
+  输入：volume={"volume_number":1, "title":"觉醒"}, chapter_summaries=[...]
+  输出：{"volume_summary":"...", "milestone_status":[...], "carry_over_characters":[...], ...}
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    指导层：任务定义与输入消费
+    --------------------------------------------------------------------------- -#}
+
+请对当前卷进行卷末审计，并给出"下一卷衔接"的可执行方案。
+
+## 卷信息
+- 卷号：第 {{ volume.volume_number }} 卷
+- 卷名：{{ volume.title }}
+- 章节范围：{{ volume.start_chapter }}-{{ volume.end_chapter }}
+- 卷目标：{{ volume.arc_goal }}
+{% if volume.milestone_targets %}
+- 卷里程碑目标：{{ volume.milestone_targets | join("；") }}
+{% endif %}
+{% if volume.main_conflicts %}
+- 卷冲突：{{ volume.main_conflicts | join("；") }}
+{% endif %}
+{% if volume.climax_hint %}- 卷高潮提示：{{ volume.climax_hint }}{% endif %}
+{% if volume.resolution_hint %}- 卷收束提示：{{ volume.resolution_hint }}{% endif %}
+
+## 全书主旨
+{{ story_synopsis }}
+
+## 本卷章节摘要
+{% for s in chapter_summaries %}
+- 第{{ s.chapter }}章：{{ s.summary }}
+{% endfor %}
+
+## 本卷关键事件
+{% for e in timeline_events %}
+- 第{{ e.chapter }}章：{{ e.event }}
+{% endfor %}
+
+## 当前正史状态
+### 角色
+{% for c in active_characters %}
+- {{ c.name }} | 存活={{ c.alive }} | 位置={{ c.location }} | 持有={{ c.inventory | join("、") }}
+{% endfor %}
+
+### 活跃伏笔
+{% for fs in active_foreshadowing %}
+- {{ fs.id }}：{{ fs.description }}（状态={{ fs.status }}）
+{% endfor %}
+
+### 世界事实键
+{{ world_fact_keys | join("、") }}
+
+{% if blueprint_phases %}
+## 蓝图阶段目标（核验本卷是否落实）
+{% for phase in blueprint_phases %}
+### 阶段「{{ phase.phase_name }}」（第{{ phase.chapter_start }}–{{ phase.chapter_end }}章，张力={{ phase.tension_level }}）
+- 阶段目标：{{ phase.description }}
+{% if phase.key_events %}
+- 应覆盖的关键事件：
+{% for e in phase.key_events %}
+  - {{ e }}
+{% endfor %}
+{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if blueprint_arc_milestones %}
+## 角色弧光里程碑（核验本卷角色弧光进展）
+{% for arc in blueprint_arc_milestones %}
+- **{{ arc.character }}**（{{ arc.arc_summary }}）
+{% for ms in arc.milestones %}
+  - 第{{ ms.chapter_start }}–{{ ms.chapter_end }}章：{{ ms.description }}
+{% endfor %}
+{% endfor %}
+{% endif %}
+
+{% if episodic_context and episodic_context.similar_volumes %}
+## 历史相似卷参考（供审计决策参考）
+{% for vol in episodic_context.similar_volumes %}
+- 第{{ vol.volume_number }}卷（相似度: {{ vol.relevance_score }}）
+  - 一致性评分: {{ vol.consistency_score }}
+  - 需保留角色: {{ vol.carry_over_characters | join("、") }}
+  - 需保留物品: {{ vol.carry_over_items | join("、") }}
+{% endfor %}
+{% endif %}
+
+## 质量校准
+- 工作身份：你是一位章节记忆编辑，擅长把正文压缩为后续创作可直接承接的高密度叙事摘要。
+- 摘要路径：先按时间顺序抽取核心事件，再补入角色状态、未解问题和新事实，最后压缩成可检索表述。
+- 证据校准：摘要只承接本章实际发生或明确确立的信息；修辞气氛降为背景，不升级为硬事实。
+- 可操作路径：每条摘要信息都应能被后续章节 Bridge、Memory 或 VolumeAudit 直接引用。
+
+## 交付前核验
+- P0/P1/P2 优先级是否被保持，且没有让弱参考覆盖硬约束。
+- 是否能把关键判断回指到输入证据、上游契约或已批准计划。
+- 是否避免新增未授权的人物、地点、世界规则、未来 payoff 或格式协议。
+- 是否保留后续合并/检索需要的事实边界，且没有把推测写成既定事实。
+
+{#- ---------------------------------------------------------------------------
+    系统契约由 PromptBuilder 注入
+    --------------------------------------------------------------------------- -#}
+
+## 字段要求
+- `volume_number` 使用当前卷号；`volume_summary` 概括本卷核心进展、完成的承诺和残留张力。
+- `milestone_status` 为卷里程碑状态数组，每项写里程碑、状态（done/partial/missed）和证据。
+- `consistency_score` 范围 0-10；`consistency_issues` 写本卷遗留一致性问题。
+- `carry_over_characters`、`carry_over_items`、`carry_over_world_fact_keys`、`carry_over_foreshadowing_ids` 写下一卷仍需保留的对象。
+- `retire_characters`、`retire_items`、`retire_world_fact_keys` 只能填与主线后续无关且已完成功能的对象，宁可少删不可误删。
+- `resolved_foreshadowing_ids` 写本卷已回收伏笔 ID。
+- `next_volume_focus` 写下一卷规划重点；`token_optimization_notes` 给出具体可执行压缩建议。
+- 与未回收伏笔有关的角色/物品必须进入 `carry_over_*`。

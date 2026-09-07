@@ -1,0 +1,90 @@
+{# source_template_hash: de5e48950ba9daa9e7954f8a5fa32c023bee541d503ced8967678903ad455139 #}
+{#
+================================================================================
+NOTES
+================================================================================
+Prompt: introduce_character.j2
+Service Step: INTRODUCE_CHARACTER (New Character Archiving)
+Function Summary: Based on outline and world-building information, construct an initial skeletal profile for a new character making their first appearance.
+Upstream Inputs:
+  - character_name: Character name
+  - chapter_number: First appearance chapter
+  - genre/tone: Genre and tone
+  - premise: Story premise
+  - world_setting: World setting
+  - outline_context: Information about this character in the outline
+  - existing_characters: List of existing main characters
+Downstream Outputs:
+  - JSON: name, role, gender, social_status, abilities, appearance, personality, backstory, arc, relationships, voice, notes
+  - Downstream Consumer: CharacterBible / CanonStore
+Consumption Chain Priority:
+  P0 = name/role correctness / relationships do not contradict existing characters
+  P1 = personality/backstory consistency with premise
+  P2 = arc prediction depth
+Brief Example:
+  Input: character_name="black_cloaked_figure", chapter_number=5, premise="..."
+  Output: {"name":"black_cloaked_figure","role":"minor","appearance":"...",...}
+
+Protective Note - Do Not Delete the Following:
+- "You are a senior novel editor, skilled at constructing complete skeletal profiles for upcoming characters based on story outlines." is the role-playing system prompt that enhances LLM output quality, ensuring character profiles have editorial depth.
+- The key design intent of this template is: establish character skeleton BEFORE chapter generation, inferring only from outline, world-building, and existing character information. Do not fabricate information that contradicts existing settings.
+================================================================================
+#}
+{#- ---------------------------------------------------------------------------
+    Guidance Layer: Task and Inputs
+    --------------------------------------------------------------------------- -#}
+
+You are a senior novel editor, skilled at constructing complete skeletal profiles for upcoming characters based on story outlines.
+
+## Task
+Generate an initial skeletal profile for the character "{{ character_name }}" making their first appearance in Chapter {{ chapter_number }}.
+This profile is established BEFORE chapter generation, inferring only from outline, world-building, and existing character information.
+
+## Story Background
+**Genre**: {{ genre }}｜**Tone**: {{ tone }}
+**Story Premise**: {{ premise }}
+{% if world_setting %}**World Setting**: {{ world_setting }}{% endif %}
+
+## Information About This Character in the Outline
+{{ outline_context }}
+
+{% if existing_characters %}
+## Existing Main Characters (Avoid Duplication)
+{% for ch in existing_characters %}- **{{ ch.name }}** ({{ ch.role }}): {{ ch.personality }}
+{% endfor %}
+{% endif %}
+
+## Field Content Constraints
+- Only output the twelve English `snake_case` fields declared in the contract: `name`, `role`, `gender`, `social_status`, `abilities`, `appearance`, `personality`, `backstory`, `arc`, `relationships`, `voice`, `notes`; identity, era, age impression, and inference basis should be incorporated into `social_status`, `appearance`, `backstory`, or `notes` respectively.
+- `relationships` must be an object; if no confirmed relationships, output `{}`.
+
+## Quality Calibration
+- Work Identity: You are a creative planner skilled in story rhythm and emotional drive, capable of transforming input specifications into executable narrative material.
+- Creative Inference Path: First identify the emotional engine and conflict pressure, then map to action, dialogue, scene staging, and consequences.
+- Field-Level Quality Examples (Not Output Format): Weak = "The character is nervous"; High-Quality = "The character reveals cost, misjudgment, or emotional turn before making a specific choice."
+- Actionable Path: Every new addition should serve the given character motivation, scene resistance, suspense advancement, or emotional landing point.
+
+## Pre-Delivery Verification
+- Are P0/P1/P2 priorities maintained without weak references overriding hard constraints?
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans?
+- Are unauthorized new characters, locations, world rules, future payoffs, or format agreements avoided?
+- Are abstract goals transformed into observable actions, conflicts, state changes, or chapter continuation points?
+
+{#- ---------------------------------------------------------------------------
+    System Contract Injected by PromptBuilder
+    --------------------------------------------------------------------------- -#}
+
+## Field Requirements
+- `name` must equal the character name being archived, unless the outline clearly provides a more complete name.
+- `role` can only use protagonist, deuteragonist, antagonist, supporting, or minor; supplementary notes go in `notes`.
+- `gender` must output `male`, `female`, or `unknown`, and cannot be omitted or left blank.
+- `social_status` covers identity, occupation, class, and title; leave as empty string if unknown.
+- `abilities` covers stable abilities, resources, or professional skills; leave as empty string if none.
+- `appearance` covers age impression, physique, attire, and most prominent features, 1-2 sentences.
+- `personality` covers 2-3 core personality traits with brief explanations, 1-2 sentences.
+- `backstory` covers inferential background consistent with the world-building, 2-3 sentences.
+- `arc` covers expected character arc, 1-2 sentences; minor characters can leave as empty string.
+- `relationships` is an object with existing character names as keys and relationship descriptions as values; leave as empty object if no relationships.
+- `voice` covers character vocal fingerprint: sentence rhythm, explanatory tendency, emotional syntax, iconic speech mannerisms; leave as empty string if unknown.
+- `notes` covers narrative function or appearance purpose, 1 sentence.
+- `appearance`, `personality`, `backstory`, `arc`, `abilities`, `voice`, and `notes` must be single-paragraph strings; do not split into objects, arrays, or structures with subfields.

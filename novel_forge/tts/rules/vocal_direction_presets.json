@@ -1,0 +1,115 @@
+{
+  "_doc": "Emotion → VocalDirection 6D parameter presets. Each emotion maps to (energy, articulation, breathiness, tension, intimacy, delivery_style). Used by _enrich_voice_direction to differentiate per-segment vocal performance.",
+  "emotion_presets": {
+    "neutral": {
+      "energy": 0.5,
+      "articulation": 0.6,
+      "breathiness": 0.2,
+      "tension": 0.3,
+      "intimacy": 0.5,
+      "delivery_style": "natural"
+    },
+    "happy": {
+      "energy": 0.75,
+      "articulation": 0.7,
+      "breathiness": 0.15,
+      "tension": 0.25,
+      "intimacy": 0.6,
+      "delivery_style": "conversational"
+    },
+    "sad": {
+      "energy": 0.3,
+      "articulation": 0.5,
+      "breathiness": 0.4,
+      "tension": 0.35,
+      "intimacy": 0.65,
+      "delivery_style": "intimate"
+    },
+    "angry": {
+      "energy": 0.85,
+      "articulation": 0.75,
+      "breathiness": 0.1,
+      "tension": 0.8,
+      "intimacy": 0.4,
+      "delivery_style": "dramatic"
+    },
+    "fearful": {
+      "energy": 0.65,
+      "articulation": 0.55,
+      "breathiness": 0.45,
+      "tension": 0.75,
+      "intimacy": 0.6,
+      "delivery_style": "intimate"
+    },
+    "surprised": {
+      "energy": 0.8,
+      "articulation": 0.7,
+      "breathiness": 0.25,
+      "tension": 0.6,
+      "intimacy": 0.55,
+      "delivery_style": "conversational"
+    },
+    "tender": {
+      "energy": 0.3,
+      "articulation": 0.55,
+      "breathiness": 0.35,
+      "tension": 0.15,
+      "intimacy": 0.8,
+      "delivery_style": "intimate"
+    },
+    "whisper": {
+      "energy": 0.2,
+      "articulation": 0.5,
+      "breathiness": 0.6,
+      "tension": 0.2,
+      "intimacy": 0.85,
+      "delivery_style": "intimate"
+    },
+    "nostalgic": {
+      "energy": 0.4,
+      "articulation": 0.55,
+      "breathiness": 0.3,
+      "tension": 0.25,
+      "intimacy": 0.65,
+      "delivery_style": "narrative"
+    },
+    "anxious": {
+      "energy": 0.7,
+      "articulation": 0.65,
+      "breathiness": 0.3,
+      "tension": 0.7,
+      "intimacy": 0.55,
+      "delivery_style": "conversational"
+    },
+    "determined": {
+      "energy": 0.75,
+      "articulation": 0.75,
+      "breathiness": 0.1,
+      "tension": 0.6,
+      "intimacy": 0.45,
+      "delivery_style": "narrative"
+    }
+  },
+  "narrator_distance_presets": {
+    "close": {
+      "intimacy": 0.8,
+      "breathiness": 0.3,
+      "delivery_style": "intimate"
+    },
+    "medium": {
+      "intimacy": 0.5,
+      "breathiness": 0.2,
+      "delivery_style": "narrative"
+    },
+    "distant": {
+      "intimacy": 0.3,
+      "breathiness": 0.15,
+      "delivery_style": "broadcast"
+    }
+  },
+  "intensity_scaling": {
+    "_doc": "When emotion_intensity deviates from 0.5, scale energy/tension deltas proportionally. Factor = (intensity - 0.5) * scale_multiplier.",
+    "scale_multiplier": 0.4,
+    "max_delta": 0.15
+  }
+}

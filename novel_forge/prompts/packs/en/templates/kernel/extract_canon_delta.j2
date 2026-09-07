@@ -1,0 +1,153 @@
+{# source_template_hash: fb85b1dd1d230bb387ccd75c492fdbb30fac7489ae65e21fa826c9024188c054 #}
+{#
+================================================================================
+[NOTES]
+================================================================================
+Prompt: extract_canon_delta.j2
+Service Step: EXTRACT_CANON (Canon Delta Extraction)
+Function Summary: Extracts structured Canon delta from chapter text for canon/state/memory persistence
+Upstream Input:
+  - chapter_number: Chapter number
+  - chapter_outline_summary: Outline goal (optional)
+  - prior_violations: Historical risk warnings (optional)
+  - known_characters: Current known character list
+  - existing_thread_ids: Existing plot thread IDs (for reuse)
+  - prior_relationships/prior_character_snapshots/prior_plot_threads: Prior state baseline (optional)
+  - chapter_text: Chapter body text
+Downstream Output:
+  - JSON: canon_delta, creative_report, chapter_exit_state, character_state_deltas, relationship_deltas, plot_thread_deltas, structured_summary (7 top-level fields)
+  - Downstream Consumers: CanonStore / Memory System / Next Chapter Bridge
+Consumption Chain Priority:
+  P0 = 7 top-level fields must be complete / character_state_deltas character gender required
+  P1 = relationship_deltas trust/tension value reasonableness / plot_thread_deltas ID reuse
+  P2 = creative_report creative highlights recording
+Brief Example:
+  Input: chapter_number=5, chapter_text="Lin Yuan stood at the city gate..."
+  Output: {"canon_delta":{...}, "creative_report":{...}, "chapter_exit_state":{...}, ...}
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer: Task Definition and Input Consumption
+    --------------------------------------------------------------------------- -#}
+
+Extract structured results from this chapter's body text for canon/state/memory persistence.
+
+{% set max_character_state_deltas = max_character_state_deltas | default(8, true) %}
+{% set max_relationship_deltas = max_relationship_deltas | default(8, true) %}
+{% set max_plot_thread_deltas = max_plot_thread_deltas | default(8, true) %}
+{% set max_exit_state_characters = max_exit_state_characters | default(6, true) %}
+{% set chapter_outline_summary = chapter_outline_summary | default("", true) %}
+{% set prior_violations = prior_violations | default([], true) %}
+{% set known_characters = known_characters | default([], true) %}
+{% set authoritative_character_genders = authoritative_character_genders | default({}, true) %}
+{% set existing_thread_ids = existing_thread_ids | default([], true) %}
+{% set prior_relationships = prior_relationships | default([], true) %}
+{% set prior_character_snapshots = prior_character_snapshots | default([], true) %}
+{% set prior_plot_threads = prior_plot_threads | default([], true) %}
+
+## Fact Source Boundary (P0)
+- Only write to canon, state, and memory from the final text corresponding to FinalArtifact / `chapter_text`.
+- Outline goals, chapter contracts, plans, source projections, creative reports, and intermediate drafts are not occurred facts; they can only serve as extraction direction or ID reuse reference.
+- Events, character states, relationship changes, plot thread advances, world rules, and motifs without text evidence must not be written.
+
+Please constrain this output to the following limits (better to lack than to over-provide; do not add entries just to meet quantity):
+- `character_state_deltas` maximum {{ max_character_state_deltas }} entries
+- `relationship_deltas` maximum {{ max_relationship_deltas }} entries
+- `plot_thread_deltas` maximum {{ max_plot_thread_deltas }} entries
+- `chapter_exit_state.character_end_states` maximum {{ max_exit_state_characters }} characters
+
+## Chapter
+- Chapter {{ chapter_number }}
+{% if chapter_outline_summary %}
+- Outline Goal: {{ chapter_outline_summary }}
+{% endif %}
+
+{% if prior_violations %}
+## Historical Risk Warnings (Avoid During Extraction)
+{% for v in prior_violations %}
+- {{ v }}
+{% endfor %}
+{% endif %}
+
+## Current Known Characters
+{% for name in known_characters %}
+- {{ name }}
+{% endfor %}
+
+{% if authoritative_character_genders %}
+## Authoritative Character Gender (Highest Priority, Must Not Be Rewritten)
+The following character genders come from CharacterBible / local authoritative settings and are non-drifting identity fields.
+If the body text shows disguise, misidentification, erroneous address by others, or conflicts with model inference, the output must still follow this.
+{% for name, gender in authoritative_character_genders.items() %}
+- {{ name }}: {{ gender }}
+{% endfor %}
+{% endif %}
+
+{% if existing_thread_ids %}
+## Current Existing Plot Thread IDs (Must Reuse)
+The following are thread_ids already in canon; `plot_thread_deltas` must prioritize matching existing IDs and not create new synonymous/near-synonymous IDs.
+If a thread has been resolved or is no longer advanced in this chapter, mark its status as `resolved` or `dormant`.
+{% for tid in existing_thread_ids %}
+- {{ tid }}
+{% endfor %}
+{% endif %}
+
+{% if prior_relationships or prior_character_snapshots or prior_plot_threads %}
+## Prior State Baseline (For Determining Delta — Only Output Items That Actually Changed in This Chapter)
+{% if prior_relationships %}
+### Existing Character Relationships
+{% for rel in prior_relationships %}
+- {{ rel.pair_id }}: {{ rel.public_status }} (trust={{ rel.trust }}, tension={{ rel.tension }})
+{% endfor %}
+{% endif %}
+{% if prior_character_snapshots %}
+### Existing Character States
+{% for cs in prior_character_snapshots %}
+- {{ cs.name }}: location={{ cs.location }}, emotional_state={{ cs.emotional_state }}{% if cs.social_status %}, social_status={{ cs.social_status }}{% endif %}
+
+{% endfor %}
+{% endif %}
+{% if prior_plot_threads %}
+### Existing Active Threads
+{% for pt in prior_plot_threads %}
+- {{ pt.thread_id }} ({{ pt.title }}): status={{ pt.status }}{% if pt.summary %}, summary={{ pt.summary }}{% endif %}
+
+{% endfor %}
+{% endif %}
+{% endif %}
+
+## Body Text
+{{ chapter_text }}
+
+## Extraction Rules (Condensed Version)
+
+1. Only extract information verifiable from the body text; if uncertain, return empty arrays, empty objects, or empty strings — do not fabricate events.
+2. Keep only these 7 top-level fields and output them flat; do not nest them within each other; do not embed raw ASCII double quotes in strings; use Chinese quotation marks when necessary.
+3. `canon_delta` only records facts newly added or updated in this chapter; `character_state_deltas`, `relationship_deltas`, `plot_thread_deltas` only retain the most definite changes that are most useful for the next chapter.
+4. `chapter_exit_state` only retains information required for the next chapter to carry forward: `time_marker`, `location`, `pov`, `active_goals`, `open_questions`, `must_carry_forward`, `character_end_states`; `must_carry_forward` can only write narrative facts, not meta-instructions. Each item in `must_carry_forward` can be written as a string (default open) or an object `{"text":"narrative fact","status":"open|abandoned|deferred","abandon_reason":"abandonment reason","deferred_to_chapter":chapter_number}`: Only mark `abandoned` with a reason when a legacy item truly won't be carried forward in this arc; mark `deferred` with a chapter number when explicitly deferred to a certain chapter; all others default to `open`. Do not abuse abandoned to evade carrying forward.
+5. `plot_thread_deltas` must prioritize reusing existing `thread_id`; when no suitable ID exists, do not create new synonymous/near-synonymous IDs — leave empty instead. `thread.status` only allows: `active`, `resolved`, `dormant`, `escalated`, `advancing`, `planted`, `revealed`.
+6. `relationship_deltas[].relationship.characters` must be an array; `trust` and `tension` must be floats between 0.0–1.0. Characters appearing in `canon_delta.character_updates` or `character_state_deltas` must include `gender`; fill in `social_status` when character identity/title changes.
+7. If `Authoritative Character Gender` is provided, those characters' `gender` must be used as-is; values are limited to `male` or `female`, must not be changed to `male/female`, and must not be rewritten due to body text errors, misaddress, or model inference.
+8. `creative_report.new_characters` is the automatic archival entry point for upstream rulings; only write characters who first appear in the body text and are worth tracking:
+   - Do not write people already in "Current Known Characters"; for existing characters' parenthetical situations, stage states, disguised names, or misidentified names, write `matched_existing_name` and set `should_add_to_bible` to false.
+   - Do not archive profession/group/organization/object/knowledge/event tags — `should_add_to_bible` must be false.
+   - Official titles/functional addresses without traceable standard names can only be treated as local scene facts — `should_add_to_bible` must be false; do not fabricate names just for archival purposes.
+   - `importance` can only be major / supporting / minor / incidental; only set `should_add_to_bible=true` when importance is major/supporting/minor and a character archive is truly needed.
+   - `canonical_name` writes the standard name that should eventually enter CharacterBible; when no more standard name exists, it can be the same as `name`.
+
+## Quality Calibration
+- Work Identity: You are an evidence-first narrative fact extractor, skilled at extracting traceable, mergeable state information from body text and upstream anchors.
+- Extraction Path: First find explicit facts in the body text, then cross-reference with shared anchors and known states, finally retaining only information consumable by downstream mergers.
+- Evidence Calibration: Maintain consistency when upstream fragments have confirmed the same fact; use conservative field values to express unknown or pending confirmation when evidence is insufficient.
+- Actionable Path: Each piece of information serves the canon, memory, state, or audit chain — avoid treating tone, metaphor, or speculation as fact.
+
+## Pre-Delivery Verification
+- Are P0/P1/P2 priorities maintained, and no weak references overriding hard constraints?
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans?
+- Are unauthorized characters, locations, world rules, future payoffs, or format agreements avoided?
+- Are factual boundaries needed for downstream merging/retrieval preserved, and are speculations not written as established facts?
+
+{#- ---------------------------------------------------------------------------
+    Format Layer: Output Format and Schema
+    --------------------------------------------------------------------------- -#}

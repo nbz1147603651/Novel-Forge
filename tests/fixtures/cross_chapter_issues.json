@@ -1,0 +1,105 @@
+{
+  "description": "10 known cross-chapter consistency issues for BookConsistencyStep integration testing",
+  "issues": [
+    {
+      "issue_id": "timeline_01",
+      "category": "timeline",
+      "severity": "critical",
+      "chapters_involved": [3, 7],
+      "primary_chapter": 7,
+      "description": "第3章明确故事发生在三月，但第7章角色提到'一月的寒风'，中间没有季节过渡描写。",
+      "evidence": "第3章：'三月的阳光温暖地洒在小镇上'；第7章：'一月的寒风刺骨，他裹紧了大衣'",
+      "confidence": 0.95
+    },
+    {
+      "issue_id": "timeline_02",
+      "category": "timeline",
+      "severity": "critical",
+      "chapters_involved": [2, 5, 9],
+      "primary_chapter": 9,
+      "description": "第2章角色说'我三天后回来'，第5章描写他离开，但第9章他回归时旁白说'两周后他终于回来了'。",
+      "evidence": "第2章：'三天后我回来'；第9章：'两周后，他终于踏上了归途'",
+      "confidence": 0.90
+    },
+    {
+      "issue_id": "timeline_03",
+      "category": "timeline",
+      "severity": "warning",
+      "chapters_involved": [4, 8],
+      "primary_chapter": 8,
+      "description": "第4章角色年龄明确为'十七岁'，第8章旁白却说'这个十九岁的少年'，中间仅过了两个月。",
+      "evidence": "第4章：'他今年十七岁'；第8章：'这个十九岁的少年'",
+      "confidence": 0.85
+    },
+    {
+      "issue_id": "character_state_01",
+      "category": "character_state",
+      "severity": "critical",
+      "chapters_involved": [5, 9],
+      "primary_chapter": 9,
+      "description": "老守夜人在第5章为保护主角牺牲，明确死亡，但第9章他又出现在钟楼与主角对话。",
+      "evidence": "第5章：'老守夜人倒在了血泊中，再也没有起来'；第9章：'老守夜人站在钟楼上，微笑着看着他'",
+      "confidence": 0.98
+    },
+    {
+      "issue_id": "character_state_02",
+      "category": "character_state",
+      "severity": "critical",
+      "chapters_involved": [3, 6],
+      "primary_chapter": 6,
+      "description": "第3章林远的铜质怀表被反派夺走，但第6章他'掏出怀表看了看时间'。",
+      "evidence": "第3章：'反派一把夺过他手中的铜质怀表'；第6章：'林远掏出怀表看了看时间'",
+      "confidence": 0.92
+    },
+    {
+      "issue_id": "character_state_03",
+      "category": "character_state",
+      "severity": "warning",
+      "chapters_involved": [2, 7],
+      "primary_chapter": 7,
+      "description": "第2章苏婉的左臂被魔法灼伤留下疤痕，第7章她'挽起袖子，露出光洁的手臂'。",
+      "evidence": "第2章：'魔法火焰在她左臂上留下一道深深的疤痕'；第7章：'她挽起袖子，露出光洁的手臂'",
+      "confidence": 0.88
+    },
+    {
+      "issue_id": "worldbuilding_01",
+      "category": "worldbuilding",
+      "severity": "warning",
+      "chapters_involved": [2, 6],
+      "primary_chapter": 6,
+      "description": "第2章明确设定'火系魔法在这个世界早已失传'，但第6章角色轻松施展'火焰术'。",
+      "evidence": "第2章：'火系魔法在这个世界早已失传，无人能施展'；第6章：'他抬手施展火焰术，一团烈火呼啸而出'",
+      "confidence": 0.93
+    },
+    {
+      "issue_id": "worldbuilding_02",
+      "category": "worldbuilding",
+      "severity": "warning",
+      "chapters_involved": [1, 8],
+      "primary_chapter": 8,
+      "description": "第1章设定'雾霭小镇常年被浓雾笼罩，从未见过太阳'，第8章描写'烈日当空，晒得人睁不开眼'。",
+      "evidence": "第1章：'雾霭小镇常年被浓雾笼罩，居民从未见过太阳'；第8章：'烈日当空，晒得人睁不开眼'",
+      "confidence": 0.90
+    },
+    {
+      "issue_id": "naming_01",
+      "category": "naming",
+      "severity": "warning",
+      "chapters_involved": [4, 8],
+      "primary_chapter": 8,
+      "description": "同一角色在第4章被称为'张明'，在第8章被称为'张鸣'，音同字不同。",
+      "evidence": "第4章：'张明走进了房间'；第8章：'张鸣微笑着打招呼'",
+      "confidence": 0.97
+    },
+    {
+      "issue_id": "naming_02",
+      "category": "naming",
+      "severity": "info",
+      "chapters_involved": [3, 10],
+      "primary_chapter": 10,
+      "description": "地名'雾霭小镇'在第3章被简称为'小镇'，但在第10章突然变成'雾霭镇'，缺少过渡说明。",
+      "evidence": "第3章：'小镇的街道上人来人往'；第10章：'雾霭镇的钟声响起'",
+      "confidence": 0.80
+    }
+  ]
+}

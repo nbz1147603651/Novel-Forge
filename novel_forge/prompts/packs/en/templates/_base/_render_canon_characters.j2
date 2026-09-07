@@ -1,0 +1,56 @@
+{# source_template_hash: 1d27a5827cd771bb50cedf6d0f3165c8d90e79bbdec9321d7aa74b4a28312827 #}
+{#- Canon Character Context Rendering — Base Module -#}
+{#- Extract character state from canon_context, compatible with both dict and object data shapes -#}
+
+{#-
+  === Macro Module: Canon Character State Rendering ===
+  File Type: Macro Module
+  Brief Description: Extract character state from canon_context and render as markdown-formatted character state paragraphs, supporting both dict and object data shape compatibility.
+
+  Defined Macros and Parameters:
+  1. render_canon_characters(canon_context, current_chapter=None, section_title="### Character Status")
+     - Render character list, showing survival status, location, emotion
+     - If a character hasn't appeared for more than 3 chapters, show ⚠️ warning
+
+  Usage:
+  - Called via {% import %} by templates such as planning/plan_chapter.j2, writing/draft_chapter.j2, checking/continuity_eval.j2
+-#}
+
+{% macro render_canon_characters(canon_context, current_chapter=None, section_title="### Character Status") %}
+{{ section_title }}
+{%- set _chars = canon_context.characters if canon_context is mapping and canon_context.characters is defined else [] -%}
+{%- if not _chars -%}
+- No tracked character states yet
+{%- elif _chars is mapping -%}
+{#- Dict shape: {name: {alive, location, emotional_state, ...}} -#}
+{% for name, state in _chars.items() %}
+- {{ name }}: {% if state.alive is defined and not state.alive %}Deceased{% else %}Alive{% endif %}, location={{ state.location | default('Unknown') }}, emotion={{ state.emotional_state | default('Unknown') }}{% if state.last_seen_chapter is defined and state.last_seen_chapter > 0 and current_chapter is not none and current_chapter - state.last_seen_chapter > 3 %} ⚠️ Has not appeared for {{ current_chapter - state.last_seen_chapter }} chapters{% endif %}
+{% endfor %}
+{%- else -%}
+{#- Object shape: [CharacterState(name, alive, physical, emotional, ...)] -#}
+{% for character in _chars %}
+{%- set _name = character.get('name', 'Unknown') if character is mapping else character.name | default('Unknown') -%}
+{%- set _alive = character.get('alive', true) if character is mapping else character.alive | default(true) -%}
+{%- set _location = '' -%}
+{%- if character is mapping -%}
+{%- set _physical = character.get('physical', {}) -%}
+{%- set _location = _physical.get('location', '') if _physical else character.get('location', '') -%}
+{%- elif character.physical is defined -%}
+{%- set _location = character.physical.location | default('') -%}
+{%- elif character.location is defined -%}
+{%- set _location = character.location | default('') -%}
+{%- endif -%}
+{%- set _emotion = '' -%}
+{%- if character is mapping -%}
+{%- set _emotional = character.get('emotional', {}) -%}
+{%- set _emotion = _emotional.get('primary_emotion', '') if _emotional else character.get('emotional_state', '') -%}
+{%- elif character.emotional is defined -%}
+{%- set _emotion = character.emotional.primary_emotion | default('') -%}
+{%- elif character.emotional_state is defined -%}
+{%- set _emotion = character.emotional_state | default('') -%}
+{%- endif -%}
+{%- set _last_seen = character.get('last_seen_chapter', 0) if character is mapping else character.last_seen_chapter | default(0) -%}
+- {{ _name }}: {% if not _alive %}Deceased{% else %}Alive{% endif %}, location={{ _location | default('Unknown') }}, emotion={{ _emotion | default('Unknown') }}{% if _last_seen > 0 and current_chapter is not none and current_chapter - _last_seen > 3 %} ⚠️ Has not appeared for {{ current_chapter - _last_seen }} chapters{% endif %}
+{% endfor %}
+{%- endif -%}
+{% endmacro %}

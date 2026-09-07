@@ -1,0 +1,130 @@
+{# ================================================================================
+【备注】
+================================================================================
+提示词：check_alignment.j2
+服务步骤：CHECK_ALIGNMENT（大纲对齐检查）
+作用简述：检查章节正文与章节大纲的对齐程度，输出对齐分、可执行修正建议。
+上游输入：
+  - chapter_outline：来自 PLAN_CHAPTER 的章节大纲（含目标、主线/支线推进点、节拍）
+  - chapter_plan.scene_intents：来自 PLAN_CHAPTER 的场景意图序列（只消费 summary / required_outcome）
+  - chapter_text：来自 DRAFT_CHAPTER / EDIT_CHAPTER 的章节正文
+下游输出：
+  - JSON：{"alignment_score", "risk_level", "summary", "findings", "missing_main_points",
+            "supportive_subplot_points", "weak_subplot_points", "repair_actions"}
+  - 下游消费者：RepairStep / EditStep（用于对齐修复）
+消费链优先级：P0（核心事件/结果完全缺失）> P1（计划支线喧宾夺主）
+              > P2（轻微承接或落点弱化）
+简要例子：
+  输入：chapter_outline={"chapter_number": 5, "goal": "主角突破修炼瓶颈",
+        "main_plot_points": ["顿悟", "战胜心魔"]}
+  输出：{"alignment_score": 8.5, "risk_level": "low",
+         "missing_main_points": [], "repair_actions": []}
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    指导层：任务定义 + 上下文消费
+    --------------------------------------------------------------------------- -#}
+请检查以下章节正文与章节大纲的对齐程度，并给出可执行的修正建议。
+
+## 输入边界
+- 本任务只评估正文是否覆盖本章给定的章节目标、主线推进点、支线推进点、大纲节拍，以及章节计划中的“必须达成”。
+- 不评估全书视角比例、题材规则、宏观阶段、全局人物出场配额、文风质量或修辞密度；除非它们直接导致下列本章目标或计划结果没有发生。
+
+## 章节大纲
+- 第 {{ chapter_outline.chapter_number }} 章：{{ chapter_outline.title }}
+- `outline.goal` 章节目标：{{ chapter_outline.goal }}
+{% if chapter_outline.main_plot_points %}
+- 主线推进点：{% for item in chapter_outline.main_plot_points %}`outline.main_plot_points[{{ loop.index }}]`={{ item }}{% if not loop.last %}；{% endif %}{% endfor %}
+{% endif %}
+{% if chapter_outline.subplot_points %}
+- 支线推进点：{% for item in chapter_outline.subplot_points %}`outline.subplot_points[{{ loop.index }}]`={{ item }}{% if not loop.last %}；{% endif %}{% endfor %}
+{% endif %}
+{% if chapter_outline.beats_summary %}
+- 大纲节拍（评分时须逐条核查正文是否覆盖）：
+{% for beat in chapter_outline.beats_summary %}
+  `outline.beats_summary[{{ loop.index }}]`={{ beat }}
+{% endfor %}
+{% endif %}
+
+## 章节计划
+{% for scene in chapter_plan.scene_intents | default([]) %}
+{{ loop.index }}. `plan.scene_intents[{{ loop.index }}].summary`={{ scene.summary }}{% if scene.required_outcome %}（`plan.scene_intents[{{ loop.index }}].required_outcome`={{ scene.required_outcome }}）{% endif %}
+{% set scene_index = loop.index %}
+{% if scene.owned_events | default([]) %}   - 原子必达事件（逐项核验；一个数组项只代表一个事件）：{% for item in scene.owned_events %}`plan.scene_intents[{{ scene_index }}].owned_events[{{ loop.index }}]`={{ item }}{% if not loop.last %}；{% endif %}{% endfor %}{% endif %}
+{% if scene.owned_revelations | default([]) %}   - 原子必达揭示：{% for item in scene.owned_revelations %}`plan.scene_intents[{{ scene_index }}].owned_revelations[{{ loop.index }}]`={{ item }}{% if not loop.last %}；{% endif %}{% endfor %}{% endif %}
+{% if scene.owned_state_changes | default([]) %}   - 原子必达状态变化：{% for item in scene.owned_state_changes %}`plan.scene_intents[{{ scene_index }}].owned_state_changes[{{ loop.index }}]`={{ item }}{% if not loop.last %}；{% endif %}{% endfor %}{% endif %}
+{% endfor %}
+
+{% set required_state_transitions = chapter_plan.required_state_transitions | default([]) %}
+{% set required_literals = chapter_plan.required_literals | default([]) %}
+{% set opening_contract = chapter_plan.opening_contract | default({}) %}
+{% set closing_contract = chapter_plan.closing_contract | default({}) %}
+{% if required_state_transitions or required_literals or opening_contract or closing_contract %}
+## 章节契约核查点
+{% if opening_contract %}- `plan.opening_contract` 开场合同：{{ opening_contract }}{% endif %}
+{% if closing_contract %}- `plan.closing_contract` 结尾合同：{{ closing_contract }}{% endif %}
+{% if required_state_transitions %}- 必须状态变化：{% for item in required_state_transitions %}`plan.required_state_transitions[{{ loop.index }}]`={{ item }}{% if not loop.last %}；{% endif %}{% endfor %}{% endif %}
+{% if required_literals %}
+- Planning LLM 显式裁定的字面合同：
+{% for item in required_literals %}
+  - `plan.required_literals[{{ loop.index }}]` / {{ item.contract_id }} / {{ item.scene_id | default('?') }}：「{{ item.literal }}」；不可改写原因={{ item.reason }}；放置提示={{ item.placement_hint }}
+{% endfor %}
+{% endif %}
+{% endif %}
+
+## 正文
+{{ chapter_text }}
+
+## 判定原则
+1. **语义覆盖即覆盖**：正文只要用不同表达完成同一核心推进，不算缺失。
+   - **例外：只有 `required_literals` 中由 Planning LLM 显式裁定的项目必须字面满足**。这些文字须在正文中完全相同地出现；其他引号文本仍按语义覆盖判断，禁止自行升级为字面合同。
+2. `missing_main_points` 仅记录"核心事件/结果完全缺位"的主线项。
+3. `supportive_subplot_points` 记录"服务主线"的支线；`weak_subplot_points` 仅记录"喧宾夺主"的支线。
+4. `repair_actions` 必须是可直接执行的编辑动作，不要空话。
+5. 当正文有合理创意扩展且不破坏主线时，应认可，不要机械判偏离。
+6. 不因大纲/计划之外的人物视角、视角比例、背景阶段或题材期待扣 `alignment_score`。
+7. 不审查表达质量、特质密度、局部修辞重复；除非它们导致计划中的核心事件/结果没有发生，否则不要写入 `missing_main_points`。
+8. 如果 `summary` 或 `risk_level` 指出主线/必须结果缺失，则 `missing_main_points` 必须列出对应条目；不得在 summary 中说缺失但数组为空。
+9. opening_contract、closing_contract、required_state_transitions、scene.required_outcome 或任一原子必达项完全缺失时，应进入 `missing_main_points` 或 `weak_subplot_points`，并给出具体 `repair_actions`；一个原子项只能记为一个缺项，不能按其证据、影响、修复建议重复扣分。
+10. 每个 `finding` 必须绑定一个上述稳定 `source_ref`；不得引用输入之外的题材惯例、模型偏好或未批准设定作为证据。
+11. `coverage_status` 只能是 `missing` / `conflict` / `partial` / `uncertain` / `advisory`。只有绑定了真实 `source_ref`、严重度为 high/critical、置信度不低于 0.75 的 `missing`/`conflict` 才可建议阻断；`partial`/`uncertain`/`advisory` 只做建议，不进入自动修复。
+12. `conflict` 必须给出能在正文逐字找到的 `chapter_evidence`；找不到就降级为 `uncertain`。`missing` 表示上游必达结果整体未发生，不得把已语义覆盖但不够具象的表达判为缺失。
+
+## findings 结构契约
+每项只表示一个问题，必须包含：
+- `source_ref`：上方反引号中的稳定证据引用。
+- `source_evidence`：该引用对应的上游要求原文，不得改写。
+- `coverage_status`：`missing` / `conflict` / `partial` / `uncertain` / `advisory`。
+- `severity`：`critical` / `high` / `medium` / `low`。
+- `confidence`：0-1。
+- `summary`：问题结论，不要混入第二个问题。
+- `chapter_evidence`：冲突时填能在正文逐字找到的短引文；完全缺失时可留空。
+- `repair_action`：只描述局部、可验收的修复；非阻断建议可留空。
+- `blocks_finalize`：模型建议值；系统会用上述证据/严重度/置信度规则重新裁决，不盲信此值。
+
+`missing_main_points` 必须严格等于所有建议阻断的 `missing`/`conflict` findings 的 `summary`；`repair_actions` 必须严格等于这些 findings 的非空 `repair_action`。如无问题，`findings` 输出空数组。
+
+## 修复建议风格（保证创作自主性）
+1. 优先"微调修复"而非"推翻重写"：在保留优质创意细节的前提下补齐主线锚点。
+2. `repair_actions` 应指向可执行动作：补一句目标锚定、补一处因果连接、压缩一段喧宾支线篇幅等。
+3. 禁止给出"删除所有支线/完全回到大纲字面"的僵硬建议；应保持文本的文学创造空间。
+
+## 质量校准
+- 工作身份：你是一位严谨的小说质量审校员，擅长用短证据、明确边界和下游可执行建议定位问题。
+- 审校路径：先确认输入证据，再判断问题类型、影响范围和修复边界，最后给下游可执行的定位信息。
+- 字段级质量示例（非输出格式）：平弱=“这里不连贯”；高质量=“指出哪两处证据冲突、风险等级、可验证问题”。
+- 可操作路径：每条判断都要能支持复核或修复，低置信度内容降级为待验证问题。
+
+## 交付前核验
+- P0/P1/P2 优先级是否被保持，且没有让弱参考覆盖硬约束。
+- 是否能把关键判断回指到输入证据、上游契约或已批准计划。
+- 是否避免新增未授权的人物、地点、世界规则、未来 payoff 或格式协议。
+- 是否给出短证据、风险等级、定位信息和下游可验证的问题。
+
+{#- ---------------------------------------------------------------------------
+    格式层：输出格式与 Schema
+    --------------------------------------------------------------------------- -#}
+
+
+`alignment_score` 范围 0-10；`risk_level` 只能是 `low` / `medium` / `high`。

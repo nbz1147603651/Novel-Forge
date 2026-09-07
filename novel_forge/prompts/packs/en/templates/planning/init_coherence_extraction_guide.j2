@@ -1,0 +1,52 @@
+{# source_template_hash: c2a96c7d461d554e5ee707f95973ad21374bdffc15226e6a1062a769f3b80c06 #}
+{#
+================================================================================
+【Remarks】
+================================================================================
+Prompt: init_coherence_extraction_guide.j2
+Service Step: INIT_COHERENCE_EXTRACTION_GUIDE (Coherence Profile Fragment: Extraction Guide)
+Function Summary: Only generates rules for subsequent claims extraction; avoids profile refinement output becoming too voluminous.
+Upstream Input: current_profile/spec/story_bible/character_bible/blueprint
+Downstream Output: JSON: {"extraction_guidance": [...]}
+Downstream Consumer: REFINE_INIT_COHERENCE_PROFILE Local Merger
+Consumption Chain Priority: P0 = actionable guidance; P1 = points to state/relationship/commitment/knowledge; P2 = concise
+================================================================================
+#}
+{#- Guidance Layer -#}
+Please output only the claims extraction guide, where each item is an executable judgment rule for the subsequent extractor.
+
+## Output Field Description
+- `extraction_guidance`: Extraction guidance list, each item being an executable judgment rule pointing to attention areas across dimensions such as state, relationship, commitment, and knowledge.
+- Every item must be a short string, never an object, plot recap, or character biography.
+- Use role labels such as protagonist, informed character, or relationship parties. Do not include concrete character names; downstream Claims must copy names from their current source chunk.
+
+{% if shared_evidence_anchor %}
+## Shared Evidence Anchor
+{{ shared_evidence_anchor | tojson(indent=2) }}
+Please use this as the shared basis for this fragment; dimension-specific information can only supplement, not override, anchor facts.
+{% endif %}
+
+## Current Profile
+{{ current_profile | tojson(indent=2) }}
+
+## Project Ontology, Payoff Rules, and Conflict Dimensions
+{{ project_ontology | tojson(indent=2) }}
+{{ payoff_rules | tojson(indent=2) }}
+{{ conflict_lens | tojson(indent=2) }}
+
+## Canonical Character Roster (boundary only; do not copy into guidance)
+{{ canonical_character_roster | default([]) | tojson(indent=2) }}
+
+## Quality Calibration
+- Professional Identity: You are a long-form narrative architect, skilled at breaking down story assets intohandoff, verifiable, non-spoiler-heavy execution plans.
+- Planning Inference Path: First lock in P0 hard constraints, then allocate P1 pacing momentum, and finally use P2 style/theme to flesh out the presentation layer.
+- Field-level Quality Examples (not output format): Weak="advances relationship"; High-quality="clarifies who acts for what reason, how relationships change, and how the next beat connects".
+- Actionable Path: Plan items must be directly inspectable by subsequent writing/audit, avoiding abstract wishes or thematic slogans only.
+
+## Pre-delivery Validation
+- Whether P0/P1/P2 priority is maintained, and no weak references override hard constraints.
+- Whether critical judgments can be traced back to input evidence, upstream contracts, or approved plans.
+- Whether new unauthorized characters, locations, world rules, future payoffs, or format agreements are avoided.
+- Whether abstract goals are transformed into observable actions, conflicts, state changes, or chapter handoffs.
+
+{#- Format Layer -#}

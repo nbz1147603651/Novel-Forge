@@ -1,0 +1,20 @@
+{# source_template_hash: a058fe3008ac2ef3ebd70bf7f82b2879d18b947a7df9c26664cc3a89bded5f44 #}
+{#
+================================================================================
+[Notes]
+================================================================================
+Prompt: _base/_shared_evidence_anchor.j2
+Type: Macro module (not rendered directly, only imported by other templates)
+Description: Uniformly renders shared evidence anchors for initialization/sharding tasks, avoiding duplicate content maintenance across templates.
+Defined macros:
+  - render_shared_evidence_anchor(shared_evidence_anchor, task_label="This Shard")
+================================================================================
+#}
+
+{% macro render_shared_evidence_anchor(shared_evidence_anchor, task_label="This Shard") -%}
+{% if shared_evidence_anchor %}
+## Shared Evidence Anchor
+{{ shared_evidence_anchor | tojson(indent=2) }}
+Please use this as the shared basis for {{ task_label }}; dimension-specific information can only supplement, not override, the anchor facts.
+{% endif %}
+{%- endmacro %}

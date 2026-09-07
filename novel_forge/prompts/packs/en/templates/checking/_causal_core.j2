@@ -1,0 +1,148 @@
+{# source_template_hash: 874ae6472a9e3fa252bc0953ad0309b48378d8c4e09a7e6b34defed241b11a50 #}
+{#- Shared Causal Chain Audit Core Module — used by both causal_validate and critic_causal -#}
+
+{% macro causal_must_resolve(must_resolve_summaries) %}
+{% if must_resolve_summaries %}
+---
+🚨 **Blocking Archive Issues · Verification Required**
+The following issues were marked as **high priority** before the previous fix. This round of review must verify each item against the body text to confirm whether it has been truly resolved. Do not downgrade the score on grounds of "partially improved"; each item must be verified against the body text:
+{% for s in must_resolve_summaries %}
+- {{ s }}
+{% endfor %}
+---
+{% endif %}
+{% endmacro %}
+
+{% macro causal_context(causal_link, chapter_bridge, chapter_number, character_notes='', previous_chapter_ending='') %}
+## Causal Chain Anchoring
+- Previous chapter core event: {{ causal_link.previous_event or 'None' }}
+- Causal mechanism: {{ causal_link.causal_mechanism or 'None' }}
+- Core suspense: {{ causal_link.unresolved_question or 'None' }}
+{% if causal_link.open_threads %}
+- Continuing threads: {{ causal_link.open_threads | join('; ') }}
+{% endif %}
+
+## Bridge Information
+- Previous chapter ending: {{ chapter_bridge.bridge_summary or 'None' }}
+- Emotional carryover: {{ chapter_bridge.emotional_carryover or 'None' }}
+- Action handoff: {{ chapter_bridge.action_handoff or 'None' }}
+{% if chapter_bridge.opening_location %}- Opening location: {{ chapter_bridge.opening_location }}{% endif %}
+{% if chapter_bridge.opening_time %}- Opening time: {{ chapter_bridge.opening_time }}{% endif %}
+{% if previous_chapter_ending %}
+
+## Previous Chapter Ending Original Text (Key Reference for Verification)
+> {{ previous_chapter_ending[-800:] }}
+
+Verification requirement: The chapter opening must form a perceptible narrative continuity with the above original text (scene continuation, action continuation, emotional carryover, etc.), not merely "echoing" the causal chain description at an abstract level.
+{% endif %}
+{% if character_notes %}
+
+## Character Capability Background (Verification Reference)
+{{ character_notes }}
+{% endif %}
+
+## Chapter {{ chapter_number }} Body Text
+{% endmacro %}
+
+{% macro causal_checks() %}
+## Audit Scope (Whitelist Mode)
+
+**You only check the following 4 items; other content does not require investigation**:
+1. Opening causal continuity (Is the chapter opening a logical consequence of the previous chapter's events)
+2. Event causal support (Do major events have clear causal chains)
+3. Key turn foreshadowing (Do plot-altering turns have prior foreshadowing)
+4. Suspense management (Only check suspense explicitly listed in causal_link)
+
+---
+
+## Itemized Inspection Criteria
+
+### 1. Opening Causal Continuity (Only check paragraphs 1-4)
+**Issue Type**: `opening_causal_gap`
+
+**Trigger Conditions (mark if any satisfied, high)**:
+- Opening paragraphs are completely disconnected from the previous chapter ending, readers cannot perceive narrative connection between them
+- `causal_mechanism` explicitly specifies a causal path, but the body text opening shows no trace of that path whatsoever
+
+**Non-triggering scenarios**:
+- Scene switch but causal connection established through character's sensory remnants / environmental changes / memories
+- Time jump with clear transitional markers, and readers can understand the causal logic during the jump period
+- Uses literary techniques like flashback, imagery connection, which can be traced back to previous chapter events upon reflection
+- **Scene opening**: Begins with time markers, scenery descriptions, scene setup—even without directly continuing previous chapter's vocabulary, as long as spatial-temporal continuity can be established
+- **Emotional/state continuation**: Opening paragraph suggests the aftermath of previous chapter events through character's physical sensations, psychological states, or ongoing behaviors
+- **Suspense continuation**: Opening directly responds to questions or suspense left at the previous chapter ending, even if expressed differently
+
+### 2. Event Causal Support (Only check major events affecting plot direction)
+**Issue Type**: `event_without_cause`
+
+**Trigger Conditions (mark if satisfied, critical)**:
+- The occurrence of major events finds no support in the chapter context (character actions/dialogue/environment/prior foreshadowing all absent)
+- Information transmission events: Body text only uses vague descriptions ("she received news" / "he learned") to explain key intelligence source, and sender → channel → receiving scene are all untraceable
+
+**Non-triggering scenarios**:
+- Character actions can be explained by established abilities/identity/skills (even if mechanism not fully transparent)
+- Information transmission has clear sender, channel, and receiving scene (all three need not be detailed, but must be identifiable)
+- Event is result of character's active decision-making, and decision motivation is visible
+
+### 3. Key Turn Foreshadowing (Only check plot-altering turns)
+**Issue Type**: `missing_causal_transition`
+
+**Trigger Conditions (mark if satisfied, high)**:
+- Turn is extremely abrupt, readers completely cannot understand why it happened (no detail hints / no dialogue foreshadowing / no psychological portrayal)
+- Turn involves character's major decision or relationship change, but previous text shows no warning signs whatsoever
+
+**Non-triggering scenarios**:
+- At least 1 sentence of foreshadowing before turn (abnormal details / suggestive dialogue / environmental changes / inner hesitation)
+- Tactical behaviors (retreat after probing / patiently waiting / deliberately showing weakness) are inherently sufficiently motivated decisions
+- Readers can understand why character acts this way (need not agree, but can understand)
+
+### 4. Suspense Management (Only check items listed in causal_link)
+**Issue Type**: `question_resolved_too_early` / `question_ignored`
+
+**Trigger Conditions**:
+- `question_resolved_too_early` (medium): Suspense explicitly listed as "to be retained" in `causal_link` is fully revealed in this chapter, with no retention or postponement
+- `question_ignored` (medium): `unresolved_question` or `open_threads` listed in `causal_link` are completely unmentioned or unadvanced in this chapter
+
+**Non-triggering scenarios**:
+- Suspense not in explicit list of `causal_link` (cannot independently judge which plot points "should be postponed")
+- Suspense advanced but not fully revealed (partial revelation / interruption / hint counts as advancement)
+- At least 1-2 items from `open_threads` mentioned or advanced
+
+---
+
+## Scoring
+10.0 baseline: critical -3.0 · high -2.0 · medium -1.0 · low -0.5
+
+## Rating Calibration
+- **critical**: Only for structural breaks directly destroying reader's plot comprehension (e.g., character motivation completely incomprehensible, events completely unexplainable)
+- **high**: Significantly impacts fluency but readers can still follow the story
+- **Suspense management issues (question_resolved_too_early / question_ignored) capped at medium**, as suspense rhythm is a creative choice, not structural break
+
+## Audit Principles
+- **Quality over quantity**: Only report actual issues with clear body text evidence, not "potential issues" or "suggested improvements"
+- **Respect literary techniques**: Flashback, ellipsis, scene-style opening, imagery connection are all legitimate techniques
+- **Evidence must be specific**: Quote body text paragraphs, fix_suggestion must specify location and modification direction
+- **No expanded checking**: Only examine the above 4 items, do not proactively investigate other potential issues
+{% endmacro %}
+
+{% macro causal_issue_field_rules(include_memory_fields=false) %}
+
+
+`issue_type`: opening_causal_gap / missing_causal_transition / event_without_cause / unmotivated_decision / question_resolved_too_early / question_ignored{% if include_memory_fields %} / causal_contradiction{% endif %}
+
+`issue_id`: Can be left empty on first discovery, generated by system; when verifying prior_issue unresolved, must retain prior_issue's issue_id.
+
+`severity`: critical / high / medium / low
+
+`location` **Must start with paragraph number**, format `Paragraph N` or `Paragraph N-M` (counting from first non-empty paragraph in body text, 1-based), can add parenthetical clarification after paragraph number.
+Example: `Paragraph 5`, `Paragraph 12-14`, `Paragraph 1 (opening continuity)`, `Paragraph 23 (black-clothed figure reveals identity)`.
+⚠️ Purely descriptive positioning prohibited (e.g., "turning point" / "middle section"), otherwise downstream fixes cannot be precisely located.
+
+`paragraph_start` / `paragraph_end` must match `location` paragraph numbers; `location_confidence` uses 0-1 to indicate positioning certainty; `anchor_type` uses explicit_para / evidence_exact / evidence_fuzzy / location_parsed / inferred_scope.
+
+`fix_mode`: replace / insert / window / fulltext. Missing causal continuity uses insert; event foreshadowing/decision motivation/turn issues use window; only structural contradictions that cannot be positioned use fulltext.
+
+`evidence` must include at least 20 continuous characters of original body text for downstream problem paragraph positioning.
+
+`evidence_quote` fill in without `[paragraph N]` marker's exact text substring; if the issue is missing content with no quotable original text, may leave empty but must provide paragraph number and insert/window repair mode.
+{% endmacro %}

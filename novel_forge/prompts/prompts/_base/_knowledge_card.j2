@@ -1,0 +1,43 @@
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：_base/_knowledge_card.j2
+类型：宏模块（不被直接渲染，仅供其他模板 import）
+作用简述：统一渲染角色知识边界段（knowledge ledger），
+          draft/edit 共享同一数据渲染，但引导文案和标题不同。
+定义宏：
+  - render_knowledge_card(knowledge, mode="draft")
+    mode 取值：
+      "draft" → DRAFT 阶段，标题含"（P0）"，含 global_ops
+      "edit"  → EDIT 阶段，标题含"（编辑时不得改坏）"，不含 global_ops
+使用方式：
+  {%- from "_base/_knowledge_card.j2" import render_knowledge_card -%}
+  {{ render_knowledge_card(knowledge, mode="draft") }}
+被调用方：writing/draft_chapter.j2, writing/edit_chapter.j2
+================================================================================
+#}
+
+{% macro render_knowledge_card(knowledge, mode="draft") -%}
+{% if knowledge.character_cards | default([]) or knowledge.chapter_ops | default([]) %}
+{% if mode == "draft" %}## 角色知识边界（P0）
+- `StoryKernel.knowledge_ledger` 是角色知识唯一事实源；章节硬事实、世界规则和作者契约不自动等于角色已知。
+- POV 内心、判断、对白和行动只能基于该角色已知/怀疑/误信/隐瞒的信息，以及本场实时可观察的新证据。
+- 若本章需要新增知识，必须通过本章场景中的对话、观察、发现、误导或隐瞒动作落地，并服务场景目标。
+{% else %}## 角色知识边界（编辑时不得改坏）
+- `StoryKernel.knowledge_ledger` 是角色知识唯一事实源；不要把作者硬事实、世界规则或契约目标写成角色天然知道。
+- 不得新增未由本章对白、观察、发现、误导或隐瞒动作支撑的认知变化。
+{% endif %}
+{% for card in knowledge.character_cards | default([]) %}
+- {{ card.character }}{% if card.is_pov %}（当前/候选 POV）{% endif %}：
+  已知={% if card.known_facts | default([]) %}{{ card.known_facts | join('；') }}{% else %}无特殊已知事实{% endif %}；
+  怀疑={% if card.suspicions | default([]) %}{{ card.suspicions | join('；') }}{% else %}无{% endif %}；
+  误信={% if card.misbeliefs | default([]) %}{{ card.misbeliefs | join('；') }}{% else %}无{% endif %}；
+  隐瞒={% if card.secrets_kept | default([]) %}{{ card.secrets_kept | join('；') }}{% else %}无{% endif %}
+{% if card.chapter_promised_changes | default([]) %}  本章承诺变化：{% for op in card.chapter_promised_changes %}{{ op.target_text or op.fact }}{% if op.evidence %}（证据锚：{{ op.evidence }}）{% endif %}{% if not loop.last %}；{% endif %}{% endfor %}{% endif %}
+{% endfor %}
+{% if mode == "draft" and knowledge.global_ops | default([]) %}
+- 未指定角色的知识承诺：{% for op in knowledge.global_ops %}{{ op.target_text or op.fact }}{% if op.evidence %}（证据锚：{{ op.evidence }}）{% endif %}{% if not loop.last %}；{% endif %}{% endfor %}
+{% endif %}
+{% endif %}
+{%- endmacro %}

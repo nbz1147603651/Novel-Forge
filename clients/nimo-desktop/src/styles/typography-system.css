@@ -1,0 +1,210 @@
+/*
+ * Application-wide typography and dialog convergence.
+ *
+ * Page sheets should consume the semantic `--nf-type-*` aliases for new
+ * work.  The numeric `--nf-font-*` ramp remains for source-measured canvas
+ * labels, sprites, and other intentionally dense visualizations.
+ */
+
+.nimo-app {
+  font-family: var(--nf-type-family-body);
+  font-size: var(--nf-type-body);
+  line-height: var(--nf-type-leading-body);
+}
+
+.nimo-app :is(h1, h2, h3) {
+  font-family: var(--nf-type-family-heading);
+  text-wrap: balance;
+}
+
+.nimo-app :is(button, input, select, textarea) {
+  line-height: 1.35;
+}
+
+.nimo-app :is(.page-eyebrow, .section-kicker) {
+  font-size: var(--nf-type-control);
+}
+
+.top-bar h1 {
+  font-family: var(--nf-type-family-heading);
+  font-size: var(--nf-type-section);
+  line-height: var(--nf-type-leading-tight);
+}
+
+.top-bar :is(p, .topbar-meta, .topbar-action, .topbar-select) {
+  font-size: var(--nf-type-control);
+}
+
+/* Shared page hierarchy. Page-specific sheets own geometry and color; this
+ * layer alone owns the ordinary title sizes. */
+.section-heading h2,
+.settings-section-heading h2,
+.studio-panel-heading :is(h2, h3),
+.studio-artifacts-heading h2,
+.voice-cast-heading h2,
+.voice-detail-heading h2,
+.voice-room-header h2 {
+  font-family: var(--nf-type-family-heading);
+  font-size: var(--nf-type-section);
+  line-height: var(--nf-type-leading-heading);
+}
+
+.section-heading p,
+.settings-section-heading p {
+  font-size: var(--nf-type-body);
+  line-height: var(--nf-type-leading-body);
+}
+
+.dashboard-hero .hero-copy h2,
+.settings-hero h2 {
+  font-family: var(--nf-type-family-heading);
+  font-size: var(--nf-type-display);
+  line-height: var(--nf-type-leading-heading);
+}
+
+.reader-document-heading h2 {
+  font-size: var(--nf-type-page);
+  line-height: var(--nf-type-leading-heading);
+}
+
+/* The route cards and their selected form title are adjacent in the workflow
+ * page, so they deliberately share one section level. */
+.workflow-mode-switcher strong,
+.workflow-composer-hero h2,
+.workflow-active-projects h2,
+.workflow-short-composer h2,
+.long-init-panel .section-heading h2 {
+  font-family: var(--nf-type-family-heading);
+  font-size: var(--nf-type-section);
+  font-weight: var(--nf-type-weight-semibold);
+  line-height: var(--nf-type-leading-heading);
+}
+
+.workflow-mode-switcher span,
+.workflow-composer-hero p,
+.workflow-active-projects header p,
+.workflow-short-composer > header p,
+.long-init-panel .section-heading p {
+  font-size: var(--nf-type-body);
+  line-height: var(--nf-type-leading-body);
+}
+
+.app-dialog {
+  /* Resolve against the viewport, rather than the auto-sized overlay wrapper.
+   * This lets every AppDialog use the named geometry tokens consistently. */
+  width: min(
+    var(--nf-dialog-standard-width),
+    calc(100vw - var(--nf-dialog-gutter) - var(--nf-dialog-gutter))
+  );
+}
+
+.app-dialog h2 {
+  font-family: var(--nf-type-family-heading);
+  font-size: var(--nf-type-page);
+  line-height: var(--nf-type-leading-heading);
+}
+
+.app-dialog header p {
+  max-width: 640px;
+  font-size: var(--nf-type-emphasis);
+}
+
+.app-dialog footer .button {
+  font-size: var(--nf-type-body);
+}
+
+.app-dialog.is-wide {
+  width: min(
+    var(--nf-dialog-wide-width),
+    calc(100vw - var(--nf-dialog-gutter) - var(--nf-dialog-gutter))
+  );
+}
+
+/* The long-form field editor has a navigation rail and a writable prose
+ * column; it needs the wide dialog rather than the generic confirmation size. */
+.app-dialog.long-init-field-editor-dialog {
+  width: 960px;
+  max-width: calc(100vw - var(--nf-dialog-gutter) - var(--nf-dialog-gutter));
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  height: 640px;
+  max-height: var(--nf-dialog-viewport-height);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.app-dialog.long-init-field-editor-dialog .app-dialog-content {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.app-dialog.long-init-field-editor-dialog .long-init-field-dialog {
+  grid-template-columns: minmax(154px, 184px) minmax(0, 1fr);
+  gap: 18px;
+  height: 100%;
+  min-height: 0;
+}
+
+.app-dialog.long-init-field-editor-dialog .long-init-textarea.is-dialog {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  max-height: none;
+  box-sizing: border-box;
+}
+
+.app-dialog.long-init-field-editor-dialog .long-init-field-nav-item,
+.app-dialog.long-init-field-editor-dialog .long-init-field-dialog-hint {
+  font-size: var(--nf-type-control);
+}
+
+/* Chapter export/audit dialogs are information surfaces, not compact alerts. */
+.chapter-dialog {
+  width: min(var(--nf-dialog-standard-width), calc(100vw - 42px));
+}
+
+.chapter-dialog.is-compact {
+  width: min(520px, calc(100vw - 42px));
+}
+
+.chapter-dialog.is-wide {
+  width: min(var(--nf-dialog-wide-width), calc(100vw - 42px));
+}
+
+.workflow-error-log-dialog {
+  width: min(960px, calc(100vw - 48px));
+  height: min(620px, calc(100vh - 48px));
+}
+
+.workflow-error-log-dialog h2 {
+  font-size: var(--nf-type-section);
+}
+
+.workflow-error-log-dialog > p,
+.workflow-error-log-dialog pre {
+  font-family: var(--nf-type-family-body);
+  font-size: var(--nf-type-body);
+  line-height: 1.55;
+}
+
+/* This remains enabled when the count is zero: it opens an explicit empty
+ * state and must never look like a disabled browser-default control. */
+.workflow-error-button {
+  color: var(--nf-text-secondary);
+  border-color: color-mix(in srgb, var(--nf-border-default) 32%, transparent);
+  background: color-mix(in srgb, var(--nf-bg-input) 68%, var(--nf-bg-surface));
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--nf-shadow) 7%, transparent);
+  opacity: 1;
+}
+
+.workflow-error-button:hover:not(:disabled) {
+  color: var(--nf-accent-primary-pressed);
+  border-color: color-mix(in srgb, var(--nf-accent-primary) 48%, transparent);
+  background: color-mix(in srgb, var(--nf-accent-primary) 8%, var(--nf-bg-surface));
+}
+
+@media (max-width: 800px) {
+  .workflow-error-log-dialog {
+    width: calc(100vw - 28px);
+    height: min(620px, calc(100vh - 28px));
+  }
+}

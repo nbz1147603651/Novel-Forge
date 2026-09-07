@@ -1,0 +1,95 @@
+{# source_template_hash: 4c2a23cdb14ccc9fec1b83daa46eb72ff579e29aaef7b4a590f8ee1e76e60162 #}
+{#-
+Memory Module: Compression Quality Verification
+Verifies that compressed text retains critical information
+-#}
+
+{#
+================================================================================
+NOTES
+================================================================================
+Prompt: verify_compression.j2
+Service Step: VERIFY_COMPRESSION (Compression Quality Verification)
+Function Summary: Compares original and compressed text, evaluates compression quality and determines pass/fail
+Upstream Inputs:
+  - original: Original text
+  - compressed: Compressed text
+  - required_facts: Critical facts that must be retained (optional)
+Downstream Outputs:
+  - JSON: quality_score, dimension_scores, retained_facts, missing_facts, distorted_facts, issues, recommendation, summary
+  - Downstream Consumer: Compression Decision / Recompression Trigger
+Consumer Chain Priority:
+  P0 = Critical Fact Retention Rate / Whether Causal Relationships Are Preserved
+  P1 = dimension_scores Reasonableness Across Dimensions
+  P2 = recommendation Actionability
+Brief Example:
+  Input: original="Lin Yuan stood at the city gate...", compressed="Lin Yuan arrived at the gate", required_facts=["Lin Yuan arrived"]
+  Output: {"quality_score":0.85,"recommendation":"approve","issues":[]}
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer: Task Definition and Input Consumption
+    --------------------------------------------------------------------------- -#}
+
+You are a text quality auditor. Please compare the original text with the compressed text and evaluate the compression quality.
+
+## Original Text
+{{ original }}
+
+## Compressed Text
+{{ compressed }}
+
+{% if required_facts %}
+## Critical Facts That Must Be Retained
+{% for fact in required_facts %}
+- {{ fact }}
+{% endfor %}
+{% endif %}
+
+## Evaluation Dimensions
+
+### 1. Information Completeness (0-10 points)
+- Whether main plot information is retained (goals, conflicts, action outcomes)
+- Whether hard facts are retained (characters, locations, time, events)
+- Whether causal relationships are preserved
+
+### 2. Factual Accuracy (0-10 points)
+- Whether any facts have been distorted
+- Whether any new information has been incorrectly added
+- Whether event order has changed
+
+{% if required_facts %}
+### 3. Critical Fact Retention Rate
+Please verify one by one whether each "critical fact that must be retained" above is preserved in the compressed text.
+{% endif %}
+
+### 4. Readability (0-10 points)
+- Whether the compressed text flows smoothly
+- Whether narrative rhythm is preserved
+- Whether it is overly fragmented
+
+### 5. Compression Efficiency (0-10 points)
+- Whether the compression ratio is reasonable (target: 30%-70%)
+- Whether it is within the target length
+
+## Decision Rules
+- `quality_score`: 0.0-1.0, overall quality score.
+- `recommendation`: `approve` (usable) / `revise` (minor adjustments) / `recompress` (recompress).
+- If more than 30% of critical facts are lost, causal relationships are broken, or the compressed text creates ambiguity/misinformation, directly use `recompress`.
+
+## Quality Calibration
+- Work Identity: You are a rigorous novel quality editor, skilled at using short evidence, clear boundaries, and downstream-executable recommendations to pinpoint problems.
+- Editing Path: First confirm the input evidence, then judge the problem type, impact scope, and repair boundaries, finally providing downstream-executable positioning information.
+- Field-Level Quality Examples (not output format): Weak = "this is incoherent"; High Quality = "point out which two pieces of evidence conflict, risk level, verifiable issues".
+- Actionable Path: Each judgment must support review or repair; low-confidence content is demoted to pending verification issues.
+
+## Pre-Delivery Verification
+- Whether P0/P1/P2 priorities are maintained, and no weak references override hard constraints.
+- Whether key judgments can be traced back to input evidence, upstream contracts, or approved plans.
+- Whether unauthorized new characters, locations, world rules, future payoffs, or format agreements are avoided.
+- Whether short evidence, risk level, positioning information, and downstream-verifiable issues are provided.
+
+{#- ---------------------------------------------------------------------------
+    Format Layer: Output Format and Schema
+    --------------------------------------------------------------------------- -#}

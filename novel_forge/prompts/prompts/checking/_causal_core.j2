@@ -1,0 +1,147 @@
+{#- 共享的因果链审核核心模块 — causal_validate 和 critic_causal 共用 -#}
+
+{% macro causal_must_resolve(must_resolve_summaries) %}
+{% if must_resolve_summaries %}
+---
+🚨 **阻断归档问题·逐条核实**
+以下问题在上次修复前被标记为**高优先级**，本轮审核必须逐条核实正文是否已真正解决；评分时不得以"已部分改善"为由降级，须对照正文逐条确认：
+{% for s in must_resolve_summaries %}
+- {{ s }}
+{% endfor %}
+---
+{% endif %}
+{% endmacro %}
+
+{% macro causal_context(causal_link, chapter_bridge, chapter_number, character_notes='', previous_chapter_ending='') %}
+## 因果链锚定
+- 上章核心事件：{{ causal_link.previous_event or '无' }}
+- 因果机制：{{ causal_link.causal_mechanism or '无' }}
+- 核心悬念：{{ causal_link.unresolved_question or '无' }}
+{% if causal_link.open_threads %}
+- 延续线索：{{ causal_link.open_threads | join('；') }}
+{% endif %}
+
+## 桥接信息
+- 上章末尾：{{ chapter_bridge.bridge_summary or '无' }}
+- 情绪承接：{{ chapter_bridge.emotional_carryover or '无' }}
+- 动作接力：{{ chapter_bridge.action_handoff or '无' }}
+{% if chapter_bridge.opening_location %}- 开场地点：{{ chapter_bridge.opening_location }}{% endif %}
+{% if chapter_bridge.opening_time %}- 开场时间：{{ chapter_bridge.opening_time }}{% endif %}
+{% if previous_chapter_ending %}
+
+## 上一章结尾原文（验证承接的关键参照）
+> {{ previous_chapter_ending[-800:] }}
+
+验证要求：本章开头必须与上述原文形成可感知的叙事衔接（场景延续、动作接续、情绪承接等），而非仅在抽象层面"呼应"因果链描述。
+{% endif %}
+{% if character_notes %}
+
+## 角色能力背景（验证参考）
+{{ character_notes }}
+{% endif %}
+
+## 第 {{ chapter_number }} 章正文
+{% endmacro %}
+
+{% macro causal_checks() %}
+## 审核范围（白名单模式）
+
+**你只检查以下 4 项，其余内容无需排查**：
+1. 开头因果承接（本章开头是否是上章事件的逻辑后果）
+2. 事件因果支撑（重大事件是否有明确的因果链）
+3. 关键转折铺垫（影响剧情走向的转折是否有前置铺垫）
+4. 悬念管理（仅检查 causal_link 中明确列出的悬念）
+
+---
+
+## 逐项检查标准
+
+### 1. 开头因果承接（仅检查第 1-4 段）
+**问题类型**：`opening_causal_gap`
+
+**触发条件（满足任一则标记，high）**：
+- 开头段落与上一章结尾完全断裂，读者无法感知两者之间的叙事联系
+- `causal_mechanism` 明确指定了因果路径，但正文开头完全没有体现该路径的任何痕迹
+
+**不触发的情况**：
+- 场景切换但通过角色感官残留/环境变化/回忆建立了因果联系
+- 时间跳跃但有明确过渡标记，且读者能理解跳跃期间的因果逻辑
+- 使用倒叙、意象衔接等文学技法，事后能回溯到上章事件
+- **场景开头**：以时间标记、景物描写、场景设置等开篇，即使没有直接延续上章词汇，只要能建立时空连续感即可
+- **情绪/状态延续**：开头段落通过角色的身体感受、心理状态、或正在进行的行为暗示上章事件的余波
+- **悬念接续**：开头直接回应上章末尾留下的问题或悬念，即使换了一种表达方式
+
+### 2. 事件因果支撑（仅检查影响剧情走向的重大事件）
+**问题类型**：`event_without_cause`
+
+**触发条件（满足则标记，critical）**：
+- 重大事件的发生在章节上下文中找不到任何支撑（角色行为/对话/环境/前文铺垫均无）
+- 信息传递类事件：正文仅用模糊描述（"她收到消息""他得知"）解释关键情报来源，且**发出者→渠道→接收场景**三者均不可溯源
+
+**不触发的情况**：
+- 角色行为可由已建立的能力/身份/技能解释（即使原理未完全透明化）
+- 信息传递有明确的发出者、渠道和接收场景（三者不必全部详细，但必须可识别）
+- 事件是角色主动决策的结果，且决策动机可见
+
+### 3. 关键转折铺垫（仅检查影响剧情走向的转折）
+**问题类型**：`missing_causal_transition`
+
+**触发条件（满足则标记，high）**：
+- 转折极度突兀，读者完全无法理解为何发生（无细节暗示/无对话铺垫/无心理描写）
+- 转折涉及角色重大决策或关系变化，但前文毫无征兆
+
+**不触发的情况**：
+- 转折前有至少 1 句铺垫（异常细节/暗示性对话/环境变化/内心犹豫）
+- 战术性行为（试探后撤退/隐忍待时/故意示弱）本身即是动机充分的决策
+- 读者能理解角色为何如此行动（不必赞同，但能理解）
+
+### 4. 悬念管理（仅检查 causal_link 中列出的条目）
+**问题类型**：`question_resolved_too_early` / `question_ignored`
+
+**触发条件**：
+- `question_resolved_too_early`（medium）：`causal_link` 中明确列为"需保留"的悬念在本章被完全揭示，且无任何保留或延后处理
+- `question_ignored`（medium）：`causal_link` 中列出的 `unresolved_question` 或 `open_threads` 在本章完全未被提及或推进
+
+**不触发的情况**：
+- 悬念不在 `causal_link` 的明确列表中（不得自行判断哪些情节"应当延后"）
+- 悬念有所推进但未完全揭示（部分揭示/暗示/被打断均算推进）
+- `open_threads` 中至少 1-2 条被提及或推进
+
+---
+
+## 评分
+10.0 起评：critical -3.0 · high -2.0 · medium -1.0 · low -0.5
+
+## 评级校准
+- **critical**：仅用于直接破坏读者对情节理解的结构性断裂（如核心人物动机完全无法理解、事件完全无法解释）。
+- **high**：明显影响流畅度但读者仍能跟上故事。
+- **悬念管理类（question_resolved_too_early / question_ignored）上限为 medium**，因悬念节奏属于创作取向，不构成结构断裂。
+
+## 审核原则
+- **宁缺毋滥**：只报告有明确正文证据的真实问题，不报告"可能存在问题"或"建议改善"。
+- **尊重文学技法**：倒叙、省略、场景式开头、意象衔接均为合法技法。
+- **证据必须具体**：引用正文段落，fix_suggestion 须指明位置和修改方向。
+- **不扩检**：只检查上述 4 项，不主动排查其他潜在问题。
+{% endmacro %}
+
+{% macro causal_issue_field_rules(include_memory_fields=false) %}
+
+
+`issue_type`：opening_causal_gap / missing_causal_transition / event_without_cause / unmotivated_decision / question_resolved_too_early / question_ignored{% if include_memory_fields %} / causal_contradiction{% endif %}
+
+`issue_id`：首次发现可留空，由系统生成；点验 prior_issue 未解决时必须沿用 prior_issue 的 issue_id。
+
+`severity`：critical / high / medium / low
+
+`location` **必须以段落号开头**，格式为 `第N段` 或 `第N-M段`（从正文第一个非空段落起算，1-based），可在段落号后加括号补充说明。
+示例：`第5段`、`第12-14段`、`第1段（开头承接处）`、`第23段（黑衣人揭示身份处）`。
+⚠️ 禁止使用纯描述性定位（如"转折处""中段"），否则下游修复无法精确定位。
+
+`paragraph_start` / `paragraph_end` 必须与 `location` 段号一致；`location_confidence` 用 0-1 表示定位确信度；`anchor_type` 使用 explicit_para / evidence_exact / evidence_fuzzy / location_parsed / inferred_scope。
+
+`fix_mode`：replace / insert / window / fulltext。缺失因果承接用 insert；事件铺垫/决策动机/转折问题用 window；只有无法定位的结构性矛盾才用 fulltext。
+
+`evidence` 必须包含**至少 20 字的正文连续原文引用**，用于下游定位问题段落。
+
+`evidence_quote` 填写不带 `[第N段]` 标记的正文精确原文子串；若问题是缺失内容且没有可引用原文，可留空，但必须提供段落号和 insert/window 修复模式。
+{% endmacro %}

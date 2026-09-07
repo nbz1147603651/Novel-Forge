@@ -1,0 +1,56 @@
+{# source_template_hash: 56e60e383fd7dd10e9dc783b856b02e89edd35a7570466f806d6d7f2506a429f #}
+{%- macro render_repair_attempt_guidance(guidance) -%}
+{% if guidance %}
+## This Round's Repair Strategy Update
+- Round: {{ guidance.round_number }} / {{ guidance.max_rounds }}
+{% if guidance.strategy_id is defined and guidance.strategy_id %}- Strategy: {{ guidance.strategy_id }}
+{% endif %}
+- This Round's New Direction: {{ guidance.new_direction }}
+- Avoid Repeating: {{ guidance.avoid }}
+{% if guidance.diagnosis is defined and guidance.diagnosis %}
+- Failure/Stagnation Diagnosis:
+{% for item in guidance.diagnosis %}
+  - {{ item }}
+{% endfor %}
+{% endif %}
+{% if guidance.issue_focus is defined and guidance.issue_focus %}
+- This Round's Focus Issue: {{ guidance.issue_focus | join('; ') }}
+{% endif %}
+{% if guidance.previous_issue_focus is defined and guidance.previous_issue_focus %}
+- Previous Round's Residual Issues: {{ guidance.previous_issue_focus | join('; ') }}
+{% endif %}
+{% if guidance.previous_attempted_patches is defined and guidance.previous_attempted_patches %}
+- Previous Round Model Attempts:
+{% for item in guidance.previous_attempted_patches %}
+  - {{ item }}
+{% endfor %}
+{% endif %}
+{% if guidance.previous_applied_patches is defined and guidance.previous_applied_patches %}
+- Previous Round's Applied Modifications:
+{% for item in guidance.previous_applied_patches %}
+  - {{ item }}
+{% endfor %}
+{% endif %}
+{% if guidance.previous_skipped_patches is defined and guidance.previous_skipped_patches %}
+- Previous Round's Rejected Modifications:
+{% for item in guidance.previous_skipped_patches %}
+  - {{ item }}
+{% endfor %}
+{% endif %}
+{% if guidance.steps is defined and guidance.steps %}
+- Action Steps:
+{% for step in guidance.steps %}
+  {{ loop.index }}. {{ step }}
+{% endfor %}
+{% endif %}
+Please follow the new direction outlined above to make repairs. If you find the original approach only allows repeating the previous round's actions, you must switch to using actions, dialogue, scene staging, or a larger context window to resolve the root cause.
+{% endif %}
+{%- endmacro -%}
+
+{%- macro render_repair_self_check(repair_kind="targeted") -%}
+## Post-Repair Self-Check Checklist
+- Did you address only this round's target issue without expanding to unrelated passages?
+- Did you preserve the chapter plan, bridge/contract, main plot progression points, established facts, and word count boundaries?
+- Did you avoid introducing unplanned POVs, prohibited characters, key props, significant events, answers for future chapters, or explanatory reports?
+- If a particular issue cannot be safely resolved without breaking the above constraints, prioritize maintaining the relevant facts unchanged and complete other safe repairs; do not insert `[UNRESOLVED]`, comments, repair notes, or any non-body text markers in the main text. Residual issues will continue to be exposed during subsequent reviews.
+{%- endmacro -%}

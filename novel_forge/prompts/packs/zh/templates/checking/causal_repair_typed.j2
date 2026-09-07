@@ -1,0 +1,218 @@
+{%- from "_quality_standards.j2" import creative_specificity_rules -%}
+{%- from "_base/_artifact_source_contract.j2" import render_artifact_source_contract -%}
+{%- from "_base/_repair_attempt_guidance.j2" import render_repair_attempt_guidance, render_repair_self_check -%}
+{%- from "_base/_repair_quality_calibration.j2" import render_repair_quality_calibration, render_repair_pre_delivery_checklist -%}
+
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：causal_repair_typed.j2
+服务步骤：REPAIR_CAUSAL（因果链定向修复）
+作用简述：只修复 causal validation 指出的因果问题，按 issue 类型定位窗口，
+          不重新规划章节、不引入新主线。
+上游输入：
+  - numbered_chapter_text / chapter_text：待修正文
+  - typed_issues / issue_types：因果问题
+  - stage_cards.source：ChapterSourceSlice，含禁揭示边界
+  - stage_cards.bridge / stage_cards.plan / stage_cards.repair：因果与边界派生卡
+下游输出：
+  - TEXT：修复后的完整正文
+消费链优先级：
+  P0 = opening_causal_gap / event_without_cause / causal_contradiction
+  P1 = missing_causal_transition / unmotivated_decision / 已验证风格声纹保持
+  P2 = question timing / suspense management
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    指导层
+    --------------------------------------------------------------------------- -#}
+
+{% set cards = stage_cards | default({}) %}
+{% set source = cards.source | default({}) %}
+{% set source_contract = source.chapter_contract | default({}, true) %}
+{% set bridge_card = cards.bridge | default({}) %}
+{% set plan_card = cards.plan | default({}) %}
+{% set contract = source_contract if source_contract else (cards.contract | default({})) %}
+{% set repair = cards.repair | default({}) %}
+{% set style = cards.style | default({}) %}
+{% set editorial = cards.editorial | default({}) %}
+{% set knowledge = cards.knowledge | default({}) %}
+{% set cognitive_constraints = contract.cognitive_constraints | default([]) %}
+
+请对第 {{ chapter_number }} 章进行因果链定向修复。
+
+{{ render_artifact_source_contract(source, title="## Source Artifact 边界（P0）", mode="repair") }}
+
+## ticket/window 规则
+- 先看 typed_issues 的 issue type、location、evidence、repair_boundary 和 repair_scope。
+- 只修因果 ticket 覆盖的文本窗口，不自由重写整章，不用宏观创作规划补新增剧情或新主线。
+- 因果补写只能解释已发生/已允许的行为动机，不能把疑点升级成确认。
+
+## 因果锚
+{% if bridge_card.causal_link %}
+- 上章事件：{{ bridge_card.causal_link.previous_event }}
+- 因果机制：{{ bridge_card.causal_link.causal_mechanism }}
+- 待推进悬念：{{ bridge_card.causal_link.unresolved_question }}
+{% elif causal_link %}
+- 上章事件：{{ causal_link.previous_event }}
+- 因果机制：{{ causal_link.causal_mechanism }}
+- 待推进悬念：{{ causal_link.unresolved_question }}
+{% endif %}
+{% if bridge_card.action_handoff %}- 动作接力：{{ bridge_card.action_handoff }}{% endif %}
+{% if previous_chapter_ending %}- 上一章结尾：{{ previous_chapter_ending }}{% endif %}
+
+{% if contract.required_events or contract.forbidden_changes or contract.forbidden_progressions or contract.future_leak_risks or contract.exit_state_targets or contract.must_carry_forward or cognitive_constraints %}
+## 不可破坏的章节契约
+{% if contract.must_carry_forward %}- 必须承接：{{ contract.must_carry_forward | join('；') }}{% endif %}
+{% if contract.required_events %}- 必达事件：{{ contract.required_events | join('；') }}{% endif %}
+{% if contract.forbidden_changes %}- 禁止变化：{{ contract.forbidden_changes | join('；') }}{% endif %}
+{% if contract.forbidden_progressions %}- 禁止提前推进：{{ contract.forbidden_progressions | join('；') }}{% endif %}
+{% if contract.future_leak_risks %}- 未来泄露风险：{{ contract.future_leak_risks | join('；') }}{% endif %}
+{% if contract.exit_state_targets %}- 出口目标：{{ contract.exit_state_targets | join('；') }}{% endif %}
+{% if cognitive_constraints %}
+- 认知揭示边界已在 Source Artifact 中完整列出；因果补写只能解释本章已允许的行为动机，不得用新因果把未来秘密、身份或真相提前确认。
+{% endif %}
+{% endif %}
+
+{% if plan_card.scene_intents or chapter_plan_scenes %}
+## 计划边界
+{% for scene in plan_card.scene_intents | default(chapter_plan_scenes) %}
+- {{ scene.scene_id }}：{{ scene.summary }}{% if scene.purpose %}（{{ scene.purpose }}）{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if repair.do_not_introduce %}## 不得引入
+{{ repair.do_not_introduce | join('；') }}
+{% endif %}
+{% if character_whitelist_note %}{{ character_whitelist_note }}{% endif %}
+{% if knowledge.character_cards or knowledge.chapter_ops %}
+## 角色知识边界（修复时不得破坏）
+- 因果补写必须从角色已知/怀疑/误信出发；不得用作者全知替角色补动机。
+{% for kb in knowledge.character_cards %}
+{% set changes = kb.chapter_promised_changes | default([]) %}
+- {{ kb.character }}{% if kb.is_pov %}（当前 POV）{% endif %}：已知={{ kb.known_facts | default([]) | join('；') or '无特殊已知事实' }}；怀疑={{ kb.suspicions | default([]) | join('；') or '无' }}；误信={{ kb.misbeliefs | default([]) | join('；') or '无' }}{% if changes %}；本章认知变化={{ changes | map(attribute='target_text') | list | join('；') }}{% endif %}
+{% endfor %}
+{% endif %}
+{% if plan_card.forbidden_elements %}
+### 🚫 禁用元素清单（硬性约束）
+以下意象/句式在近章已过度使用，修复后正文不得出现原样、近义或同通道替换；若其承担剧情功能，只保留功能并重写表达。
+{% for item in plan_card.forbidden_elements %}
+- {{ item }}
+{% endfor %}
+{% endif %}
+{% if plan_card.forbidden_elements_soft %}
+### ⚠️ 建议回避元素（软性约束）
+{% for item in plan_card.forbidden_elements_soft %}
+- {{ item }}
+{% endfor %}
+{% endif %}
+{% if plan_card.intentional_callbacks %}
+### 🔄 有意回环（允许复用）
+以下是有意回扣的剧情/母题元素，可保留功能，但仍要换成当前场景的新动作、对白或细节。
+{% for item in plan_card.intentional_callbacks %}
+- {{ item }}
+{% endfor %}
+{% endif %}
+{% if escalation_note %}## 升级提醒
+{{ escalation_note }}
+{% endif %}
+
+{% if memory_guidance %}
+{% set guidance = memory_guidance %}
+## 历史因果修复指导
+{% if guidance.strategy_recommendation %}
+- 推荐模式：{{ guidance.strategy_recommendation.preferred_strategy }}（{{ guidance.strategy_recommendation.reason }}）
+{% endif %}
+{% if guidance.matched_issues %}
+- 类似历史：{% for item in guidance.matched_issues %}{% if loop.index <= 2 -%}
+第{{ item.chapter }}章 {{ item.summary }}{% if item.lesson_learned %}（教训：{{ item.lesson_learned }}）{% endif %}{% if not loop.last and loop.index < 2 %}；{% endif %}
+{%- endif %}{% endfor %}
+{% endif %}
+{% if guidance.recommended_strategies %}
+- 可借鉴：{{ guidance.recommended_strategies | join('；') }}
+{% endif %}
+{% if guidance.avoid_strategies %}
+- 避免：{{ guidance.avoid_strategies | join('；') }}
+{% endif %}
+{% if guidance.success_rate is defined and guidance.total_attempts %}
+- 历史成功率：{{ (guidance.success_rate * 100) | round(0) }}%（{{ guidance.total_attempts }} 次）
+{% endif %}
+{% if guidance.warning %}
+- 警告：{{ guidance.warning }}
+{% endif %}
+{% endif %}
+
+{{ render_repair_attempt_guidance(repair_attempt_guidance | default(none)) }}
+
+{% set style_modules = style.modules | default([]) %}
+{% set style_banned = style.banned_phrases | default([]) %}
+{% set editorial_voices = editorial.character_voices | default([]) %}
+{% if style.summary | default('') or style_modules or style_banned or editorial_voices %}
+## 风格与声纹保持（P1，不覆盖因果 ticket）
+- 本节只用于让补写的因果句、过渡句和决策铺垫贴回原文语感；不得为了风格新增事件、揭示、人物认知或关系结论。
+{% if style.summary | default('') %}- 风格概述：{{ style.summary }}{% endif %}
+{% if style.dialogue_ratio | default('') or style.pace_mode | default('') %}- 对话/节奏：{{ style.dialogue_ratio | default('') }} / {{ style.pace_mode | default('') }}{% endif %}
+{% if style.emotional_style | default('') or style.environment_ratio | default('') or style.info_density | default('') %}- 情绪/环境/信息密度：{{ style.emotional_style | default('') }} / {{ style.environment_ratio | default('') }} / {{ style.info_density | default('') }}{% endif %}
+{% for module in style_modules %}
+- {{ module.name | default('风格模块') }}：{{ module.rules | default([]) | join('；') }}
+{% endfor %}
+{% if style_banned %}- 项目级禁用短语：{{ style_banned | join('、') }}{% endif %}
+{% if editorial_voices %}
+- 对白声纹参考（只用于被修窗口，禁止照抄样例）：
+{% for item in editorial_voices %}
+  - {{ item.character | default('角色') }}：{{ item.sentence_profile | default('') }}；情绪句法={{ item.emotion_syntax | default('') }}{% if item.sample_lines | default([]) %}；样例={{ item.sample_lines[:2] | join(' / ') }}{% endif %}{% if item.taboo_patterns | default([]) %}；禁用={{ item.taboo_patterns | join('、') }}{% endif %}
+{% endfor %}
+{% endif %}
+{% endif %}
+
+## 待修问题
+{% if structured_issues_block | default('') %}
+{{ structured_issues_block }}
+{% else %}
+{% for issue_type, issues in typed_issues.items() %}
+{% if issues %}
+### {{ issue_type }}
+{% for issue in issues %}
+- [Issue {{ issue.issue_id | default('未提供', true) }}] {{ issue.summary | default('') }}{% if issue.location | default('') %}（{{ issue.location }}）{% endif %}{% if issue.evidence | default('') %}；证据：{{ issue.evidence }}{% endif %}{% if issue.fix_suggestion | default('') %}；建议：{{ issue.fix_suggestion }}{% endif %}
+{% if issue.adjudication_notes | default('') %}  验证裁决：{{ issue.adjudication_notes }}{% endif %}
+{% if issue.handoff_notes | default('') %}  审计交接：{{ issue.handoff_notes }}{% endif %}
+{% if issue.repair_boundary | default('') %}  修复边界：{{ issue.repair_boundary }}{% endif %}
+{% if issue.repair_scope | default([]) %}  修复范围：{{ issue.repair_scope }}{% endif %}
+{% if issue.must_preserve | default([]) %}  必须保留：{{ issue.must_preserve | join('；') }}{% endif %}
+{% if issue.forbidden_changes | default([]) %}  禁止改动：{{ issue.forbidden_changes | join('；') }}{% endif %}
+{% if issue.evidence_pairs | default([]) %}  跨章证据对：{{ issue.evidence_pairs }}{% endif %}
+{% endfor %}
+{% endif %}
+{% endfor %}
+{% endif %}
+
+## 正文
+{% if numbered_chapter_text %}
+{{ numbered_chapter_text }}
+{% else %}
+{{ chapter_text }}
+{% endif %}
+
+## 修复规则
+1. 只修因果问题；不改无关段落。
+2. opening_causal_gap：只重写开头必要段落，让读者明确感到“因上一章事件，所以现在这样”。
+3. missing_causal_transition：在转折前补 1-3 句可回溯铺垫，不改转折结果。
+4. event_without_cause：在事件发生前补清楚发出者、渠道、接收、时间顺序。
+5. unmotivated_decision：在决策前补角色权衡、代价或战术意图，不改决策本身。
+6. question_resolved_too_early：把完整答案降级为线索、误解、打断或部分揭示。
+7. question_ignored：用动作、对话或发现让悬念获得阶段性推进。
+8. 修复后字数保持在 {{ word_count_min }}-{{ word_count_max }} 之间。
+9. 禁止新增计划外 POV、禁出角色正面行动、后续章节揭秘、系统说明或修复报告。
+{{ creative_specificity_rules(title="") }}
+
+{{ render_repair_self_check("causal") }}
+
+{{ render_repair_quality_calibration("repair") }}
+
+{{ render_repair_pre_delivery_checklist("repair") }}
+
+{#- ---------------------------------------------------------------------------
+    格式层
+    --------------------------------------------------------------------------- -#}

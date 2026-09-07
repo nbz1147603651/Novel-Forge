@@ -1,0 +1,63 @@
+{%- from "_base/_summary_pass.j2" import render_summary_pass -%}
+{# source_template_hash: fb1020f273050e79e541b1acb4a17c56409d5618efc6efd87fc7412ceb74d38b #}
+{#
+================================================================================
+[Notes]
+================================================================================
+Prompt: summarize_arc.j2
+Service Step: SUMMARIZE_ARC (Story Arc Summary)
+Brief Description: Compresses story arc content into high-density summary for long-term context injection
+Upstream Input:
+  - arc_name: Story arc name
+  - target_words: Target word count (default 2000)
+  - text/chapter_text: Input text
+Downstream Output:
+  - JSON: summary
+  - Downstream Consumer: Memory System / Long-term Context Injection
+Consumption Chain Priority:
+  P0 = Preserve arc-level changes (starting point/turning point/climax/resolution/lingering clues)
+  P1 = Characters and themes only retain changes that impact the main arc
+  P2 = Do not output chapter-level detail lists
+Brief Example:
+  Input: arc_name="Lin Yuan's Origin Mystery", target_words=2000, text="..."
+  Output: {"summary":"..."}
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer: Task Definition and Input Consumption
+    --------------------------------------------------------------------------- -#}
+
+Compress the following into a story arc-level summary for long-term context injection.
+
+{{ render_summary_pass(summary_pass | default(''), source_scope | default('')) }}
+
+{% if arc_name %}- Story Arc: {{ arc_name }}{% endif %}
+- Target Length: approximately {{ target_words | default(2000) }} words
+
+## Input Text
+{{ text if text else chapter_text }}
+
+## Output Field Description
+- `summary`: Arc-level high-density summary, preserving arc-level changes (starting point/turning point/climax/resolution/lingering clues), approximately {{ target_words | default(2000) }} words.
+
+## Rules
+1. Only preserve arc-level changes: starting point, key turning point, climax, resolution, lingering clues.
+2. Characters and themes only retain changes that advance the main arc.
+3. Do not output chapter-level detail lists, do not output writing suggestions.
+
+## Quality Calibration
+- Working Identity: You are a chapter memory editor, skilled at compressing body text into high-density narrative summaries that subsequent writing can directly continue from.
+- Summary Path: First extract core events in chronological order, then supplement character status, unresolved questions, and new facts, finally compress into retrievable statements.
+- Evidence Calibration: Summaries onlyhandoff this chapter's actual occurrences or explicitly established information; rhetorical atmosphere degrades to background, not upgraded to hard facts.
+- Actionable Path: Each summary item should be directly quotable by subsequent chapters' Bridge, Memory, or VolumeAudit.
+
+## Pre-delivery Verification
+- Are P0/P1/P2 priorities maintained without weak references overriding hard constraints.
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans.
+- Are unauthorized new characters, locations, world rules, future payoffs, or format agreements avoided.
+- Are factual boundaries needed for subsequent merging/retrieval preserved without writing speculation as established facts.
+
+{#- ---------------------------------------------------------------------------
+    Format Layer: Output Format and Schema
+    --------------------------------------------------------------------------- -#}

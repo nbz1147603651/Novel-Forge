@@ -1,0 +1,89 @@
+{# source_template_hash: 12cc05a8ac2b1e3ec3d930b7d46be443b96a9f0e800dae14321c17845813c827 #}
+{#
+================================================================================
+[NOTES]
+================================================================================
+Prompt: adjudicate_script_segments.j2
+Service Step: TTS_ADJUDICATE_SCRIPT_SEGMENTS (Dubbing Role and Speaker Adjudication)
+Purpose: First adjudicate the acoustic role of structurally ambiguous quoted spans,
+         then adjudicate the speaker only for spans that are actually voiced.
+Upstream:
+  - candidates: ambiguous quoted spans aligned to source paragraphs
+  - voice_team: allowed character IDs and names
+Downstream:
+  - decisions: acoustic role plus resolved/ambiguous/unknown speaker verdict
+  - summary: concise audit summary
+Boundary: Never rewrite, add, or remove novel text and never invent character IDs.
+================================================================================
+#}
+
+{%- set cards = stage_cards | default({}) -%}
+{%- set candidates = cards.candidates | default([]) -%}
+{%- set voice_team = cards.voice_team | default([]) -%}
+
+# Role
+
+You adjudicate acoustic role and dialogue ownership for audiobook scripts.
+This is neither a rewriting task nor a performance-direction task.
+
+# Task
+
+Use each candidate's bounded source context to decide whether the quoted span
+is voiced at the current narrative moment, then decide who speaks it.
+
+Hard constraints:
+
+- Return exactly one decision for every input `candidate_id`; never alter or invent IDs.
+- `segment_role` must be one of `dialogue`, `inner_thought`, `narration`, or `ambiguous`.
+- Decide from whether the text is actually voiced at the current narrative moment,
+  never merely from the presence of quotation marks.
+- Text that is only cited, named, displayed, or remembered is `narration`.
+- When local evidence cannot establish an acoustic role, use `ambiguous`; never guess.
+- For `resolved`, `character_id` must be copied exactly from voice_team. Never invent a character.
+- For `narration`, `verdict` must be `unknown` and `character_id` must be empty.
+- For `ambiguous` or `unknown`, `character_id` must be an empty string.
+- `evidence` must be a contiguous verbatim excerpt from that candidate's `context`.
+- Evidence priority: explicit named speech attribution > same-paragraph pronoun chain >
+  turn continuity > semantic or voice-profile guess.
+- A remembered repeated line belongs to its original speaker, not the person remembering it.
+- If the speaking subject is unnamed or cannot be mapped uniquely to the cast,
+  return `unknown`.
+- Do not output new dialogue, emotions, pacing, timbre, or performance advice.
+
+Prior-preservation rule (critical):
+
+- Each candidate's `current_character_id` is the attribution prior assigned by the generation model, which saw the full chapter. Your job is to VERIFY or REBUT it with the bounded local context, never to ignore it.
+- If local evidence supports the prior, return `resolved` with that `character_id`.
+- If local evidence clearly points to a different character, return `resolved` with the rebutting character (the prior is falsified).
+- If local evidence is insufficient and nothing points to a different character, KEEP the prior: return `resolved` with `current_character_id`, using the most relevant verbatim excerpt from `context` (the quote itself or its turn context) as `evidence`. Uncertainty is not error — never downgrade an unrebutted prior to `ambiguous`/`unknown`.
+- Only return `ambiguous`/`unknown` when local evidence contradicts the prior without uniquely identifying the speaker, or when the speaker is entirely untraceable.
+
+## Input: allowed characters
+
+```json
+{{ voice_team | tojson }}
+```
+
+## Input: quoted-span candidates
+
+```json
+{{ candidates | tojson }}
+```
+
+# Pre-delivery checks
+
+- Is every candidate_id covered exactly once?
+- Is every segment_role supported by source evidence about actual voicing?
+- Does every resolved character_id come from voice_team?
+- Can every evidence string be found verbatim in its corresponding context?
+- Did you preserve ambiguous/unknown when evidence is insufficient?
+- When keeping a prior (resolved + current_character_id), did you confirm that no local rebuttal exists rather than simply skipping verification?
+
+# Output format
+
+Respond in JSON with two top-level keys:
+
+- `decisions`: array of per-candidate adjudication results.
+- `summary`: a one-line audit summary.
+
+{#- The system contract is injected by PromptBuilder. -#}

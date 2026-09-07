@@ -1,0 +1,131 @@
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：init_story_bible.j2
+服务步骤：INIT_STORY_BIBLE（初始化故事圣经）
+作用简述：根据用户提供的故事前提与创作意图，生成完整且自洽的世界观设定
+         （StoryBible），为后续所有规划与写作提供基础约束。
+上游输入：
+  - premise: 用户输入的故事前提（核心创意）
+  - title/genre/tone/language: 用户输入的作品元信息
+  - expected_total_words: 预计总字数（影响世界观深度与复杂度）
+  - world_hint/conflict_hint/pov_hint: 用户输入的辅助提示
+  - opening_style/ending_style: 开篇与结尾方向偏好
+  - extra_instructions: 用户额外约束
+下游输出：
+  - JSON（StoryBible）：title, premise, era, geography, locations, culture,
+    magic_or_tech, rules, tone, themes, audio_aesthetic
+  - 可选 JSON 字段：time_convention, social_hierarchy, address_rules,
+    self_reference_rules, etiquette_rules, institution_terms, material_culture,
+    anachronism_blacklist, dialogue_register_rules
+    （仅在时代/制度/语体需要项目级约束时输出）
+  - 下游消费者：
+    * PLAN_OUTLINE：消费 premise/era/geography/rules/themes 生成叙事蓝图
+    * INIT_CHARACTER_BIBLE：消费 era/geography/culture/magic_or_tech 生成角色档案
+    * DRAFT_CHAPTER：通过 narrative_contract 消费 rules/tone/themes/world_context 作为硬约束
+消费链优先级：
+  P0 = premise 核心创意不可偏离 / rules 必须具体且有代价
+  P1 = genre/tone 一致性 / era/geography 为冲突提供舞台
+  P2 = opening_style/ending_style 方向性提示
+简要例子：
+  输入：premise="记忆回收师发现自己的前半生被改写", genre="scifi", tone="dark"
+  输出：{"story_bible":{"title":"记忆回收师","era":"近未来...","rules":["记忆编辑需双方同意",...]}}
+
+【保护性注释 - 禁止删除以下内容】
+- "世界观质量标准"章节（规则具体性/地理舞台充分性/规则与基调一致性）是质量约束，
+  不是与 JSON schema 重复的字段列表。这些标准直接影响后续 PLAN_OUTLINE 和 DRAFT_CHAPTER
+  的质量，删除会导致 rules 字段含糊、geography 变成简单地名罗列、magic_or_tech 缺少代价说明。
+- 如需精简，可将质量标准合并到 JSON schema 的字段说明中，但不可完全删除。
+- 所有字段必须与 core/schemas/bible.py 中 StoryBible 的字段定义完全对齐，
+  不得添加 schema 中不存在的字段，不得遗漏 schema 中 required 的字段。
+================================================================================
+#}
+{#- ---------------------------------------------------------------------------
+    指导层：任务与输入
+    --------------------------------------------------------------------------- -#}
+
+根据以下故事前提，生成完整的世界观设定（StoryBible）。
+
+## 故事前提
+{{ premise }}
+
+{% if title %}- 暂定标题：{{ title }}{% endif %}
+{% if genre %}- 体裁：{{ genre }}{% endif %}
+{% if tone %}- 基调：{{ tone }}{% endif %}
+{% if language %}- 输出语言：{{ describe_language(language) }}{% endif %}
+{% if expected_total_words %}- 预计总字数：{{ expected_total_words }}字{% endif %}
+{% if world_hint %}- 世界观提示：{{ world_hint }}{% endif %}
+{% if conflict_hint %}- 核心冲突：{{ conflict_hint }}{% endif %}
+{% if pov_hint %}- 叙事视角：{{ pov_hint }}{% endif %}
+{% if opening_style %}- 开篇方向：{{ opening_style }}{% endif %}
+{% if ending_style %}- 结尾方向：{{ ending_style }}{% endif %}
+{% if extra_instructions %}- 额外约束：{{ extra_instructions }}{% endif %}
+
+{#- ---------------------------------------------------------------------------
+    世界观质量标准（必须遵守）
+    --------------------------------------------------------------------------- -#}
+
+## 世界观质量标准
+- **规则具体性**：规则设定要具体且有代价，避免过于空泛（如"关键能力/技术/制度需要明确资源或代价"而非"世界存在某种特殊规则"）
+- **舞台充分性**：地理/文化背景应能为冲突和人物选择提供充分的舞台
+- **跨媒介上游化**：核心空间在 `locations` 中结构化锁定动线、材质、实景光、天气、
+  固定道具与环境声；这些字段同时服务小说连续性、配音声场和影视美术，不要留到下游猜测。
+  跨媒介核心字段（`spatial_layout`、`materials`、`practical_lights`、`ambient_sound`、`continuity_rules`）
+  为必填硬约束；缺失会触发字段级定向补全任务，不如本轮一次写足。
+- **基调一致性**：超自然/技术规则必须与整体基调一致
+- **结构紧凑**：每个字符串字段用一段话表达，不要在字符串内部写长编号列表；需要列举时用短句和分号压缩，避免输出过长导致 JSON 截断。
+- **JSON 稳定性**：字符串内部不要使用未转义的英文双引号；中文书名号、引号和破折号可以使用，但不要输出 Markdown、注释或省略号。
+- **时代语境按需输出**：仅当故事涉及历史、古代、宫廷、权谋、仙侠、民国、未来、架空制度、强社会阶层、
+  特殊职业体系或用户明确要求时，才输出称谓、自称、礼制、器物、时间单位和禁用错位词等可执行规则。
+- **避免硬编码套模板**：不要机械套用某个朝代常识；应根据故事前提、时代背景、社会结构和冲突场景推导本项目需要的规则。
+- **普通题材保持轻量**：若为普通现代/现实/日常题材，且称谓、时间、器物、对白语体都可按常识处理，
+  不要输出时代语境可选字段，不要输出空数组，也不要输出"不适用"说明。
+
+## 字段内容约束
+- `story_bible` 必须包含：`title`、`premise`、`era`、`geography`、`locations`、`culture`、`magic_or_tech`、`rules`、`tone`、`themes`、`audio_aesthetic`。
+- `story_bible` 可按需包含：`notes`、`time_convention`、`banned_intent_rules`、`social_hierarchy`、`address_rules`、`self_reference_rules`、`etiquette_rules`、`institution_terms`、`material_culture`、`anachronism_blacklist`、`dialogue_register_rules`、`location_transition_window_sentences`、`bridge_echo_window_chars`、`max_key_revelations_per_chapter`、`min_unresolved_threads_to_keep`。
+- 不要新增 schema 外字段；额外设定并入 `notes` 或既有字段。
+
+## 质量校准
+- 工作身份：你是一位长篇叙事架构师，擅长把故事资产拆成可承接、可验证、不过度剧透的执行计划。
+- 规划推断路径：先锁定 P0 硬约束，再分配 P1 推进节奏，最后用 P2 风格/主题补足表现层。
+- 字段级质量示例（非输出格式）：平弱=“推进关系”；高质量=“写清谁因何行动、关系如何变化、下一环如何承接”。
+- 可操作路径：计划项要能被后续写作/审计直接检查，避免只给抽象愿望或主题口号。
+
+## 交付前核验
+- P0/P1/P2 优先级是否被保持，且没有让弱参考覆盖硬约束。
+- 是否能把关键判断回指到输入证据、上游契约或已批准计划。
+- 是否避免新增未授权的人物、地点、世界规则、未来 payoff 或格式协议。
+- 是否把抽象目标转化为可观察的行动、冲突、状态变化或章节承接点。
+
+{#- ---------------------------------------------------------------------------
+    系统契约由 PromptBuilder 注入
+    --------------------------------------------------------------------------- -#}
+
+## 字段要求
+- `title`：与 premise 一致的 4-10 字暂定名。
+- `premise`：2-3 句话，包含主角身份、核心冲突和独特卖点。
+- `era`：精确到足以影响叙事节奏的时代背景，避免只写“未来”“古代”。
+- `geography`：至少 2-3 个核心地点及其文化/政治意义，为冲突提供舞台。
+- `locations`：2-6 个会反复承载行动的结构化场景。每项必须包含 `name`、`location_id`、
+  `dramatic_function`、`spatial_layout`、`materials`、`practical_lights`、`ambient_sound`、`continuity_rules`
+  （跨媒介硬约束，缺一不可）；并按需补全 `geography`、`era`、`weather_states`、`recurring_props`。
+  若该场景有明确的镜头语言偏好，可另加可选 `shot_language_seed`（一句话写景别/运镜/光线/焦段，
+  如「低机位、手持、35mm、实景侧光」），影视镜头规划会优先消费。
+  空间布局必须能支持人物走位；环境声必须是可听见、可分层、可复用的真实声源。
+- `culture`：1-2 句话说明主导社会结构、价值观念和权力格局。
+- `magic_or_tech`：说明超自然、金手指或技术体系的具体运作方式、代价与限制；现实题材写明现实约束。
+- `rules`：3-5 条影响叙事的硬性规则，必须具体且有代价。
+- `tone`：具体叙事氛围，不要只复述单个基调枚举。
+- `themes`：2-4 条贯穿全书的深层主题。
+- `audio_aesthetic`：一句话锁定人声距离、环境声密度、音乐介入方式与动态范围，供声腔继承。
+
+## 长度与可选字段
+- `era`、`geography`、`culture`、`magic_or_tech`、`tone` 各控制在 80-220 个汉字。
+- `rules` 每条 40-100 个汉字；`themes` 每条 50-120 个汉字。
+- 可选时代语境字段按需添加，不适用则完全省略字段，不要输出空数组或“不适用”。
+- `time_convention`：只有当时间表达会影响文本质感或剧情判断时输出，如古代时辰、星历、系统时间戳。
+- `social_hierarchy`：只有当阶层/官民/主仆/门第/组织等级会影响行动和对白时输出。
+- `address_rules` / `self_reference_rules` / `etiquette_rules` / `dialogue_register_rules`：只有当称谓、自称、礼制或对白语体需要项目级约束时输出，每类 2-5 条。
+- `institution_terms` / `material_culture` / `anachronism_blacklist`：只有当制度术语、器物质感或时代错位风险会明显影响正文时输出，每类 3-8 项。

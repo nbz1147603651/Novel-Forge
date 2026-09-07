@@ -1,0 +1,269 @@
+{# source_template_hash: e220bd98bf0ba0f97acc6762dbdd44dde8570e35527a497fc67b1694634795f9 #}
+{%- from "_base/_calculate_word_constraints.j2" import render_word_constraint_hard, render_word_constraint_self_check -%}
+{%- from "_base/_artifact_source_contract.j2" import render_artifact_source_contract -%}
+{%- from "_base/_cognitive_constraints.j2" import render_cognitive_constraints -%}
+{%- from "_base/_pov_knowledge_constraints.j2" import render_pov_knowledge_constraints -%}
+{%- from "_quality_standards.j2" import creative_specificity_rules, anti_exposition_rules, traditional_time_marker_rules -%}
+
+{#
+================================================================================
+[NOTES]
+================================================================================
+Prompt: wave_chapter.j2
+Service Step: WAVE_CHAPTER (long-form scene-weaving, Generate phase Step 2 in the long-form 6-stage architecture)
+Function Summary:
+  This step **singles** weaves multiple scene drafts into a complete long-form chapter after DRAFT completes all scenes.
+  Core Responsibilities:
+    1. Add transitional paragraphs or sentences between scenes
+    2. Fulfill plan.cross_scene_intent.cross_scene_references (callback/foreshadow/parallel/contrast/echo)
+    3. Adjust local pacing according to plan.cross_scene_intent.pacing_curve
+    4. Unify cross-scene POV, voice, and style
+    5. Remove cross-scene repetitions or supplement anchors when needed
+  Strictly Prohibited:
+    - Rewriting any scene's POV main body in full paragraphs
+    - Deleting entire scenes
+    - Adding new scenes
+    - Modifying locked POV characters in plan.scene_intents
+    - Word count exceeding +/-30% from target
+Upstream Input:
+  - draft_text: Current chapter draft output from DRAFT phase
+  - stage_cards.source: ChapterSourceSlice, containingthis chapter's forbidden revelation boundaries and voice/style projections
+  - stage_cards: Local derived cards for plan / characters / editorial / style / quality
+  - cross_scene_intent: Cross-scene constraints from plan (2 fields: cross_scene_references + pacing_curve)
+Downstream Output:
+  - TEXT: Woven complete chapter body
+Consumption Chain Priority:
+  P0 = Smooth inter-scene transitions / Cross-scene reference hits / POV consistency / Word count within +/-30%
+  P1 = pacing_curve rhythm matching / Motif continuity as soft reference only, no hard supplements for responses / Character voice cross-scene consistency
+  P2 = Style capsules / Serial-read engagement capsules
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer
+    --------------------------------------------------------------------------- -#}
+
+{% set cards = stage_cards | default({}) %}
+{% set source = cards.source | default({}) %}
+{% set source_contract = source.chapter_contract | default({}, true) %}
+{% set chapter = cards.chapter | default({}) %}
+{% set position = chapter.chapter_position | default(chapter_position | default({})) %}
+{% set contract = source_contract if source_contract else (cards.contract | default({})) %}
+{% set plan_card = cards.plan | default({}) %}
+{% set cross_scene_intent = plan_card.cross_scene_intent | default({}) %}
+{% set characters = cards.characters | default([]) %}
+{% set style = cards.style | default({}) %}
+{% set editorial = cards.editorial | default({}) %}
+{% set quality = cards.quality | default({}) %}
+{% set repair = cards.repair | default({}) %}
+{% set element = cards.element | default({}) %}
+{% set stitch = scene_stitch_report | default({}) %}
+{% set coverage = draft_plan_coverage | default({}) %}
+{% set cognitive_constraints = contract.cognitive_constraints | default([]) %}
+
+## Task
+Execute **scene-weaving** on the draft of Chapter {{ chapter.chapter_number | default(chapter_number) }}. This step is NOT rewriting, NOT reordering—it weaves the scenes already written by DRAFT into a complete chapter.
+{% if position %}
+- Chapter Position: Chapter {{ position.chapter_number | default(chapter.chapter_number | default(chapter_number)) }} / {{ position.total_chapters }}; is_last_chapter={{ position.is_last_chapter | default(false) }}.
+{% if position.is_last_chapter | default(false) %}
+- This chapter is the final chapter of the current outline; book-level concluding tone may be retained.
+{% else %}
+- This chapter is NOT the final chapter: Do NOT weave the draft into a book ending; do NOT add final outcome summaries, ultimate fate conclusions, or full-line payoffs.
+{% endif %}
+{% if position.is_previously_final_chapter | default(false) %}
+- This chapter was the old final chapter but has been extended: Only do transition/re-opening weaving; do notheavily conclude as a final chapter.
+{% endif %}
+{% endif %}
+
+{{ render_word_constraint_hard(chapter.target_word_count | default(target_word_count | default(0))) }}
+
+## P0 Contract and Reveal Boundaries
+WAVE can only do scene-weaving; it must NOT upgrade mysteries, foreshadowing, or misdirection into confirmation, verification, public revelation, or new physical evidence.
+{{ traditional_time_marker_rules() }}
+{{ render_artifact_source_contract(source, title="## Source Artifact Contract (P0)", mode="wave") }}
+
+## Artifact Consumption Rules
+- WAVE only consumes DraftArtifact text, PlanArtifact's cross_scene_intent, source.forbidden_reveal_boundaries, and local voice/style projections.
+- The six-element literary responsibilities are already carried by PlanArtifact's scene_intents; WAVE can only smooth cross-scene connections, pacing, POV conservation, and voice consistency—it must NOT add contract-external payoffs.
+- WAVE must NOT add new scenes, new facts, confirmatory revelations, or write character cognition or event ledgers outside the contract.
+- If the draft lacks planned anchors, only use short sentences, transitional actions, or local replacements to supplement anchors—DO NOT rewrite POV main body in full paragraphs.
+{% if contract.required_events | default([]) %}- Required Events: {{ contract.required_events | join('; ') }}{% endif %}
+{% if contract.required_progressions | default([]) %}- Required Progressions: {{ contract.required_progressions | join('; ') }}{% endif %}
+{% if contract.allowed_progressions | default([]) %}- Allowed Progressions: {{ contract.allowed_progressions | join('; ') }}{% endif %}
+{% if contract.forbidden_changes | default([]) %}- Forbidden Changes: {{ contract.forbidden_changes | join('; ') }}{% endif %}
+{% if contract.forbidden_progressions | default([]) %}- Forbidden Early Progressions: {{ contract.forbidden_progressions | join('; ') }}{% endif %}
+{% if contract.future_leak_risks | default([]) %}- Future Leak Risks: {{ contract.future_leak_risks | join('; ') }}{% endif %}
+{% if cognitive_constraints %}
+- Cognitive Constraints: Weaving must preserve every named role's `character_knowledge_coverage`; never turn cross-scene context into knowledge the role has not acquired.
+{{ render_cognitive_constraints(cognitive_constraints) }}
+{% endif %}
+
+## Cross-Scene Handoffs and Optional Expression
+
+{% set scene_refs = cross_scene_intent.cross_scene_references | default([]) %}
+{% if scene_refs %}
+### Cross-Scene Reference List ({{ scene_refs | length }} items)
+{% for ref in scene_refs %}
+- [{{ ref.ref_type | default('callback') }}] {{ ref.from_scene | default('?') }} -> {{ ref.to_scene | default('?') }}: {{ ref.description | default('') }} [{{ (ref.requirement | default({})).satisfaction | default('optional') }}]
+{% endfor %}
+
+#### Separate fulfillment policies
+Only requirement.satisfaction=narrative/literal is obligatory. Verify narrative handoffs through actions and causal consequences, not repeated words or images. Optional or unannotated references may be omitted; never add anchor sentences or penalize their absence.
+{% else %}
+(This plan has no explicit cross-scene references; weave transitions freely according to internal scene pacing)
+{% endif %}
+
+{% set pacing = cross_scene_intent.pacing_curve | default([]) %}
+{% if pacing %}
+### Pacing Curve
+Expected tension intensity for each scene (1-5):
+{% for level in pacing %}
+- Scene {{ loop.index }}: intensity {{ level }}
+{% endfor %}
+Please use tension contrast in transitional paragraphs or scene beginnings/endings to echo this curve.
+{% endif %}
+
+## Scene List (For anchoring only; DO NOT rewrite POV main body)
+{% set scene_intents = plan_card.scene_intents | default([]) %}
+{% if scene_intents %}
+{% for scene in scene_intents %}
+- **Scene {{ loop.index }}** ({{ scene.scene_id | default('?') }}): {{ scene.summary | default('') }}; POV: {{ scene.pov_character | default('') }}; target word count: {{ scene.target_words | default(0) }}
+{% if scene.emotional_beat | default('') or scene.sensory_focus | default('') or scene.dialogue_subtext | default('') %}  Creative anchors: {% if scene.emotional_beat | default('') %}emotion={{ scene.emotional_beat }}{% endif %}{% if scene.sensory_focus | default('') %}{% if scene.emotional_beat | default('') %}; {% endif %}sensory={{ scene.sensory_focus }}{% endif %}{% if scene.dialogue_subtext | default('') %}{% if scene.emotional_beat | default('') or scene.sensory_focus | default('') %}; {% endif %}subtext={{ scene.dialogue_subtext }}{% endif %}
+{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if stitch %}
+## Scene Stitching Diagnosis (Prioritize fixes)
+- Scene count: {{ stitch.scene_count | default(scene_intents | length) }}; missing scenes: {{ stitch.missing_scenes | default([]) | join(', ') or "none" }}
+{% if stitch.possible_transition_gaps | default([]) %}- Transition gaps: {{ stitch.possible_transition_gaps | join('; ') }}{% endif %}
+{% if stitch.soft_warning_count | default(0) %}- Single-scene soft diagnostic count: {{ stitch.soft_warning_count }}; this round only does transition, tone, anchor, and rhythm micro-adjustments—no new plot.{% endif %}
+{% if stitch.hard_failures_resolved | default([]) %}
+- Hard failures already resolved via single-scene retries: {% for item in stitch.hard_failures_resolved %}{{ item.scene_id }}={{ item.code }}{% if not loop.last %}; {% endif %}{% endfor %}
+{% endif %}
+{% if stitch.scene_diagnostics | default({}) %}
+### Single-Scene Soft Diagnostic Summary
+{% for sid, diag in stitch.scene_diagnostics.items() %}
+{% set warnings = diag.soft_warnings | default([]) %}
+{% if warnings %}
+- {{ sid }}: {% for item in warnings %}{{ item.code | default('warning') }}={{ item.message | default('') }}{% if not loop.last %}; {% endif %}{% endfor %}
+{% endif %}
+{% endfor %}
+{% endif %}
+{% endif %}
+
+{% if coverage %}
+## Draft Plan Coverage Diagnosis (Local, Targeted Micro-Fixes Only)
+- Draft word count: {{ coverage.word_count | default(0) }} / {{ coverage.target_word_count | default(target_word_count | default(0)) }}; status={{ coverage.word_count_status | default('not_checked') }}.
+{% if coverage.weak_anchors | default([]) %}
+- The following planned anchors have weak coverage in the raw draft. They do not authorize new plot; only recover them within the approved plan through short sentences, action handoffs, or local replacements:
+{% for item in coverage.weak_anchors %}
+  - {{ item.scene_id | default('?') }} / {{ item.kind | default('anchor') }}: {{ item.message | default(item.anchor | default('')) }}
+{% endfor %}
+{% else %}
+- Local matching found no obvious weak anchors; Plan and P0 contracts remain authoritative.
+{% endif %}
+{% endif %}
+
+{% for scene in scene_intents %}
+{{ render_pov_knowledge_constraints(scene, fallback_pov='', heading_level=2) }}
+{% endfor %}
+
+## Character Voice (For cross-scene unification only)
+{% set pov_name = chapter.pov_character | default(pov_character | default('')) %}
+{% for ch in characters %}
+{% if ch.name == pov_name %}
+- POV character "{{ ch.name }}": {{ ch.voice | default('') }}
+{% endif %}
+{% endfor %}
+{% set editorial_voices = editorial.character_voices | default([]) %}
+{% if editorial_voices %}
+### Editorial Voice Contract (P1)
+- Use only for unifying cross-scene dialogue syntax, emotional syntax, and expression register; do not copy sample lines verbatim; do notbased on this add new character history, relationship conclusions, or identity revelations.
+{% for item in editorial_voices %}
+- {{ item.character | default('Character') }}: sentence_profile={{ item.sentence_profile | default('') }}; emotion_syntax={{ item.emotion_syntax | default('') }}; explanation_bias={{ item.explanation_bias | default('') }}
+{% if item.signature_moves | default([]) %}  Signature moves/syntax: {{ item.signature_moves | join('; ') }}{% endif %}
+{% if item.sample_lines | default([]) %}  Voice samples (rhythm reference only, prohibit verbatim reuse): {{ item.sample_lines[:2] | join(' / ') }}{% endif %}
+{% if item.taboo_patterns | default([]) %}  Taboo patterns: {{ item.taboo_patterns | join(', ') }}{% endif %}
+{% endfor %}
+{% endif %}
+
+## Style and Editorial Contract (For transitional paragraph reference only; DO NOT enter POV main body)
+{% if style.banned_phrases | default([]) %}- Banned phrases: {{ style.banned_phrases | join('; ') }}{% endif %}
+
+{% set style_golden_block = render_style_golden_examples(style_golden_examples | default([]), title="### Project-Level High-Score Paragraph References (P2, only study transitions and penmanship; prohibit verbatim reuse)") %}
+{% if style_golden_block %}
+## Project-Level Style Positive Examples (P2)
+- Only used for adjusting transitional paragraphs, syntactic rhythm, and detail selection; must NOT rewrite POV main body paragraphs; must NOT copy original sentences.
+- If positive examples conflict with scene-weaving rules, reveal boundaries, or POV conservation, ignore the examples.
+
+{{ style_golden_block }}
+{% endif %}
+{% set editorial_risk = editorial.risk_guidance | default({}) %}
+{% set editorial_risk_items = editorial_risk.get('items', []) if editorial_risk else [] %}
+{% set denouement_risk = editorial_risk.get('denouement', {}) if editorial_risk else {} %}
+{% if editorial_risk_items or denouement_risk.guidance | default('') %}
+- Editorial admission risks only constrain transitions, chapter-end anchor supplements, and repetition removal; they do NOT authorize WAVE to add new scenes or new facts.
+{% if denouement_risk.guidance | default('') %}  - Denouement/epilogue: {{ denouement_risk.guidance }}; when supplementing transitions, do not additionally add pure confirmation paragraphs.{% endif %}
+{% for item in editorial_risk_items %}
+  - [{{ item.severity }}] {{ item.summary }}; weaving_action={{ item.action }}
+{% endfor %}
+{% endif %}
+{% if editorial.scene_resistance_rules | default([]) %}- Scene resistance rules: {% for r in editorial.scene_resistance_rules %}{{ r }}{% if not loop.last %}; {% endif %}{% endfor %}{% endif %}
+{% if editorial.expression_channel_budget | default({}) %}- Expression channel budget: {{ editorial.expression_channel_budget }}{% endif %}
+
+## Current Body Text (From DRAFT Phase)
+{{ draft_text }}
+
+## Wave Weaving Rules
+1. **Only "weave," do NOT "rewrite"**: Each scene's POV main body paragraphs remain unchanged; only the following may be supplemented: inter-scene transitional paragraphs, transitional sentences, necessary connecting anchors.
+2. **Verify necessary handoffs semantically**: Check causality, emotional continuity and information order. Optional imagery has no coverage quota and must not trigger added anchor sentences.
+3. **POV conservation**: All scenes' POV must remain as `{{ pov_name }}`; if DRAFT mistakenly shifts POV, only add one transitional sentence "Perspective returns to {{ pov_name }}".
+4. **Pacing curve echo**: For scenes in pacing_curve with adjacent intensity difference >= 2, transitional paragraphs must have visible "decompression/compression" actions.
+5. **Word count hard constraint**: Final body text word count must be within +/-30% of target; if deletion is needed, prioritize deleting cross-scene repetitive descriptions, actions, or dialogue.
+6. **Scene diagnostic handling**: If "scene stitching diagnosis" exists, prioritize fixing transition gaps, weak handoffs, weak owned anchors, and word count/rhythm drift; only use short sentences, transitional actions, environmental changes, or local replacements.
+7. **Prohibited actions**:
+   - Must NOT delete any scene in full paragraphs
+   - Must NOT add new scenes
+   - Must NOT modify locked POV characters in plan.scene_intents
+   - Must NOT introduce characters, locations, or events not appearing in plan
+   - Must NOT add unplanned events, unplanned revelations, or unplanned character state changes to handle soft diagnostics
+   - Must NOT rewrite core paragraphs of POV main body (only 1-2 sentences may be micro-adjusted for connection)
+8. **System traces**: Delete system markers, planning terms, report terms, metanarrative words.
+9. **Style capsule priority**: Voice, symbolism explanations, aftermath, and body signal budgets are only for "supplementing transitions"—NOT for "modifying POV main body".
+10. **Emotional continuity**: The emotional tone transition between adjacent scenes must be natural—the exit emotion (emotion_beat's resonance) from the preceding scene should have perceivable continuation or turn at the beginning of the next scene's first 1-2 paragraphs. Emotional rupture between scenes is not allowed (e.g., preceding scene ends sadly, next scene jumps directly to joyful opening without transitional anchors).
+
+{{ creative_specificity_rules(title="") }}
+{{ anti_exposition_rules(
+    title="### Transition and Carry-Over Exposition Prohibition",
+    dramatization_rule="Transitions and carry-overs (scene transition supplements, inter-scene connections, chapter-end aftermath) must NOT use narrator perspective to explain the preceding or following scene's plot meaning; only use action relays, environmental changes, time progression, or emotional resonance to connect; explanatory summaries such as 'the significance of this scene is...' or 'this moment demonstrates...' must NOT appear at scene boundaries."
+) }}
+
+## Pre-Delivery Verification
+- Are necessary handoffs coherent? Optional callbacks may be absent.
+- Do scenes with adjacent pacing_curve intensity difference >= 2 have observable decompression/compression actions?
+- Is POV maintained as `{{ pov_name }}` across all scenes?
+- Is word count within target +/-30% range?
+- Is there any "full-paragraph rewrite of POV main body" traces (violation)?
+- Are there any unauthorized new characters, locations, world rules, or payoffs (violation)?
+
+{#- ---------------------------------------------------------------------------
+    Format Layer
+    --------------------------------------------------------------------------- -#}
+
+## Writing Rules
+1. Directly output the woven complete chapter body text, without meta-descriptions like "Below is the revised version of the body text."
+2. Do not wrap body text in code blocks; retain Markdown paragraph separation.
+3. Chapter title (if present in original DRAFT) remains unchanged.
+4. Do not include planning terms such as scene_id, opening_contract, required_outcome, cross_scene_intent in the body text.
+
+{#- ---------------------------------------------------------------------------
+    Verification Layer
+    --------------------------------------------------------------------------- -#}
+
+## Self-Check List
+- Full text word count is within `{{ render_word_constraint_self_check(chapter.target_word_count | default(target_word_count | default(0))) }}` range.
+- POV is always `{{ pov_name }}` with no mid-way switching.
+- Necessary handoffs are realized through actions and consequences; optional callbacks have no coverage quota.
+- Transitional paragraph count <= scene count x 2 (prevent transitions from devouring body text).
+- No planning terms, report terms, or system metanarrative words appear.

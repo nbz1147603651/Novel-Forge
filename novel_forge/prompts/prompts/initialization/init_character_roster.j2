@@ -1,0 +1,79 @@
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：init_character_roster.j2
+服务步骤：INIT_CHARACTER_ROSTER（角色圣经分片：角色清单）
+作用简述：先确定全书核心角色名单与功能，作为后续档案/关系/弧线的共同锚点。
+上游输入：premise/story_bible/characters_hint/conflict_hint/expected_total_words
+下游输出：JSON：{"character_roster": [...]}
+下游消费者：INIT_CHARACTER_PROFILE_BATCH / RELATIONSHIP_MATRIX / ARC_PLAN / 本地合并器
+消费链优先级：P0 = 名单稳定不割裂；P1 = 角色功能覆盖主冲突；P2 = 数量与篇幅匹配
+================================================================================
+#}
+{%- from "_base/_shared_evidence_anchor.j2" import render_shared_evidence_anchor -%}
+
+{#- 指导层 -#}
+请只生成角色清单锚点。后续角色档案、关系网和弧线都会以这个名单为准，因此不要写长档案。
+
+## 输出字段说明
+- `character_roster`：角色清单列表，每条包含 `name`（规范全名）、`role`（protagonist/antagonist/deuteragonist/supporting/minor）、`age`、`gender`、`status`（active/dormant/retired）、`time_layer`（modern/past/cross_temporal/memory_only/default）、`function`（短功能说明）。
+
+## 链路边界
+本模板只用于 split 角色生成链路的第一步；它不生成完整 CharacterBible。
+本轮产物是后续 profile_batch、relationship_matrix、arc_plan 的唯一名单锚点。
+不要输出 `character_bible`、`character_profiles`、`relationship_matrix` 或 `character_arcs`。
+如果上下文中出现 `character_generation_mode`，仅用于确认当前链路，不要写入角色字段。
+
+## Canonical name 规则
+- `name` 是角色系统的 canonical name；下游章节提示词、实体注册表、关系矩阵和 canon 都会以它为准。
+- 旧名、别名、前世名、误称、称号、阶段身份不能另建角色；只可在 `function` 中以短句说明其与 canonical name 的关系。
+- 若一个表面名字可能指向多个实体，必须用括号限定生成不同 canonical name；若是同一实体的不同称呼，只保留一个 roster 项。
+- 不要为了补关系或弧线提前扩写人物大包；本阶段只保证名单稳定、角色功能明确。
+
+{{ render_shared_evidence_anchor(shared_evidence_anchor) }}
+
+## 故事前提
+{{ premise }}
+
+## 世界观锚点
+{{ story_bible | tojson(indent=2) if story_bible is mapping else story_bible }}
+
+{% if expected_total_words %}- expected_total_words: {{ expected_total_words }}{% endif %}
+{% if characters_hint %}- characters_hint: {{ characters_hint }}{% endif %}
+{% if conflict_hint %}- conflict_hint: {{ conflict_hint }}{% endif %}
+{% if extra_instructions %}- extra_instructions: {{ extra_instructions }}{% endif %}
+
+## 要求
+- 至少包含 1 个 protagonist。
+- `protagonist` 表示全书最核心主视角/主行动轴；其他同样重要但承担第二行动轴、关系轴或强支线轴的角色，优先用 `deuteragonist`，不要因为角色重要就全部标成 protagonist。
+- 若存在双核心或多核心结构，按“谁承担主要视角/主要行动决策/章节推进责任”确定 `protagonist`；另一核心通常用 `deuteragonist`。只有用户明确要求群像多主角，或多个角色确实平分主行动轴时，才可输出多个 protagonist。
+- 保留用户提示中的明确角色，并补足必要反派、盟友、派系代表或功能角色。
+- `name` 必须是后续全文使用的规范全名。
+- `name` 在整个 roster 内必须全局唯一。不能输出两个完全相同的 `name`。
+- roster 一旦确定，后续分片必须逐字沿用这些 `name`；若存在旧名、别名、前世名或误称，只能写入 `function`，不要把别名另建成角色。
+- 如果同一个表面姓名横跨现代/过去/回忆并且确实需要作为两个可出场行动体分别入 roster，必须在 `name` 中加入简短限定，例如 `某某（现代）`、`某某（过去）`、`某某（回忆）`；若只是同一灵魂/前世信息，不要另建同名角色，把前世名或前世经历写进当前角色 `function`。
+- `role` 只可使用：`protagonist` / `antagonist` / `deuteragonist` / `supporting` / `minor`；角色重要性或补充说明写入 `function`。
+- `status` 只可使用：`active` / `dormant` / `retired`；已故但仍影响主线的人物写作 `role=minor`、`status=retired`、`time_layer=memory_only`。
+- `time_layer` 只可使用：`modern` / `past` / `cross_temporal` / `memory_only` / `default`。
+- 仅被口头提及、不会形成行动/冲突/回忆场景的人物不要进入 roster，可并入相关角色的 `function`。
+- 功能性群众角色必须具备可复用的叙事功能；不要使用占位名，除非故事确实需要一个可反复登场的群体代表。
+- 关系、弧线和背景说明留给后续分片，本轮只写短 `function`。
+
+## 字段内容约束
+- 每个角色对象只能包含 `name`、`role`、`age`、`gender`、`status`、`time_layer`、`function`。
+- 不要新增字段；短说明只写入 `function`。
+
+## 质量校准
+- 工作身份：你是一位长篇叙事架构师，擅长把故事资产拆成可承接、可验证、不过度剧透的执行计划。
+- 规划推断路径：先锁定 P0 硬约束，再分配 P1 推进节奏，最后用 P2 风格/主题补足表现层。
+- 字段级质量示例（非输出格式）：平弱=“推进关系”；高质量=“写清谁因何行动、关系如何变化、下一环如何承接”。
+- 可操作路径：计划项要能被后续写作/审计直接检查，避免只给抽象愿望或主题口号。
+
+## 交付前核验
+- P0/P1/P2 优先级是否被保持，且没有让弱参考覆盖硬约束。
+- 是否能把关键判断回指到输入证据、上游契约或已批准计划。
+- 是否避免新增未授权的人物、地点、世界规则、未来 payoff 或格式协议。
+- 是否把抽象目标转化为可观察的行动、冲突、状态变化或章节承接点。
+
+{#- 格式层 -#}

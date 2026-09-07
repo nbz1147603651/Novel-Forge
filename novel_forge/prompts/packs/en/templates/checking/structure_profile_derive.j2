@@ -1,0 +1,187 @@
+{# ================================================================================
+source_template_hash: b21652ac7d2bb53e6f85468dd5f695d9cca4edccae6ebaef7783b72ab458caab
+[NOTES]
+================================================================================
+Prompt: structure_profile_derive.j2
+Service Step: PROFILE_STRUCTURE (Structure Specification Derivation)
+Brief Description: Focus on deriving four core configurations related to narrative structure (hook/plot strand/micro-payoff/cool point).
+Upstream Input:
+  - genre: Genre
+  - tone: Tone
+  - narrative_complexity: Narrative Complexity
+  - blueprint_elements: Selected Narrative Elements and Priorities
+Downstream Output:
+  - JSON: {"hook_config", "strand_config", "micro_payoff_config", "cool_point_config"}
+  - Downstream Consumers: StyleProfile / PlanStep / EvaluateStep
+Consumption Chain Priority: P2 (Style advice for planning reference)
+Brief Example:
+  Input: genre="fantasy", tone="blood-pumping", narrative_complexity="complex"
+  Output: {"hook_config": {"preferred_types": ["crisis"], "strength_baseline": "strong"}, "strand_config": {...}}
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer: Task Definition + Context Consumption
+    --------------------------------------------------------------------------- -#}
+You are a senior novel structure design consultant. Based on the following project basic information and selected narrative elements, please **focus on deriving** the structure parameter configurations.
+
+## Task Objective
+Derive only four core configurations related to narrative structure:
+- hook_config (Chapter-end Hook)
+- strand_config (Plot Strand Thresholds)
+- micro_payoff_config (Micro-Payoffs)
+- cool_point_config (Cool Points)
+
+**Not Involving**: modules (Writing Technique Specifications), global_style (Dialogue/Rhythm/Emotional Style), summary (Style Positioning), banned_phrases (Banned Phrases)
+
+## Work Basic Information
+- Genre: {{ genre }}
+- Tone: {{ tone }}
+- Narrative Complexity: {{ narrative_complexity }}
+
+{% if synopsis %}
+## Synopsis (Core Basis for Structure Derivation)
+
+{{ synopsis }}
+{% endif %}
+
+{% if premise and not synopsis %}
+## Premise (Core Basis for Structure Derivation)
+
+{{ premise }}
+{% endif %}
+
+{% set _be = blueprint_elements or {} %}
+{% set _be_ext = _be.extension_elements if _be.extension_elements is defined else [] %}
+{% set _be_constraints = _be.focus_constraints if _be.focus_constraints is defined else [] %}
+{% set _be_summary = _be.selector_summary if _be.selector_summary is defined else "" %}
+{% if _be_ext or _be_constraints %}
+## Selected Narrative Elements (Must Be Consumed for Structure Derivation)
+
+{% if _be_summary %}- Selection Conclusion: {{ _be_summary }}{% endif %}
+{% if _be_constraints %}
+- Execution Constraints:
+{% for item in _be_constraints %}
+  - {{ item }}
+{% endfor %}
+{% endif %}
+{% if _be_ext %}
+- Extension Mechanisms:
+{% for item in _be_ext %}
+  - {{ item.name }} ({{ item.element_id }} / {{ item.category }}{% if item.selection_score is defined and item.selection_score %} / Priority {{ item.selection_score }}{% endif %}{% if item.selection_source is defined and item.selection_source %} / Source {{ item.selection_source }}{% endif %}): {{ item.selection_reason }}; Structure Hint: {{ item.prompt_hint }}
+{% endfor %}
+{% endif %}
+
+**Translation Requirement**: Please prioritize consuming high-priority mechanisms and map them to hook types, plot strand gap thresholds, micro-payoff types, and cool point patterns. Do not directly output element names as cool point patterns; they must be translated into structure parameters.
+{% endif %}
+
+---
+
+## Derivation Logic Description
+
+**Important Principle**: The following derivation tables are only reference baselines. You must **personalize the derivation based on the specific conflicts, character goals, narrative structure, and selected narrative elements in the synopsis**. Different stories within the same genre may have vastly different structural requirements.
+
+### hook_config (Chapter-end Hook)
+
+**Hook Type Constraints**: Only `crisis/mystery/emotion/choice/desire` may be used
+
+**Functional Baseline**:
+| Narrative Signal | Candidate Hook Type | Strength Judgment |
+|------------|-----------------|-------------|
+| External threat, loss countdown, situation out of control | crisis | strong when threat is imminent and cannot be postponed |
+| Information gap, identity concealment, rules unclear, evidence chain pending | mystery | strong when gap directly affects next move |
+| Relationship rift, intimacy advancement, trust test, emotional backlash | emotion | medium/strong when emotion will change choices |
+| Camp, cost, bottom line, sacrifice exchange | choice | strong when choice cannot satisfy both |
+| Goal blocked, recognition need, resource pursuit, identity desire | desire | medium/strong when desire directly collides with resistance |
+
+**Story-Specific Derivation Requirements**:
+- Select the type based on what question readers will most want to ask after the next chapter in the synopsis; do not simply use default combinations based on genre tags.
+- If selected elements provide evidence, rules, loop differences, or investigation processes, prioritize `mystery/choice`, but must specify how they affect action.
+- If selected elements provide relationship contracts, subtext, rituals, family/organizational pressure, prioritize `emotion/choice/desire`, but do not use pure atmosphere as hooks.
+- If selected elements provide resource loops, market/organizational feedback, ability growth, or supply pressure, prioritize `desire/crisis/choice`, and reflect visible costs.
+
+### strand_config (Plot Strand Thresholds)
+
+**Reference Baseline (According to Narrative Complexity)**:
+
+| Complexity | quest_max_consecutive | fire_max_absent | constellation_max_absent | stagnation_threshold |
+|--------|----------------------|-----------------|------------------------|---------------------|
+| simple | 3 | 15 | 20 | 4 |
+| standard | 5 | 10 | 15 | 3 |
+| complex | 3 | 6 | 10 | 2 |
+| epic | 2 | 4 | 8 | 2 |
+
+**Story-Specific Adjustment Requirements**:
+- If the synopsis has multiple parallel plot lines (e.g., main quest + romance + power struggle) → tighten thresholds on the above baseline (reduce each by 1-2)
+- If the synopsis is primarily single-threaded (e.g., pure mystery-solving, pure power-leveling) → can appropriately widen gap thresholds
+- If selected elements exceed 4 and span multiple categories such as relationships, resources, power, clues → treat as composite structure, tighten both `fire_max_absent` and `constellation_max_absent` by at least 1
+
+### micro_payoff_config (Micro-Payoffs)
+
+**Micro-Payoff Type Constraints**: Only `information/relationship/ability/resource/recognition/emotion/clue` may be used
+
+**Functional Baseline**:
+| Protagonist Stage Pursuit | Candidate Micro-Payoff Types |
+|------------|-------------------|
+| Obtaining facts, rules, evidence, or situation judgment | information, clue |
+| Changing relationship distance, trust, commitment, or emotional perception | relationship, emotion |
+| Acquiring skills, permissions, methods, identity abilities, or action qualifications | ability, recognition |
+| Obtaining supplies, opportunities, organizational support, trading chips, or survival conditions | resource, recognition |
+
+**Story-Specific Derivation Requirements**:
+- Analyze the **protagonist's core pursuit** in the synopsis: is it obtaining information/truth, improving action ability/identity, repairing or reshaping relationships, or obtaining resources/opportunities?
+- Micro-payoff types must directly correspond to the protagonist's core pursuit
+- If the synopsis has a composite structure like "discovering secret → ability growth → relationship change" → can mix settings, but must clarify primary and secondary
+- If selected elements contain clues/documents/investigation/revelation of rules → `information/clue` cannot be absent
+- If selected elements contain relationship contracts/subtext/healing rituals/family pressure → `relationship/emotion` cannot be absent
+- If selected elements contain resource loops/market feedback/supply/management → `resource/recognition` cannot be absent
+
+**Minimum Micro-Payoffs Per Chapter**: According to narrative complexity, simple=0, standard=1, complex=2, epic=2
+- If the synopsis has dense information, clues, rules, or resource nodes, even with standard complexity, can raise to 2
+
+### cool_point_config (Cool Points)
+
+**Functional Baseline**:
+Cool point patterns must be derived from "how the work's advantages become visible results" in this work, which can come from:
+- Information advantage: Seeing truth in advance, seeing through disguise, connecting evidence, exploiting rule differences.
+- Action advantage: Overcoming obstacles with higher cost tolerance, more precise execution, or new abilities.
+- Relationship advantage: Trust being fulfilled, misunderstandings being pushed to new choices, emotional pressure transforming into action.
+- Resource advantage: Turning chips, identity, organizations, objects, or opportunities into situation changes.
+- Value advantage: Character gaining reader recognition after sticking to bottom line or changing beliefs.
+
+**Story-Specific Derivation Requirements**:
+- Must **extract the protagonist's core advantages or unique abilities** from the synopsis, selecting cool point patterns that best reflect those advantages
+- If the core gratification source in the synopsis is intelligence, judgment, or plotting → prioritize reasoning/layout cool points over action suppression
+- If core conflicts are identity misalignment, secret concealment, or cognitive gaps → prioritize identity reevaluation/truth revelation cool points
+- If selected elements emphasize cost, bottom line, ritual, subtext, or literary motifs → can reduce cool point density, but ensure each chapter still has micro-payoffs
+- **Prohibited**: Selecting cool points based solely on genre tags; must combine with specific conflict mechanisms in the synopsis
+
+**Cool Point Density** (high=≥3/chapter, medium=1-2/chapter, low=≤1/chapter):
+- If conflicts are dense and events frequent in the synopsis → high
+- If the synopsis focuses on gradual accumulation and emotional buildup → medium/low
+- If the synopsis has large amounts of inner monologue and world exposition → low
+
+---
+
+## Field Content Constraints
+- `hook_config` writes preferred hook types, strength baseline, and whether hooks are mandatory at chapter ends.
+- `strand_config` writes maximum absent/consecutive thresholds for quest line, fire line, and constellation line, plus stagnation threshold, all as specific integers.
+- `micro_payoff_config` writes preferred micro-payoff types and minimum quantity per chapter.
+- `cool_point_config` writes preferred cool point patterns and density per chapter, with density only using `high`, `medium`, `low`.
+- All values must be supported by the synopsis, selected narrative elements, and derivation tables above. Do not output analysis fields.
+
+## Quality Calibration
+- Working Identity: You are a project-specific writing consultant, skilled at deriving executable style/structure contracts from synopses, characters, world rules, and selected narrative elements.
+- Derivation Path: First identify the project's core selling points, conflict mechanisms, and expression risks, then map conclusions to field-level parameters or editing contracts.
+- Field-Level Quality Examples (not output format): Weak = "cold style"; High Quality = "explaining what scenario pressure, evidence details, dialogue proportion, or information density creates the cold style".
+- Actionable Path: Each rule must be reusable for main text generation, editing checks, or subsequent audits; avoid generalizing into empty talk applicable to all projects.
+
+## Pre-Delivery Verification
+- Are P0/P1/P2 priorities maintained, and do weak references not override hard constraints?
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans?
+- Are unauthorized characters, locations, world rules, future payoffs, or format agreements avoided?
+- Are project-specific grounds mapped to specific fields/rules, rather than reusing generic writing maxims?
+
+{#- ---------------------------------------------------------------------------
+    Format Layer: Output Format and Schema
+    --------------------------------------------------------------------------- -#}

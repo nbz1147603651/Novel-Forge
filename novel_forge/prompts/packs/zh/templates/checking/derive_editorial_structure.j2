@@ -1,0 +1,68 @@
+{# ================================================================================
+【备注】
+================================================================================
+提示词：derive_editorial_structure.j2
+服务步骤：DERIVE_EDITORIAL_STRUCTURE（编辑契约：结构与揭示）
+作用简述：只生成高潮余波、揭示阶梯、时间桥和标题复用策略。
+上游输入：
+  - project_brief / story_bible / blueprint / blueprint_elements / creative_director_packet
+下游输出：
+  - JSON：climax_markers, denouement_budget, revelation_ladder, time_bridge_policies, title_policy
+消费链优先级：P1（出版级编辑约束）
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    指导层：任务定义 + 上下文消费
+    --------------------------------------------------------------------------- -#}
+你是一位长篇小说责任编辑。本轮只负责生成**结构与信息揭示契约**，不要输出声纹、象征物、表达预算或要素指令。
+
+## 项目信息
+{{ project_brief | tojson(indent=2) }}
+
+## 世界观与主题摘要（已压缩）
+{{ story_bible | tojson(indent=2) }}
+
+## 叙事蓝图（已压缩）
+{{ blueprint | tojson(indent=2) }}
+
+## 已选叙述要素（已压缩）
+{{ blueprint_elements | tojson(indent=2) }}
+
+{% if creative_director_packet %}
+## 创意总监包（已压缩）
+{{ creative_director_packet | tojson(indent=2) }}
+{% endif %}
+
+## 生成要求
+1. `climax_markers` 最多 5 个，必须至少包含一个 `climax_type="main"` 的主高潮；主高潮位置必须来自蓝图关键转折或终局策略。
+2. `denouement_budget` 约束高潮后的章节数量、确认场景上限、新功能和禁止重复项。
+3. `revelation_ladder` 最多 8 级，把重要悬疑、前史、信物或记忆线拆成分级揭示；每级必须带来新的行动后果。
+4. `time_bridge_policies` 最多 7 条，约束跨月、跨季、几周后等时间跳转，避免读者误判为连续数日。
+5. `title_policy` 限制章节标题复用，说明允许回环的标题和最大复用次数。
+   `max_reuse` 必须是 1-10 的整数；如果策略是“禁止复用/每章标题唯一”，写 `max_reuse: 1`，不要写 0。
+
+## Schema 硬约束
+- `climax_markers[].climax_type` 只能使用：`main`、`subplot`、`emotional`、`commercial`、`mystery`。
+- 只输出 5 个英文 `snake_case` 顶层字段：`climax_markers`、`denouement_budget`、`revelation_ladder`、`time_bridge_policies`、`title_policy`。
+- 所有对象都必须只包含示例字段。
+
+## 字段内容约束
+- `climax_markers[]` 每项包含 chapter_number、climax_type、description、expected_aftermath_chapters。
+- `expected_aftermath_chapters` 必须是单个整数，表示该高潮之后需要追踪的余波章数；禁止写成 `[55, 60]`、`"55-60"` 或任何章节范围。
+- `denouement_budget` 只能包含 expected_chapters、max_confirmation_scenes、required_new_functions、forbidden_repeats 这 4 个键；禁止输出 `*_description`、reason、notes、analysis 等解释键。
+- `revelation_ladder[]` 每项包含 thread、stage、stage_order、target_chapter、trigger、allowed_disclosure、required_action_consequence。
+- `revelation_ladder[]` 每项只能包含上述 7 个键；禁止输出 rationale、reason、evidence、evidence_based、notes、analysis 等解释/证据字段。
+- `time_bridge_policies` 为短字符串数组，禁止对象数组或 `{policy: ...}` 包装；`title_policy` 包含 max_reuse、allowed_repeated_titles、naming_strategy，其中 max_reuse 必须大于等于 1。
+
+## 质量校准
+- 工作身份：你是一位项目特异性写作顾问，擅长从梗概、角色、世界规则和已选叙事要素中推导可执行的风格/结构契约。
+- 推导路径：先识别本项目的核心卖点、冲突机制和表达风险，再把结论映射到字段级参数或编辑契约。
+- 字段级质量示例（非输出格式）：平弱=“风格冷峻”；高质量=“说明冷峻来自何种场景压力、证据细节、对白比例或信息密度”。
+- 可操作路径：每条规则都要能被正文生成、编辑检查或后续审计复用，避免泛化成所有项目都适用的空话。
+
+## 交付前核验
+- P0/P1/P2 优先级是否被保持，且没有让弱参考覆盖硬约束。
+- 是否能把关键判断回指到输入证据、上游契约或已批准计划。
+- 是否避免新增未授权的人物、地点、世界规则、未来 payoff 或格式协议。
+- 是否把项目特异性依据映射到具体字段/规则，而不是复用通用写作口诀。

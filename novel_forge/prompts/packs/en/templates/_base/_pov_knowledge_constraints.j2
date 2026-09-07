@@ -1,0 +1,34 @@
+{#- ============================================================================
+source_template_hash: fe699c4c67a5a0e5bbe66a77eb2f1d94a4f16d430f830eaf32bda44c48e1963a
+    POV Knowledge Boundary Constraint Shared Macro
+    ============================================================================
+    Eliminates duplicate POV knowledge boundary constraint paragraphs in draft_chapter.j2 and wave_chapter.j2.
+    Used to render pov_knowledge_constraints (forbidden_knowledge + sensory_limits) for each scene.
+    Usage:
+      {%- from "_base/_pov_knowledge_constraints.j2" import render_pov_knowledge_constraints -%}
+      {{ render_pov_knowledge_constraints(scene, fallback_pov='') }}
+    ============================================================================ -#}
+
+{#- ── POV Knowledge Boundary Constraints ── -#}
+{%- macro render_pov_knowledge_constraints(scene, fallback_pov='', heading_level=3) -%}
+{% set pov_constraints = scene.pov_knowledge_constraints | default({}, true) %}
+{% if pov_constraints.forbidden_knowledge | default([]) %}
+{% set heading = '#' * heading_level %}
+{{ heading }} POV Knowledge Boundary Constraints (Strictly Observed)
+Current POV character "{{ scene.pov_character | default(fallback_pov) }}" employs a {{ pov_constraints.scope_label | default('limited') }} perspective.
+
+**The character cannot possibly know the following categories of information, and no direct or indirect expression of this knowledge should appear in the main text:**
+{% for item in pov_constraints.forbidden_knowledge | default([]) %}
+- {{ item }}
+{% endfor %}
+{% if pov_constraints.sensory_limits | default([]) %}
+
+**The character's sensory limitations:**
+{% for limit in pov_constraints.sensory_limits | default([]) %}
+- {{ limit }}
+{% endfor %}
+{% endif %}
+
+Violating this constraint would grant the character omniscient information, destroying the authenticity of the limited perspective. If you need to convey the character's lack of knowledge, it can be indirectly presented through confusion, misjudgment, speculation, etc.
+{% endif %}
+{%- endmacro -%}

@@ -1,0 +1,130 @@
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：extract_motifs.j2
+服务步骤：EXTRACT_MOTIFS（母题提取）
+作用简述：从章节正文提取可追踪母题（意象/动作/感官/颜色/声音/主题/符号）
+上游输入：
+  - chapter_number: 章节号
+  - text: 章节正文（调用方已按预算截断）
+  - existing_motifs: 已有母题列表（用于 motif_id 复用）
+下游输出：
+  - JSON：motifs 列表（含 motif_id, name, category, description, thematic_meaning, occurrences）
+  - 下游消费者：Memory MotifTracker / 写作参考
+消费链优先级：
+  P0 = category 枚举值正确性（意象/动作/感官/颜色/声音/主题/符号）
+  P1 = 复用已有 motif_id / occurrences 完整性
+  P2 = thematic_meaning 深度
+简要例子：
+  输入：chapter_number=5, text="林远看到窗外的雨..."
+  输出：{"motifs":[{"motif_id":"motif_001","name":"雨","category":"意象",...}]}
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    指导层：任务定义与输入消费
+    --------------------------------------------------------------------------- -#}
+
+请从本章提取"可追踪母题"。
+
+## 章节
+- 第 {{ chapter_number }} 章
+
+## 事实来源边界（P0）
+- 只从 FinalArtifact 对应的最终正文 / `text` 提取母题 occurrence。
+- 章节目标、POV、叙事要素和补充上下文只用于判断层级，不是 occurrence 证据。
+- 没在最终正文实际出现的意象、动作、感官、颜色、声音、主题或符号不得写入 memory motif。
+
+{% if chapter_goal or pov_character or element_focus %}
+## 章节上下文
+{% if chapter_goal %}- 章节目标：{{ chapter_goal }}{% endif %}
+{% if pov_character %}- POV角色：{{ pov_character }}{% endif %}
+{% if element_focus %}- 叙事要素：{{ element_focus | join("、") }}{% endif %}
+{% endif %}
+
+{% if motif_extraction_context %}
+## 章节补充上下文（用于判断母题层级，不可替代正文证据）
+{% for key, value in motif_extraction_context.items() %}
+- {{ key }}：{{ value }}
+{% endfor %}
+{% endif %}
+
+{% if motif_category_distribution %}
+## 已有母题类别分布
+{% for category, stats in motif_category_distribution.items() %}
+- {{ category }}：{{ stats.count }}（{{ stats.percentage }}%）
+{% endfor %}
+{% endif %}
+
+## 正文
+{{ text }}
+
+{% if existing_motifs %}
+## 已有母题（优先复用 motif_id）
+{% for m in existing_motifs %}
+- {{ m.motif_id }} | {{ m.category }} | {{ m.name }}
+  - 近期表达功能证据：{{ m.recent_functions | default([]) }}
+  - 描述：{{ m.description or "（无）" }}
+  - 主题含义：{{ m.thematic_meaning or "（未明确）" }}
+  - 角色/重要度：{{ m.motif_role or "unknown" }} / {{ m.importance_score if m.importance_score is not none else "未知" }}
+  - 分类置信：{{ m.category_confidence if m.category_confidence is not none else "未知" }}{% if m.category_reason %}；理由：{{ m.category_reason }}{% endif %}
+  - 副分类：{{ m.secondary_categories | join("、") if m.secondary_categories else "无" }}
+  - 使用历史：出现 {{ m.occurrence_count }} 次；第 {{ m.first_appearance_chapter }}-{{ m.last_appearance_chapter }} 章；关联角色：{{ m.associated_characters | join("、") if m.associated_characters else "无" }}
+{% endfor %}
+{% endif %}
+
+## 规则
+1. 仅提取有叙事意义的母题，避免普通物件词。
+2. 能复用已有母题就复用原 `motif_id`；确属新母题才创建新 id（`motif_NNN`）。
+3. 每个母题至少给 1 个 occurrence；若本章多次出现可给多条。
+4. `category` 只能是：意象 / 动作 / 感官 / 颜色 / 声音 / 主题 / 符号。
+5. 为每个母题判断 `motif_role` 与 `importance_score`，避免把一次性修辞提升为长期母题。
+6. 仅提取本章正文中自然出现的母题，不强制新增；若本章无新母题，返回空列表即可。不要为了避免"母题集停滞"而强行提取无叙事意义的母题。
+7. 观察已有母题的类别分布：若某类别过多而另一类别过少，优先关注覆盖不足的类别。
+
+## 分类判别标准
+- `主题`：抽象命题、价值冲突、人物弧光方向，如“救赎”“背叛”“自由与秩序”。只有文本明确承载主题命题时使用。
+- `符号`：具体物/地点/称号/仪式在全书中承载稳定象征或剧情锚点，如“金镯”“旧钟楼”“徽记”。普通道具若只服务一次情节，不要提取。
+- `意象`：可反复用于氛围、隐喻、视觉联想的具体形象，如“月光”“雨幕”“纸灰”。
+- `感官`：触觉/嗅觉/味觉/身体感受等非纯视觉、非纯声音的感官锚点，如“铁锈味”“潮湿寒意”。
+- `颜色`：颜色本身承担反复的情绪/象征功能，如“冷白”“猩红”。若只是修饰物体颜色，优先归入物体对应的意象/符号。
+- `声音`：声音作为可识别的反复通道，如“钟声”“雨声”“金属摩擦声”。
+- `动作`：人物反复出现、带有心理或关系含义的动作模式，如“扣紧袖口”“回头确认门闩”。
+
+## 分类优先级
+1. 如果它是抽象命题，优先 `主题`。
+2. 如果它是关键物/地点/称号且承载剧情锚点或象征，优先 `符号`。
+3. 如果同一元素同时有视觉、颜色、声音等属性，优先选择其叙事功能最稳定的一类，并把其他属性放入 `secondary_categories`。
+4. 人名、亲属称谓、官职称谓、普通地点名不要作为修辞母题；除非正文明确赋予它稳定象征功能。
+5. 不确定时降低 `category_confidence`，不要用 `意象` 当兜底垃圾桶。
+
+## 重要度与遗忘判别
+- `motif_role` 只能是：theme_anchor / core_symbol / character_motif / recurring_image / atmospheric_detail / one_off_rhetoric / unknown。
+- `importance_score` 范围 0-1：0.8+ 表示全书核心；0.55-0.79 表示值得追踪；0.35-0.54 表示局部氛围；低于 0.35 表示可遗忘的非重要修辞。
+- 主题命题用 `theme_anchor`；关键象征物/地点/仪式用 `core_symbol`；绑定某角色心理/动作模式用 `character_motif`；有明显复现潜力的意象用 `recurring_image`。
+- 只服务本章气氛的声音、颜色、感官细节用 `atmospheric_detail`；漂亮但一次性的比喻/物件用 `one_off_rhetoric`，并给低重要度。
+- 若已有母题的 `motif_role` 或 `importance_score` 与本章证据冲突，可更新，但必须在 `category_reason` 中说明。
+
+⚠️ 重要：仅提取本章正文中实际出现的母题，不要推测应该出现的母题。
+根据章节目标判断母题使用是有意回环还是无意识重复：如果该母题与章节目标在叙事上呼应，标记为 is_intentional=True。
+为每个母题提供具体的叙事功能说明（thematic_meaning），如"月光→主人公内心转变的隐喻"而非泛泛的"月光是一种意象"。
+
+## 质量校准
+- 工作身份：你是一位证据优先的叙事事实抽取员，擅长从正文和上游锚点中提取可追溯、可合并的状态信息。
+- 抽取路径：先找正文中的明确事实，再对照共享锚点与已知状态，最后只保留能被后续合并器消费的信息。
+- 证据校准：同一事实已有上游分片确认时保持一致；证据不足时用保守字段值表达未知或待确认。
+- 可操作路径：每条信息都服务于 canon、memory、state 或审计链路，避免把语气、比喻、猜测当作事实。
+
+## 交付前核验
+- P0/P1/P2 优先级是否被保持，且没有让弱参考覆盖硬约束。
+- 是否能把关键判断回指到输入证据、上游契约或已批准计划。
+- 是否避免新增未授权的人物、地点、世界规则、未来 payoff 或格式协议。
+- 是否保留后续合并/检索需要的事实边界，且没有把推测写成既定事实。
+
+{#- ---------------------------------------------------------------------------
+    格式层：输出格式与 Schema
+    --------------------------------------------------------------------------- -#}
+
+## 表达功能判断
+每个 occurrence 用 narrative_function 概括叙事功能，比较 recent_functions；function_relation 标记 new_function / redundant / unknown。function_evidence 必须引用当前正文中的原文，说明新增信息、行动、关系或理解如何改变；无法证明时用 unknown。换词但功能不变仍可为 redundant。次数、长期沉寂和 is_intentional 不能证明创作意图或新增作用；主题相关不等于用户要求重复。

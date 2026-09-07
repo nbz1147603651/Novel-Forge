@@ -1,0 +1,98 @@
+.env
+.env.*
+!.env.example
+.venv/
+node_modules/
+__pycache__/
+*.pyc
+.DS_Store
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.vite/
+test-results/
+playwright-report/
+model_profiles.json
+data/*
+!data/spec_examples/
+data/spec_examples/*
+!data/spec_examples/*.example.json
+# Application-managed model weights, CPython runtimes, sidecars, and caches.
+models/
+MagicMock/
+build/
+dist/
+Reference/
+.omo/
+.sisyphus/
+
+# Test artifacts (SQLite DBs, temp files created by buggy mocks)
+tests/.test-artifacts/
+clients/nimo-desktop/test-results/
+<MagicMock*
+*.tmp
+*.temp
+
+# Worktrees (created via superpowers:using-git-worktrees)
+.worktrees/
+
+# uv-managed projects (if uv is used as a side-channel install tool)
+uv.lock
+
+# AI agent 工作目录
+.qoder/
+.qwen/
+.novel-forge/
+.work助手/
+.qoder-cn/
+.zcode/
+
+# 缓存和工具产物
+.codegraph/
+.uv-cache/
+.pnpm-store/
+
+# 备份文件
+*.bak
+*.bak.*
+*.orig
+
+# Local credentials and personal tooling (never commit real values)
+.envrc
+.envrc.*
+!.envrc.example
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+secrets.json
+.npmrc
+.pypirc
+.netrc
+.idea/
+.vscode/*
+!.vscode/launch.json
+!.vscode/tasks.json
+.agents/
+.codex/
+.claude/
+.import_linter_cache/
+
+# Runtime output, including custom storage accidentally placed in the checkout
+.authoring/
+.locks/
+logs/
+*.log
+*.sqlite
+*.sqlite3
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite3-wal
+*.sqlite3-shm
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+coverage/
+sbom.json

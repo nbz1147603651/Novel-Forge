@@ -1,0 +1,85 @@
+{# source_template_hash: a8438e12197edd8e6de6dc05b6513db1c3d3bfc0adca31baf05c2bbc829895d8 #}
+{#
+================================================================================
+【Notes】
+================================================================================
+Prompt: init_character_arc_plan.j2
+Service Step: INIT_CHARACTER_ARC_PLAN (Character Bible Fragment: Character Arc)
+Brief Description: Generate key character transformation arcs from start to end based on the same roster.
+Upstream Input: premise/story_bible/character_roster/character_profiles/conflict_hint
+Downstream Output: JSON: {"character_arcs": [...]}
+Downstream Consumer: INIT_CHARACTER_BIBLE Local Merger, PLAN_OUTLINE
+Consumption Chain Priority: P0 = No renaming; P1 = Arc service main conflict; P2 = minor can be brief
+================================================================================
+#}
+{%- from "_base/_shared_evidence_anchor.j2" import render_shared_evidence_anchor -%}
+
+{#- Guidance Layer -#}
+Only generate character arc fragments. Do not add new characters, do not repeat complete profiles.
+
+## Output Field Description
+- `character_arcs`: List of character arcs, each containing `name` (verbatim from fixed character roster) and `arc` (transformation arc from start to end, including stages, psychological changes, emotional changes, and chapter clues).
+
+## Pipeline Boundary
+This template is only for splitting the final arc fragment of the character generation pipeline.
+It can only write or correct `arc` for existing profiles, cannot create new characters, cannot output complete `character_bible`, and cannot rewrite relationship matrix.
+Character arcs should be independently generated at this stage according to the field contract, without using other templates for remediation.
+
+## Canonical name / Chapter Boundary Rules
+- `name` can only come from roster canonical name; aliases, old names, past-life names, or misnomers can only appear as brief explanations in the `arc` string.
+- Arcs can describe chapter stages, but early reveals cannot be written as early confirmations; chapter boundaries must be left to NarrativeContract / ChapterContractIndex management.
+- Do not copy character encyclopedia entries; only write start point, pressure, choice cost, stage transformation, and end direction.
+
+{{ render_shared_evidence_anchor(shared_evidence_anchor) }}
+
+## Story Premise
+{{ premise }}
+
+## Worldview Anchors
+{{ story_bible | tojson(indent=2) if story_bible is mapping else story_bible }}
+
+## Fixed Character Roster
+{{ character_roster | tojson(indent=2) }}
+
+{% if character_profiles %}
+## Generated Profiles (arcs must not rewrite profile facts)
+{{ character_profiles | tojson(indent=2) }}
+{% endif %}
+
+{% if relationship_seed_matrix | default([]) %}
+## Relationship Seed Matrix (arcs reference, not final relationship finalization)
+{{ relationship_seed_matrix | tojson(indent=2) }}
+{% elif relationship_matrix | default([]) %}
+## Confirmed Relationship Matrix (arcs need to obey relationship start points)
+{{ relationship_matrix | tojson(indent=2) }}
+{% endif %}
+
+{% if conflict_hint %}
+## Core Conflict
+{{ conflict_hint }}
+{% endif %}
+
+## Requirements
+- protagonist / antagonist / deuteragonist must have clear arcs.
+- supporting characters write functional changes or stance shifts.
+- minor can be empty strings, but do not delete.
+- `name` must be verbatim from the fixed character roster; old names, aliases, or past-life names can only appear as explanations in the `arc` string.
+- If the relationship seed reveals debts, protection, exploitation, old acquaintances, allies, adversaries, kinship, or emotional connections between supporting characters, transform them into character arc pressure or choice costs, but do not output relationship matrix fields.
+
+## Field Content Constraints
+- Each object can only contain `name`, `arc`.
+- All stages, psychological changes, emotional changes, and chapter clues should be compressed into the `arc` string, do not add new fields.
+
+## Quality Calibration
+- Working Identity: You are a long-form narrative architect, skilled at splitting story assets into executable plans that arehandoff, verifiable, and do not over-spoil.
+- Planning Inference Path: First lock P0 hard constraints, then allocate P1 to advance rhythm, finally use P2 style/theme to complement the presentation layer.
+- Field-Level Quality Examples (not output format): Weak = "advancing relationship"; High Quality = "clarify who acts for what, how relationships change, how the next link connects".
+- Actionable Path: Plan items should be directly checkable by subsequent writing/audit, avoid only giving abstract wishes or thematic slogans.
+
+## Pre-Delivery Verification
+- Are P0/P1/P2 priorities maintained, and no weak references overriding hard constraints.
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans.
+- Are new unauthorized characters, locations, world rules, future payoffs, or format agreements avoided.
+- Are abstract goals transformed into observable actions, conflicts, state changes, or chapter continuation points.
+
+{#- Format Layer -#}

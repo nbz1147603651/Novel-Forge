@@ -1,0 +1,81 @@
+{%- from "_base/_summary_pass.j2" import render_summary_pass -%}
+{# source_template_hash: ab7f54de9188326f6e6cf1287a5bed7e5ddf2b33e883f4a8ea994845d3f2b968 #}
+{#
+================================================================================
+【Remarks】
+================================================================================
+Prompt: summarize_chapter.j2
+Service Step: SUMMARIZE_CHAPTER (Chapter Summary)
+Purpose: Compress chapter body into high-density summary for subsequent creative retrieval and context injection
+Upstream Inputs:
+  - chapter_number/chapter_title: Chapter information
+  - outline.goal: Chapter goal (optional)
+  - target_words: Target word count (default 200)
+  - chapter_text/text: Chapter body
+Downstream Outputs:
+  - JSON: summary, key_events, character_state_changes, unresolved_questions, new_facts
+  - Downstream Consumers: Memory System / VolumeAudit / Subsequent Chapter Bridge
+Consumption Chain Priority:
+  P0 = summary required / chronological traceable
+  P1 = key_events covers main events / character_state_changes accuracy
+  P2 = unresolved_questions retain suspense
+Brief Example:
+  Input: chapter_text="Lin Yuan stood at the city gate...", chapter_number=3
+  Output: {"summary":"...","key_events":["Lin Yuan arrives at city gate"],"character_state_changes":[...],...}
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer: Task Definition and Input Consumption
+    --------------------------------------------------------------------------- -#}
+
+Compress the following chapter content into a high-density summary available for subsequent creative retrieval.
+
+{{ render_summary_pass(summary_pass | default(''), source_scope | default('')) }}
+
+{% if chapter_number | default(0) %}- Chapter: Chapter {{ chapter_number }}{% endif %}
+{% if chapter_title | default('') %}- Title: {{ chapter_title }}{% endif %}
+{% if outline | default({}) and outline.goal | default('') %}- Chapter Goal: {{ outline.goal }}{% endif %}
+- Target Length: Approximately {{ target_words | default(200) }} words
+
+## Input Text
+{{ chapter_text | default(text | default('')) }}
+
+## Summary Content Requirements
+
+### summary (Required)
+High-density narrative summary within {{ target_words | default(200) }} words, covering the core plot of this chapter in chronological order.
+
+### key_events (Recommended)
+List 3-8 key events in order of occurrence, each event described as a plain text string. Do not write as object structures. Nested fields are prohibited.
+
+### character_state_changes (Recommended)
+State changes of characters in this chapter (emotion/location/relationship/cognition), list character name + change description.
+
+### unresolved_questions (Recommended)
+Unresolved suspense or open questions left at the end of this chapter.
+
+### new_facts (Recommended)
+Newly established hard facts in this chapter (characters/locations/rules/foreshadowing) for subsequent chapters to reference.
+
+## Compression Rules
+1. Only retain main events, key turning points, character state changes, and unresolved questions.
+2. Delete descriptive details, repetitive dialogue, and rhetorical sentences.
+3. Maintain chronological traceability for subsequent chapters to continue from.
+4. Do not output any explanations, titles, or code blocks.
+
+## Quality Calibration
+- Working Identity: You are a chapter memory editor, skilled at compressing body text into high-density narrative summaries that subsequent creation can directly continue from.
+- Summary Path: First extract core events in chronological order, then incorporate character states, unresolved questions, and new facts, finally compress into retrievable expressions.
+- Evidence Calibration: Summary only incorporates information that actually occurs or is explicitly established in this chapter; rhetorical atmosphere degrades to background and does not escalate to hard facts.
+- Actionable Path: Each piece of summary information should be directly referenceable by subsequent chapters Bridge, Memory, or VolumeAudit.
+
+## Pre-Delivery Verification
+- Whether P0/P1/P2 priority is maintained, and weak references do not override hard constraints.
+- Whether key judgments can be traced back to input evidence, upstream contracts, or approved plans.
+- Whether to avoid adding unauthorized characters, locations, world rules, future payoffs, or format agreements.
+- Whether factual boundaries needed for subsequent merging/retrieval are preserved, and speculation is not written as established facts.
+
+{#- ---------------------------------------------------------------------------
+    Format Layer: Output Format and Schema
+    --------------------------------------------------------------------------- -#}

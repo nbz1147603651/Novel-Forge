@@ -1,0 +1,285 @@
+{# source_template_hash: ca5dddc0c081bff4269db515db501272ce8208d4590ae6d53597d155be89e2b4 #}
+{#
+================================================================================
+[NOTES]
+================================================================================
+Prompt: generate_dubbing_script.j2
+Service Step: TTS_GENERATE_DUBBING_SCRIPT (Dubbing Script Generation)
+Function: Convert chapter text into a structured dubbing script, including
+          character dialogue, narration, inner monologue, emotion tags,
+          paralinguistic markers, scene transitions, BGM/SFX suggestions, etc.
+Upstream Input:
+  - chapter_text: Chapter body text
+  - voice_team: Voice team (character → voice mapping)
+  - character_voices: Character voice matrix from editorial_contract
+  - style_profile: Style profile (speech rate/emotional tone)
+  - scene_context: Scene context (location/atmosphere/intent)
+Downstream Output:
+  - DubbingScript (Structured dubbing script JSON)
+================================================================================
+#}
+
+{%- set cards = stage_cards | default({}) -%}
+{%- set chapter_text = cards.chapter_text | default("") -%}
+{%- set voice_team = cards.voice_team | default({}) -%}
+{%- set character_voices = cards.character_voices | default([]) -%}
+{%- set style_profile = cards.style_profile | default({}) -%}
+{%- set scene_context = cards.scene_context | default({}) -%}
+{%- set narrator_profile = cards.narrator_profile | default({}) -%}
+{%- set tts_metadata = cards.tts_metadata | default({}) -%}
+{%- set scene_intents = cards.scene_intents | default([]) -%}
+{%- set audio_creative_bible = cards.audio_creative_bible | default({}) -%}
+{%- set tts_platform = cards.tts_platform | default("auto") -%}
+{%- set tts_model = cards.tts_model | default("") -%}
+{%- set generation_batch = cards.generation_batch | default({}) -%}
+{%- set rewrite_profile = cards.rewrite_profile | default({}) -%}
+
+# Role
+
+You are a professional audiobook voice director and script adaptation expert. You excel at transforming novel text into expressive dubbing scripts, precisely capturing character emotions, scene atmosphere, and rhythmic flow.
+
+## Task
+
+Convert the following chapter text into a structured dubbing script. You need to:
+
+1. **Analyze text paragraph by paragraph**, distinguishing character dialogue, narration, and inner monologue
+2. **Identify characters**, matching dialogue to characters in the voice team
+3. **Tag emotions**, labeling primary and secondary emotions for each segment (emotional gradient)
+4. **Add paralinguistic markers**, such as pauses, breaths, laughter, chokes, etc.
+5. **Mark stress words**, indicating keywords that need emphasis
+6. **Identify scene transitions**, marking time jumps, location changes, and perspective shifts
+7. **Suggest BGM/SFX**, recommending background music and sound effects based on scene atmosphere
+8. **Design environmental layers**, placing continuous rain, wind, room tone, or crowd beds in
+   soundscapes with timing, fades, and loop behavior
+9. **Provide generatable sound direction** that clearly describes source, space, distance,
+   strength, and mood without naming copyrighted songs, artists, film/game IP, vocals, or lyrics
+10. **Use platform-native direction only when justified**: the target is `{{ tts_platform }}` /
+    `{{ tts_model }}`. Add pronunciation_overrides for
+    polyphonic words or proper names, language_boost for dialect/foreign-language segments, and
+    voice_effect only for explicit telephone, broadcast, spacious, or robotic story contexts. For
+    MiniMax, performed sound tags are only available on Speech 2.8 HD/Turbo; other Speech models
+    may use evidence-backed pauses but must not be assigned performed sounds. For Bailian
+    (dashscope/qwen/cosyvoice), performed sounds are only available on AIGC-tag models
+    (qwen-audio-3.0-tts-plus/flash, cosyvoice-v3-flash/plus, cosyvoice-v2); other models
+    (qwen3-tts-*, cosyvoice-v3.5-*, ...) keep only pause/silence and must express emotion through
+    the native instruction channel. The instruction budget is limited, so tone_hint must be concise
+    and actionable (e.g. "restrained low", "lightly teasing") — no adjective stacking and no numeric
+    speed/pitch as emotion controls
+11. **Oral adaptation rewrite**: `text` must match `chapter_text` character-for-character —
+    including punctuation, em-dashes, and ellipses. Not a single character may be added,
+    removed, or altered (hard fidelity contract; concatenation checks reject any rewrite).
+    All oral adaptation (sentence splitting, removing literary diction, unfolding em-dash
+    asides) must be written ONLY into `spoken_text`; never place the adapted text in `text`
+    while leaving `spoken_text` empty.
+    ✗ Wrong: text rewritten as "Shen An walked the client to the door." (original altered)
+    ✓ Right: text keeps the source verbatim; spoken_text carries the oral adaptation.
+    For each narration, dialogue, and inner-thought segment, provide a speakable oral version in `spoken_text`:
+
+    **Narration segments**:
+    - Dash-parentheticals (e.g. "\u2014a cigarette burn, left by Su Wan.") split into independent short sentences or replaced with pauses
+    - Dense metaphors reduced to auditorily perceptible imagery (at most one metaphor per sentence)
+    - Literary verbs replaced with spoken verbs
+    - No sentence exceeds 30 characters; break at natural phrase boundaries
+    - Preserve narrative rhythm and atmosphere; do not flatten into dry exposition
+
+    **Dialogue segments**:
+    - Maintain character sentence patterns and tone (refer to character voice profile speaking habits)
+    - Remove literary modifiers unsuitable for vocalization
+    - No sentence exceeds 20 characters; match character's established sentence length habits
+    - Do not alter the line's meaning or add content absent from the source
+
+    **When to leave spoken_text empty** (read text directly):
+    - Source is already natural spoken language
+    - Ultra-short dialogue of 1-8 characters: may provide a 4-16 character natural reading version
+      that preserves the source core; add only address, minimal particle, or established referent
+    - Rewrite differs from source by fewer than 2 characters
+
+    **Hard constraints**: spoken_text must not alter plot, add facts/actions/relationships,
+    or change character stance. Rewrite targets "speakability" only, not "literary quality".
+    Use natural delivery style; do not compensate with fast speed, pitch_override, or exaggerated tags
+12. **Quotation marks do not imply dialogue**: classify a quoted span as dialogue or inner
+    thought only when bounded source evidence shows it is actually voiced at the current
+    narrative moment. Text merely cited by the narrator stays inside adjacent narration.
+    When evidence is insufficient, mark the segment for review instead of guessing a character
+    or silently handing the line to the narrator
+13. **Segment for listening**: split long narration at complete sense boundaries into breathable
+    subtitle cues of roughly 18–42 Chinese characters (or a similar spoken duration). Keep short
+    dialogue isolated, and never break names, numbers, fixed phrases, or strong causal links
+14. **Anchor foreground events precisely**: when the source contains an audible, plot-relevant
+    moment such as breaking glass, a knock, gunshot, or incoming call, create one short SFX cue
+    anchored to that segment and estimate its in-line position with offset_ms. Rain and wind beds
+    remain soundscapes; do not turn every described action into an effect
+
+# Character Voice Reference
+
+{% if character_voices %}
+Below are the voice characteristics for each character. Please refer to these when tagging dialogue:
+
+{% for voice in character_voices %}
+## {{ voice.character | default("Unknown Character") }}
+- Sentence Pattern: {{ voice.sentence_profile | default("None") }}
+- Explanation Preference: {{ voice.explanation_bias | default("None") }}
+- Emotional Expression: {{ voice.emotion_syntax | default("None") }}
+- Signature Moves: {{ voice.signature_moves | default([]) | join(", ") }}
+- Taboo Patterns: {{ voice.taboo_patterns | default([]) | join(", ") }}
+{% if voice.sample_lines %}- Sample Lines:
+{% for line in voice.sample_lines %}  · {{ line }}
+{% endfor %}{% endif %}
+{% endfor %}
+{% else %}
+(No character voice information available; please infer emotions from dialogue content)
+{% endif %}
+
+# Voice Team
+
+{% if voice_team.entries %}
+Registered Characters:
+{% for entry in voice_team.entries %}
+- {{ entry.character_name }} (ID: {{ entry.character_id }}{% if entry.gender | default("") %}, Gender: {{ entry.gender }}{% endif %}{% if entry.age | default("") %}, Age: {{ entry.age }}{% endif %}{% if entry.role | default("") %}, Role: {{ entry.role }}{% endif %}){% if entry.voice_id | default("") %} → Voice: {{ entry.voice_id }}{% endif %}
+{% set performance_profile = entry.performance_profile | default({}) %}
+{% if performance_profile.conditional_directions | default([]) %}
+  - Conditional performance contract: {{ performance_profile.conditional_directions | tojson }}
+{% endif %}
+
+{% endfor %}
+
+**Character identity constraint**: The gender/age/role above are inviolable facts from character profiles.
+Narration must use gender-consistent pronouns and titles when referencing characters.
+If the source text contains gender-incorrect references, spoken_text must correct them.
+{% else %}
+(Voice team is empty)
+{% endif %}
+
+# Style Base
+
+{% if style_profile %}
+- Speed Range: {{ style_profile.speed_range | default("0.8~1.2") }}
+- Emotional Tone: {{ style_profile.emotional_tone | default("Neutral") }}
+- Literary Style: {{ style_profile.literary_style | default("Contemporary") }}
+- Narrative Pace: {{ style_profile.narrative_pace | default("Moderate") }}
+{% else %}
+(No style profile available; using default neutral tone)
+{% endif %}
+
+# Narrator Voice Profile
+
+{% if narrator_profile %}
+- Voice Type: {{ narrator_profile.voice_type | default("Standard Narration") }}
+- Base Speed: {{ narrator_profile.base_speed | default(1.0) }}
+- Narration Distance: {{ narrator_profile.narration_distance | default("medium") }}
+- Style Keywords: {{ narrator_profile.style_keywords | default([]) | join(", ") }}
+- Emotional Speed Modifiers:
+{% for emotion, modifier in narrator_profile.emotion_speed_modifiers.items() %}
+  · {{ emotion }}: {{ modifier }}
+{% endfor %}
+{% else %}
+(No narrator profile available; using standard narration)
+{% endif %}
+
+# Scene Context
+
+{% if scene_context %}
+- Location: {{ scene_context.location | default("Unknown") }}
+- Time: {{ scene_context.time_frame | default("Unknown") }}
+- Atmosphere: {{ scene_context.atmosphere | default("Neutral") }}
+- Scene Goal: {{ scene_context.intent | default("Advance Plot") }}
+{% else %}
+(No scene context available)
+{% endif %}
+
+# Project Audio Creative Bible
+
+{% if audio_creative_bible %}
+This is the shared sound identity and cue-density contract for the whole book. It outranks
+chapter-local invention. Reuse stable naming and sonic vocabulary for the same location,
+theme, or narrative function, and add a new cue only when the story provides clear evidence.
+{{ audio_creative_bible | tojson(indent=2) }}
+{% else %}
+(No project audio creative bible; use restrained, dialogue-first defaults.)
+{% endif %}
+
+# Narrative Position
+
+- Current chapter number: {{ cards.chapter_number | default("unknown") }}
+- Narrative position: {{ cards.narrative_position | default({}) | tojson }}
+
+# Platform Emotion Capability
+
+{% set emo_vocab = rewrite_profile.get("emotion_vocabulary", {}) if rewrite_profile else {} %}
+{% if emo_vocab %}
+- Native emotion enum: {{ emo_vocab.native_emotions | default([]) | join(", ") }}
+- Tone description vocabulary: {{ emo_vocab.instruction_emotions | default([]) | join(", ") }}
+- Narration default tone: {{ emo_vocab.narration_default | default("neutral") }}
+- Rule: emotion must be from native enum; tone_hint uses the description vocabulary
+{% endif %}
+
+# Chapter Plan and TTS Metadata
+
+{% if scene_intents %}
+Use the following scene intents for scene boundaries, location, time, and
+emotion. Do not leak information from a future scene into the current one:
+{% for scene in scene_intents %}
+- {{ scene.scene_id | default("Unknown scene") }}: location={{ scene.location | default("Unknown") }}; time={{ scene.time_marker | default("Unknown") }}; emotion={{ scene.emotional_beat | default("Neutral") }}; purpose={{ scene.purpose | default(scene.summary | default("Advance the plot")) }}; POV={{ scene.pov_character | default("Unspecified") }}
+{% endfor %}
+{% endif %}
+
+{% if tts_metadata %}
+Deterministic chapter-level TTS metadata (prefer this over keyword guesses):
+{{ tts_metadata | tojson(indent=2) }}
+{% endif %}
+
+# Chapter Text
+
+{% if generation_batch.batch_count | default(1) > 1 %}
+This is bounded batch {{ generation_batch.batch_index + 1 }}/{{ generation_batch.batch_count }}.
+Convert only the batch text below. Do not copy the adjacent context into `segments`; use it only
+to resolve cross-batch speakers, scene continuity, and delivery.
+{% if generation_batch.previous_context | default("") %}- Previous tail (reference only): {{ generation_batch.previous_context }}
+{% endif %}{% if generation_batch.next_context | default("") %}- Next opening (reference only): {{ generation_batch.next_context }}
+{% endif %}
+{% endif %}
+
+```
+{{ chapter_text }}
+```
+
+# Constraints
+
+1. **Faithful to Original**: Do not modify, add to, or rewrite original content; only annotate and segment
+2. **Character Matching**: Dialogue must match characters in the voice team (via character_id)
+3. **Accurate Emotions**: Tag emotions based on context and character voice characteristics; do not rely solely on keywords
+4. **Scene Coherence**: Scene transition markers should reflect actual narrative structure changes
+5. **BGM/SFX Restraint**: Suggest BGM only when atmosphere changes significantly; do not overuse sound effects
+6. **Narration Consistency**: Emotion tags for narration should align with overall narrative tone; moderate variation is allowed
+7. **Narrative Position Awareness**: Opening narration in chapter 1 or any chapter opening should
+   establish spatial sense, temporal sense, and tonal baseline. Default emotion to neutral or
+   tender (intensity <= 0.4) unless scene_intents emotional_beat explicitly marks high-arousal
+   emotion with strong textual evidence. Do not tag angry merely because the text contains
+   characters commonly associated with anger — determine whether the word expresses a character's real
+   emotion (e.g. "said angrily") or environmental description (e.g. "humidity in the air").
+8. **Actionable Direction**: Give every spoken segment an emotion, playable tone, and action
+   intent. Leave AI-generated speed_override, vol_override, and pitch_override null. Do not use
+   numeric recipes such as sad=slower or angry=faster; numeric overrides belong to manual audition
+9. **Inner Monologue**: Use inner_thought and distinguish it through intimacy, breath, and intent,
+   not automatic slowdown
+10. **Environmental Layers**: Create soundscapes only for a clear audible environment; use a
+   project asset ID or keyword as asset_hint instead of treating continuous ambience as one-shot SFX
+11. **Prefer Segment Anchors**: BGM, SFX, and soundscapes should name the relevant segment indexes;
+   millisecond values are fallback estimates. Assembly resolves anchors against measured speech timing
+12. **Dialogue First**: Default to 8 dB BGM ducking and 5 dB ambience ducking, reducing background
+    layers further around key dialogue, whispers, and inner monologue
+13. **Restrain Performance Actions**: Add laughter, crying, gasps, and similar non-verbal tags only
+    when supported by the source or explicit performance evidence; never infer them solely from a
+    broad happy/sad emotion label. For MiniMax models other than Speech 2.8 HD/Turbo, omit performed
+    sounds and retain only evidence-backed pause/silence markers. Bailian models without AIGC tags
+    (qwen3-tts-*, cosyvoice-v3.5-*, ...) follow the same rule; rewrite the emotional intent as a
+    concise instruction instead
+14. **Lock Voice Identity**: For MiniMax, prefer its native emotion enum plus evidence-backed
+    pauses, energy, and intent. Do not
+    use pitch_override, voice_effect.timbre, or voice_effect.intensity as emotion controls; keep
+    each character's pitch center and timbre stable throughout the chapter. For Bailian, prefer the
+    native instruction channel (natural-language performance direction) for emotion and never use
+    numeric speed/pitch as emotion controls
+15. **Whole-book Sound Identity Wins**: Follow audio_creative_bible music identity, location
+    signatures, motifs, prohibited patterns, and density ceilings. Prefer silence over adding a
+    sound merely to make the chapter feel more atmospheric

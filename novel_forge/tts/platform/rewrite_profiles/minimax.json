@@ -1,0 +1,29 @@
+{
+  "provider_id": "minimax",
+  "profile_version": "1.0",
+  "display_name": "MiniMax Speech",
+  "sentence_limits": {
+    "narration": 25,
+    "dialogue": 18,
+    "inner_thought": 22
+  },
+  "pause_strategy": "每个完整意群保持为独立短句（8-25字），意群间用逗号或句号分隔。情绪转折处、动作插入处保持句间缝隙，合成层会在此注入精确停顿标记。破折号插入语必须拆为独立短句，不得保留在spoken_text中。",
+  "punctuation_guidance": "每8-15字应有自然标点（逗号/句号/问号/感叹号），MiniMax以标点为主要韵律断点。省略号保留，MiniMax会自然降速。避免连续无标点超过20字。",
+  "interjection_policy": "对白中情绪激动或低落处，在句首或句尾保留自然叹词位置。不要写入(laughs)等标记，但文本结构应允许这些标记被自然注入。例：'她没忍住，噗地笑了'比'她忍不住笑了出来'更适合注入(chuckle)。",
+  "platform_prompt_guidance": "MiniMax 专属：通用方向仍写标准字段，只有已验证的高级控制才写入 platform_extensions.minimax。Speech 2.8 HD/Turbo 才能使用有原文证据的笑、叹、咳、气息等演出声；其他 MiniMax Speech 模型只保留 pause/silence。不要在 spoken_text 手写 <#x#>、(laughs) 或音色变换语法：停顿、拟声与词级时间线由 MiniMax 适配层按模型能力确定性注入。情绪优先走原生 emotion，禁止用 pitch_override、voice_effect.timbre 或 voice_effect.intensity 模拟情绪。",
+  "rhythm_guidance": "MiniMax对短句情绪控制更精确，宁可多断一句也不合并。连续对白保持紧凑短句，旁白保持从容节奏。",
+  "special_rules": [
+    "MiniMax Speech 2.8支持句内情绪变化，改写时让每句话的情绪独立可标注",
+    "避免产生需要跨意群连读的长复合句",
+    "数字和英文缩写保持原样，MiniMax text_normalization会自动处理读法",
+    "spoken_text中禁止出现破折号（——/—/--），一律改写为独立短句或逗号分隔",
+    "若原文仅为场景分隔符（---、——、***、···等纯符号），spoken_text必须返回空字符串"
+  ],
+  "polyphone_strategy": "",
+  "emotion_vocabulary": {
+    "native_emotions": ["neutral", "happy", "sad", "angry", "fearful", "surprised", "disgusted", "fluent", "whisper"],
+    "instruction_emotions": [],
+    "emotion_guidance": "MiniMax 使用 9 种原生枚举直接控制合成；tone_hint 补充表演细节但不直接影响合成参数。",
+    "narration_default": "neutral 或 fluent，旁白以叙事距离和节奏变化制造层次"
+  }
+}

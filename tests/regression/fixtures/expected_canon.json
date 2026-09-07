@@ -1,0 +1,59 @@
+{
+  "project_id": "regression_test",
+  "current_chapter": 1,
+  "entities": [
+    {
+      "entity_id": "char_林远",
+      "name": "林远",
+      "entity_type": "character",
+      "status": "active",
+      "attributes": {
+        "location": "废弃图书馆",
+        "emotional_state": "困惑但坚定",
+        "inventory": ["铜质怀表", "神秘信件"],
+        "knowledge": ["信中提到的图书馆线索"]
+      },
+      "last_seen_chapter": 1
+    },
+    {
+      "entity_id": "char_老守夜人",
+      "name": "老守夜人",
+      "entity_type": "character",
+      "status": "active",
+      "attributes": {
+        "location": "钟楼",
+        "emotional_state": "平静而神秘",
+        "knowledge": ["林远的真实身份", "时间裂缝的秘密"]
+      },
+      "last_seen_chapter": 1
+    }
+  ],
+  "timeline": [
+    {
+      "anchor_id": "evt_1a",
+      "chapter": 1,
+      "event": "林远在雾霭小镇失忆醒来",
+      "characters_involved": ["char_林远"],
+      "in_story_time": "第一天，清晨"
+    },
+    {
+      "anchor_id": "evt_1b",
+      "chapter": 1,
+      "event": "老守夜人交给林远一封信",
+      "characters_involved": ["char_林远", "char_老守夜人"],
+      "in_story_time": "第一天，上午"
+    }
+  ],
+  "promise_ledger": [
+    {
+      "entry_id": "fs_watch",
+      "description": "怀表停在午夜十二点——暗示时间裂缝出现的时刻",
+      "planted_chapter": 1,
+      "status": "planted"
+    }
+  ],
+  "world_rules": [],
+  "chapter_summaries": {
+    "1": "失忆的林远在雾霭小镇醒来，遇到神秘的老守夜人并获得一封自己所写的信。"
+  }
+}

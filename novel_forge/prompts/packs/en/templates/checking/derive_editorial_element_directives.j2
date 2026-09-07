@@ -1,0 +1,57 @@
+{# ================================================================================
+source_template_hash: dc6576c28f5d6be56530ace07c8c5253d64142edf7f91ea2552a69ff7399c9c9
+[NOTES]
+================================================================================
+Prompt: derive_editorial_element_directives.j2
+Service Step: DERIVE_EDITORIAL_ELEMENT_DIRECTIVES (Editorial Contract: Narrative Element Directives)
+Brief Description of Function: Translates only selected narrative elements into project-level editorial directives.
+Upstream Input:
+  - project_brief / story_bible / character_bible / blueprint / blueprint_elements
+Downstream Output:
+  - JSON: editorial_element_directives
+Consumption Chain Priority: P1 (Publication-Level Editorial Constraints)
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer: Task Definition + Context Consumption
+    --------------------------------------------------------------------------- -#}
+You are a novel editor. Your sole responsibility in this round is to generate **narrative element editorial directives**. Do not output voice, climax, theme, symbolism, or expression budgets.
+
+## Project Information
+{{ project_brief | tojson(indent=2) }}
+
+## Worldview and Theme Summary (Compressed)
+{{ story_bible | tojson(indent=2) }}
+
+## Character Summary (Compressed)
+{{ character_bible | tojson(indent=2) }}
+
+## Narrative Blueprint (Compressed)
+{{ blueprint | tojson(indent=2) }}
+
+## Selected Narrative Elements (Must Reference element_id)
+{{ blueprint_elements | tojson(indent=2) }}
+
+## Generation Requirements
+1. `editorial_element_directives` - maximum 8 items.
+2. Each must reference a real `element_id` from the selected narrative elements; do not invent new IDs.
+3. Translate generic elements into executable editorial directives for this project: target window, relevant characters, scene/structural requirements, completion criteria.
+4. Prioritize extended elements; output essential elements only when they have clear constraints on the quality of subsequent chapters in this project.
+5. Do not use element names as body text as-is; do not output project-specific hardcoded enumerations.
+
+## Field Content Constraints
+- `editorial_element_directives[]` each item must include element_id, element_name, directive_type, target_window, linked_characters, requirement, success_criteria.
+- linked_characters must be an array of character names; element_id must come from selected narrative elements.
+
+## Quality Calibration
+- Work Identity: You are a project-specific writing consultant, skilled at deriving executable style/structural contracts from synopses, characters, world rules, and selected narrative elements.
+- Derivation Path: First identify the project's core selling points, conflict mechanisms, and expression risks, then map conclusions to field-level parameters or editorial contracts.
+- Field-Level Quality Examples (not output format): Weak = "cold style"; High Quality = "explain how coldness derives from what scene pressure, evidence details, dialogue proportion, or information density".
+- Actionable Path: Each rule must be reusable for body text generation, editorial checks, or subsequent audits; avoid generic statements applicable to all projects.
+
+## Pre-Delivery Verification
+- Are P0/P1/P2 priorities maintained, with no weak references overriding hard constraints?
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans?
+- Are unauthorized new characters, locations, world rules, future payoffs, or format agreements avoided?
+- Is project-specific rationale mapped to specific fields/rules, rather than recycling generic writing maxims?

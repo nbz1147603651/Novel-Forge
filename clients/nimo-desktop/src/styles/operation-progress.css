@@ -1,0 +1,91 @@
+.operation-progress {
+  display: grid;
+  gap: 12px;
+  padding: 13px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 16%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--nf-bg-control) 28%, var(--nf-bg-surface));
+}
+
+.operation-progress header {
+  display: grid;
+  gap: 4px;
+}
+
+.operation-progress header strong {
+  color: var(--nf-text-heading);
+  font-size: var(--nf-font-subsection);
+}
+
+.operation-progress header p,
+.operation-result {
+  margin: 0;
+  color: var(--nf-text-secondary);
+  font-size: var(--nf-font-body);
+  line-height: 1.55;
+}
+
+.operation-progress ol {
+  display: flex;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.operation-progress li {
+  position: relative;
+  display: grid;
+  flex: 1;
+  justify-items: center;
+  gap: 5px;
+  min-width: 0;
+  color: var(--nf-text-muted);
+}
+
+.operation-progress li::before {
+  position: absolute;
+  z-index: 0;
+  top: 10px;
+  right: 50%;
+  left: -50%;
+  height: 2px;
+  background: color-mix(in srgb, var(--nf-border-default) 22%, transparent);
+  content: "";
+}
+
+.operation-progress li:first-child::before { left: 50%; }
+.operation-progress li span { position: relative; z-index: 1; display: grid; width: 21px; height: 21px; place-items: center; border: 2px solid color-mix(in srgb, var(--nf-border-default) 23%, transparent); border-radius: 999px; background: var(--nf-bg-surface); font-size: var(--nf-font-micro); font-weight: 700; }
+.operation-progress li small { max-width: 96px; overflow: hidden; font-size: var(--nf-font-micro); text-align: center; text-overflow: ellipsis; white-space: nowrap; }
+.operation-progress li.is-complete { color: var(--nf-status-success); }
+.operation-progress li.is-complete::before { background: var(--nf-status-success); }
+.operation-progress li.is-complete span { border-color: var(--nf-status-success); color: var(--nf-status-success); background: var(--nf-status-success-bg); }
+.operation-progress li.is-active { color: var(--nf-accent-primary); }
+.operation-progress li.is-active span { border-color: var(--nf-accent-primary); color: var(--nf-accent-primary); box-shadow: 0 0 0 4px color-mix(in srgb, var(--nf-accent-primary) 10%, transparent); }
+.operation-progress.is-completed { border-color: color-mix(in srgb, var(--nf-status-success) 42%, transparent); }
+.operation-progress.is-failed { border-color: color-mix(in srgb, var(--nf-status-danger) 42%, transparent); }
+.operation-result { padding: 8px 9px; border-radius: 7px; background: color-mix(in srgb, var(--nf-bg-input) 72%, var(--nf-bg-surface)); }
+.operation-result.is-failed { color: var(--nf-accent-primary-pressed); }
+
+/* Phase 3: Failed step state */
+.operation-progress li.is-failed { color: var(--nf-status-danger); }
+.operation-progress li.is-failed span {
+  border-color: var(--nf-status-danger);
+  color: var(--nf-status-danger);
+  background: color-mix(in srgb, var(--nf-status-danger) 8%, var(--nf-bg-surface));
+}
+
+/* Phase 3: Parallel step indicator */
+.operation-progress li.is-parallel small {
+  border-bottom: 1px dashed color-mix(in srgb, var(--nf-accent-primary) 40%, transparent);
+}
+
+.operation-parallel-mark {
+  position: absolute;
+  top: -2px;
+  right: 2px;
+  color: color-mix(in srgb, var(--nf-accent-primary) 60%, transparent);
+  font-size: 8px;
+  font-style: normal;
+  line-height: 1;
+}

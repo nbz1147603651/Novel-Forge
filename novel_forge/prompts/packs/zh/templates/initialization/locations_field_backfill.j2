@@ -1,0 +1,66 @@
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：locations_field_backfill.j2
+服务步骤：LOCATIONS_FIELD_BACKFILL（场景字段级定向补全）
+作用简述：在故事圣经初始化完成后，针对 locations 中缺失的跨媒介核心字段做
+         定向补全；只回补缺失项，不重跑整轮初始化，不改动已存在字段。
+上游输入：
+  - title/era/geography/tone: StoryBible 已锁定的基础上下文
+  - locations: 当前已生成的场景列表（含已有字段，作为补全参照）
+  - missing_report: 逐场景的缺失字段清单（name + 缺失字段名列表）
+下游输出：
+  - JSON（PARTIAL_OBJECT）：{"locations":[{"name":..., "location_id":...,
+    <仅缺失字段>...}]}
+  - 下游消费者：
+    * INIT_STORY_BIBLE 的持久化合并逻辑：按 name/location_id 匹配回填
+    * TTS 声音设计：消费 ambient_sound 作为环境声种子
+    * 影视投影：消费 spatial_layout/materials/practical_lights 生成场景资产
+消费链优先级：
+  P0 = 只输出 missing_report 中列出的缺失字段，禁止改动或重复已有字段
+  P1 = 补全内容必须与 locations 已有字段、era/geography/tone 保持一致
+  P2 = 环境声与灯光描述保持可听见、可分层、有动机
+简要例子：
+  输入：missing_report=[{"name":"旧码头仓库","missing":["ambient_sound","practical_lights"]}]
+  输出：{"locations":[{"name":"旧码头仓库","ambient_sound":["潮水拍岸","铁门风响"],"practical_lights":["检修吊灯"]}]}
+================================================================================
+#}
+{#- ---------------------------------------------------------------------------
+    指导层：任务与输入
+    --------------------------------------------------------------------------- -#}
+
+故事圣经初始化已完成，但以下场景缺失跨媒介核心字段。请只针对缺失字段做定向补全。
+
+## 已锁定的世界观上下文
+{% if title %}- 暂定标题：{{ title }}{% endif %}
+{% if era %}- 时代背景：{{ era }}{% endif %}
+{% if geography %}- 地理舞台：{{ geography }}{% endif %}
+{% if tone %}- 叙事基调：{{ tone }}{% endif %}
+
+## 当前场景清单
+{{ locations | tojson(ensure_ascii=False) }}
+
+## 缺失字段清单（逐项补全）
+{{ missing_report | tojson(ensure_ascii=False) }}
+
+## 字段
+- `locations[].name` / `locations[].location_id`：场景匹配键，必须与输入原值一致。
+- 仅输出 `missing_report` 列出的缺失字段，可能包括：`spatial_layout`、`materials`、`practical_lights`、`ambient_sound`、`continuity_rules`、`dramatic_function`。
+- 字符串内不要使用未转义的英文双引号；不新增 schema 外字段。
+
+{#- ---------------------------------------------------------------------------
+    约束层：质量与边界
+    --------------------------------------------------------------------------- -#}
+
+## 补全规则
+- **只补缺失项**：每个场景只输出 `name`、`location_id` 与缺失清单中列出的字段；禁止重复或改写已有字段。
+- **一致性**：补全内容必须与该场景已有字段（空间布局、材质、功能）以及世界观上下文自洽，不得引入新的地点、人物或世界规则。
+- `spatial_layout`：门窗、动线、层高和关键区域，必须能支持人物走位与镜头轴线。
+- `materials`：稳定材质与表面质感，2-4 项短句。
+- `practical_lights`：场景内有动机的实景光源，不要写无来源的泛光。
+- `ambient_sound`：可听见、可分层、可复用的真实声源，供配音与混音继承。
+- `continuity_rules`：跨章节和跨镜头保持动线、光向、道具与声场一致的规则。
+- `dramatic_function`：该空间承载的冲突或情绪功能，一段话。
+- **JSON 稳定性**：字符串内部不要使用未转义的英文双引号；不要输出 Markdown、注释或省略号。
+- 不要新增 schema 外字段；无法推断时宁可给出与基调一致的保守默认，也不要留空。

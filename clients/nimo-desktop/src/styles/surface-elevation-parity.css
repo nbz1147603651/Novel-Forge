@@ -1,0 +1,21 @@
+/*
+ * PySide6 `Surface` only elevates the hero, elevated, and inset tones.
+ * Rails and ordinary card/panel tones rely on their border/background alone.
+ * Keep the browser hierarchy aligned so a page cannot add a broad CSS shadow
+ * that the source widget never paints.
+ */
+.side-rail,
+.filter-surface,
+.jobs-surface,
+.settings-card,
+.project-card,
+.project-card:hover,
+.project-card.is-selected {
+  box-shadow: none;
+}
+
+/* `Surface("hero")`: Qt blur radius 8, offset (0, 4), alpha 28 / 255. */
+.dashboard-hero,
+.settings-hero {
+  box-shadow: 0 4px 8px color-mix(in srgb, var(--nf-shadow) 11%, transparent);
+}

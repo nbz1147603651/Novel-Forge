@@ -1,0 +1,113 @@
+{# ================================================================================
+【备注】
+================================================================================
+提示词：check_editorial.j2
+服务步骤：CHECK_EDITORIAL（单章编辑质量检查）
+作用简述：依据 EditorialContract 检查单章的出版级编辑问题，输出软报告。
+上游输入：
+  - chapter_number/chapter_text：当前章正文
+  - editorial_contract：项目编辑契约
+  - chapter_contract/forbidden_reveal_boundaries：当前章硬合同与禁止提前兑现边界
+  - local_findings/local_metrics：本地预检信号
+下游输出：
+  - JSON：{"summary", "findings", "revision_plan", "metrics"}
+  - 下游消费者：章节报告 / known issues / 当前章 edit 修正
+消费链优先级：P2（编辑质量软检查）
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    指导层：任务定义 + 上下文消费
+    --------------------------------------------------------------------------- -#}
+请依据项目 `EditorialContract` 对当前章节做**单章编辑质量检查**。
+
+这不是事实一致性、因果校验或大纲对齐；只检查出版级表达问题：
+- 角色声纹是否趋同
+- 身体反应/动作标签/对白标签是否重复
+- 主题和象征物是否被直接解释
+- 场景是否只有氛围而缺少阻力
+- 高潮后章节是否重复确认、缺少新行动/新信息
+- 是否存在超长段落导致视觉疲劳
+
+## 章节信息
+- 第 {{ chapter_number }} 章
+
+## 编辑契约
+{{ editorial_contract | tojson(indent=2) }}
+
+{% set chapter_contract = chapter_contract | default({}) %}
+{% set forbidden_boundaries = forbidden_reveal_boundaries | default([]) %}
+{% if chapter_contract or forbidden_boundaries %}
+## 当前章硬边界（优先级高于编辑建议）
+{% if chapter_contract %}
+### 章节合同摘要
+{% for key in ["required_events", "allowed_changes", "forbidden_changes", "forbidden_progressions", "future_leak_risks", "completion_criteria"] %}
+{% set values = chapter_contract.get(key, []) if chapter_contract.get is defined else [] %}
+{% if values %}
+- {{ key }}：{{ values | join("；") }}
+{% endif %}
+{% endfor %}
+### chapter_contract_json
+{{ chapter_contract | tojson(indent=2) }}
+{% endif %}
+{% if forbidden_boundaries %}
+### forbidden_reveal_boundaries
+{% for item in forbidden_boundaries %}
+- {{ item.rule | default(item) }}
+{% endfor %}
+{% endif %}
+{% endif %}
+
+{% set risk_guidance = editorial_risk_guidance | default({}) %}
+{% set risk_items = risk_guidance.get('items', []) if risk_guidance else [] %}
+{% set denouement_risk = risk_guidance.get('denouement', {}) if risk_guidance else {} %}
+{% if risk_items or denouement_risk.guidance | default('') %}
+## 初始化编辑风险复核
+这些风险来自 `reports/init_editorial_readiness.json` 或编辑契约预算推导，只用于本章编辑质量检查，不覆盖事实一致性。
+{% if denouement_risk.guidance | default('') %}- 余波/尾声复核：{{ denouement_risk.guidance }}{% endif %}
+{% for item in risk_items %}
+- [{{ item.severity }}] {{ item.summary }}；复核重点={{ item.action }}
+{% endfor %}
+{% endif %}
+
+{% if local_findings %}
+## 本地预检 findings
+{% for item in local_findings %}
+- [{{ item.issue_type }} / {{ item.severity }}] {{ item.summary }}{% if item.evidence %}；证据：{{ item.evidence | join("；") }}{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if local_metrics %}
+## 本地指标
+{{ local_metrics | tojson(indent=2) }}
+{% endif %}
+
+## 章节正文
+{{ chapter_text }}
+
+## 检查规则
+1. 本地预检只是候选信号；你必须结合正文判断是否真实影响阅读。
+2. 对每个 finding 给出具体证据和可执行修订建议，不要只写“加强”“优化”。
+3. 若该章已超过主高潮余波预算，重点检查是否有新行动、新冲突或新信息；纯温柔确认要标注。
+4. 若象征物出现，只在“含义被说破”时标问题；单纯复现不是问题。
+5. 不建议全章重写；优先给局部删改、替换承载方式、压缩段落、调声纹的建议。
+6. 超长段落只在确实影响阅读停顿时标注；建议按动作、对白、信息揭示或情绪落点拆分。
+7. `chapter_contract` 与 `forbidden_reveal_boundaries` 是硬边界：不得要求、建议或暗示正文新增违反这些边界的事件、台词、公开结果或未来 payoff；若项目编辑契约/初始化风险与本章硬边界冲突，必须以本章硬边界为准，只能建议加强“准备、悬置、余波、代价意识”等本章允许的表达。
+
+## 检查结果字段要求
+- `summary`：本章编辑质量判断，说明是否需要局部修订。
+- `findings`：每项包含 issue_type、severity、chapter_number、summary、evidence、recommendation、confidence、metadata；必须给出正文证据和可执行建议。
+- `revision_plan`：局部修订步骤，优先删改、替换承载方式、压缩段落、调整声纹。
+- `metrics.editorial_score`：0-10 分，按本章编辑问题密度和严重度扣分。
+
+## 质量校准
+- 工作身份：你是一位严谨的小说质量审校员，擅长用短证据、明确边界和下游可执行建议定位问题。
+- 审校路径：先确认输入证据，再判断问题类型、影响范围和修复边界，最后给下游可执行的定位信息。
+- 字段级质量示例（非输出格式）：平弱=“这里不连贯”；高质量=“指出哪两处证据冲突、风险等级、可验证问题”。
+- 可操作路径：每条判断都要能支持复核或修复，低置信度内容降级为待验证问题。
+
+## 交付前核验
+- P0/P1/P2 优先级是否被保持，且没有让弱参考覆盖硬约束。
+- 是否能把关键判断回指到输入证据、上游契约或已批准计划。
+- 是否避免新增未授权的人物、地点、世界规则、未来 payoff、违反本章硬边界的修订建议或格式协议。
+- 是否给出短证据、风险等级、定位信息和下游可验证的问题。

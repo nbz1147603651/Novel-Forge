@@ -1,0 +1,19 @@
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：_base/_shared_evidence_anchor.j2
+类型：宏模块（不被直接渲染，仅供其他模板 import）
+作用简述：统一渲染初始化/分片任务的共享证据锚点，避免各模板维护重复文案。
+定义宏：
+  - render_shared_evidence_anchor(shared_evidence_anchor, task_label="本次分片")
+================================================================================
+#}
+
+{% macro render_shared_evidence_anchor(shared_evidence_anchor, task_label="本次分片") -%}
+{% if shared_evidence_anchor %}
+## 共享证据锚点
+{{ shared_evidence_anchor | tojson(indent=2) }}
+请以此作为{{ task_label }}的共同依据；维度特需信息只能补充，不得覆盖锚点事实。
+{% endif %}
+{%- endmacro %}

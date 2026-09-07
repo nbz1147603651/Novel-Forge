@@ -1,0 +1,121 @@
+{# Candidate state delta extraction. LLM extracts candidates only; final judgement is separate. #}
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：extract_candidate_state_deltas.j2
+服务步骤：EXTRACT_CANDIDATE_STATE_DELTAS（候选状态变化抽取）
+作用简述：从章节正文抽取可裁判的候选状态变化，只做证据定位，不做最终事实写入判断。
+上游输入：
+  - chapter_number：章节编号
+  - chapter_contract：本章叙事契约
+  - current_state：当前状态摘要
+  - entity_registry：实体注册表
+  - chapter_text：章节正文
+下游输出：
+  - JSON：candidates 列表，包含 candidate_id, delta_type, summary, evidence 等字段
+  - 下游消费者：ADJUDICATE_STATE_DELTA / ADJUDICATE_FINAL_STATE
+消费链优先级：P0（正文证据 quote）> P1（实体关联与状态路径）> P2（抽取备注）
+================================================================================
+#}
+
+## 任务
+你只从本章正文中抽取“极简核心状态变化”，不要判断它是否最终成立。
+
+本地系统只会做格式解析和证据定位；叙事判断会交给后续 LLM 裁判步骤。
+
+## 事实来源边界（P0）
+- 只从 FinalArtifact 对应的最终正文 / `chapter_text` 抽取候选事实。
+- 章节契约、计划、source 投影、摘要、裁判意见和中间稿不是已发生事实；它们只能帮助判断要找什么证据，不能替代正文 quote。
+- 没有最终正文证据的内容不得写入候选，不得用计划事实补全 canon/memory。
+
+## 抽取范围（严格）
+只抽取以下三类，其他内容一律不要进入状态：
+1. 本章出场人物：只记录真正参与场景/对话/关键行动的人物，可合并为 1 个 character_state 候选。
+2. 主线关键变化：会改变后续章节行动方向、危机、目标、证据链或章节契约完成度的变化。
+3. 支线关键变化：会影响后续主线或人物关系走向的支线推进、悬念推进、关系转折。
+4. `chapter_contract.knowledge_ops` 承诺的知识变化：必须优先寻找“谁通过什么证据知道/误解/怀疑/隐瞒了什么”的正文证据。
+5. `chapter_contract.cognitive_constraints` 相关认知变化：若正文让某角色或读者对认知对象从未知/潜意识/怀疑推进到部分/确认/承认，必须抽取为 cognitive 候选。
+
+不要抽取普通动作、氛围描写、临时情绪、地点移动、常规寒暄、一次性道具、已经反复确认的旧事实、细碎心理活动、整章总结。
+如果某个变化无法回答“它会怎样影响下一章或后续主/支线？”，不要输出。
+
+## 固定更新槽位
+当前状态摘要中的 `character_roster` 是角色系统/Canon 给出的当前人物表；只从这里选择人物姓名，不要自造角色名。
+当前状态摘要中的 `state_update_slots` 是本轮唯一允许更新的状态槽位：
+- `chapter_presence`：本章出场人物。
+- `main_plot`：主线关键推进。
+- `subplot`：支线关键推进。
+- `relationship_carry_forward`：必须延续到后续章节的人物关系变化。
+- `contract_progression`：章节契约硬目标完成证据。
+
+每个候选的 `proposed_delta.scope` 必须属于上述 5 个槽位之一；`state_path` 必须直接取自对应槽位，不要自造任意路径。
+
+## 契约目标菜单
+本地已把章节契约编译为 `contract_targets`。若候选对应一个或多个契约目标，只能从该菜单中选择 `target_id`，写入候选顶层字段 `covered_target_ids`。
+不要自造 `target_id`，不要自由拼接 `contract.*` 路径；本地会根据你选择的 `target_id` 派生合法 `state_path`。
+`required_for_archive=false` 的目标只作前置条件/诊断参考，不要当成本章正文必须重新完成的归档目标。
+
+## 可抽取类型
+- event：明确发生的事件
+- relationship：人物关系可能变化
+- item：物品归属/出现/转移/损毁可能变化
+- knowledge：角色知道/误解/隐瞒的信息可能变化
+- cognitive：角色或读者对秘密/身份/真相的认知等级可能变化
+- alias：别名/称谓可能指向某实体
+- promise：伏笔埋设/推进/回收
+- world_rule：世界规则被确认或更新
+- character_state：角色位置、状态、身份、情绪等可能变化
+- other：其他重要变化
+
+## 约束
+1. 不做最终裁判，只列候选。
+2. 每个候选必须给出正文中的短 quote。
+3. 不要从创作报告、摘要或常识补全事实。
+4. 若无法找到 quote，不要输出该候选。
+5. 不要输出整章总结。
+6. delta_type 必须只填写上方 10 个英文枚举值之一，不得新增细分类；情绪突破、身份变化、位置/状态变化统一归入 character_state；普通获知/误解/隐瞒归入 knowledge；认知等级升级或提前确认归入 cognitive。
+7. 每个候选使用字段 `summary` 概括变化，证据放入 `evidence` 数组，每项至少含 `quote`；不要使用顶层 `description` 或顶层 `quote` 替代。
+8. 每个候选必须包含非空 `proposed_delta` 对象，至少写入 `source: "chapter_text"`、`delta_type`、`summary`；knowledge 类候选应说明谁知道/误解/怀疑/隐瞒了什么，并尽量写入 `entity_ids`、`knowledge_type`、`value`；cognitive 类候选应写入 `cognitive_subjects`、`cognitive_object`、`cognitive_level`、`action_level`、`character_knowledge_coverage`，并在 `proposed_delta.value` 中保留同样信息；event 类候选应说明发生了什么以及可写入的状态变化。
+8a. `character_knowledge_coverage` 必须逐角色依正文证据写 `unknown|partial|full`；不得从 `cognitive_level`、`reader_awareness` 或其他角色的状态推导。证据不足时写 `unknown`，不得写 `confirmed/acknowledged/unaware`。
+9. 若候选没有可引用正文证据，直接省略该候选，不要输出空 summary、空 proposed_delta 或空 evidence 的占位对象。
+10. `contract_targets[].required_for_archive=true` 是归档硬目标：若完整目标文本、`knowledge_ops.evidence`、`knowledge_ops.description` 或中文引号内的关键台词/术语在正文中逐字出现，必须单独抽取为候选，并用正文原句作为 evidence.quote。
+10a. `required_for_archive=false` 是 context-only 约束或认知边界：只有正文明确发生认知越界、边界冲突或会影响后文状态写入时才抽取；不要让它挤占归档硬目标候选名额。
+11. 只引用正文证据；不得把章节契约、当前状态摘要、创作报告或裁判意见本身当作 evidence。
+12. 最多输出 {{ candidate_limit | default(6) }} 个候选；优先顺序：归档硬目标 > 主线关键变化 > 支线关键变化 > context-only 约束 > 出场人物汇总。
+13. 每个候选最多输出 {{ evidence_limit | default(2) }} 条 evidence；`quote` 必须是短原文，不要输出整段上下文。
+14. evidence 项只允许包含 `quote` 和可选 `paragraph_index`；禁止输出 `context` 字段。
+15. `proposed_delta` 保持轻量，只写固定字段：`source`、`delta_type`、`scope`、`state_path`、`summary`、`value`、`present_characters`、`entity_ids`、`plot_thread_id`、`subplot_id`、`relationship_pair`、`knowledge_type`、`next_impact`；禁止在 `proposed_delta` 内嵌套 `evidence` 数组。
+16. 出场人物候选不要逐人拆分；用 `present_characters` 数组列姓名即可。
+17. 如果没有主线/支线/关系/契约推进，只输出出场人物候选；如果连出场人物也无法用正文 quote 证明，则输出空 candidates。
+18. 若候选覆盖契约目标，必须输出顶层 `covered_target_ids` 数组；数组元素只能来自下方 `contract_targets[].target_id`。
+19. 覆盖映射完整性：对每个 `contract_targets[].required_for_archive=true` 的目标，逐一检查正文是否发生了语义等价的事件。若正文用不同措辞表达了相同事件（如契约写“带着旧纸前往洗字巷”，正文写“揣着纸条去了洗字巷”），仍应抽取为候选并在 `covered_target_ids` 中标注对应 target_id。不要因为措辞差异就遗漏覆盖映射。
+
+## 本章信息
+- 章节号：{{ chapter_number }}
+- 章节契约：
+{{ chapter_contract }}
+
+## 当前状态摘要
+{{ current_state }}
+
+## 契约目标菜单
+{{ contract_targets }}
+
+## 实体注册表
+{{ entity_registry }}
+
+## 正文
+{{ chapter_text }}
+
+## 质量校准
+- 工作身份：你是一位证据优先的叙事事实抽取员，擅长从正文和上游锚点中提取可追溯、可合并的状态信息。
+- 抽取路径：先找正文中的明确事实，再对照共享锚点与已知状态，最后只保留能被后续合并器消费的信息。
+- 证据校准：同一事实已有上游分片确认时保持一致；证据不足时用保守字段值表达未知或待确认。
+- 可操作路径：每条信息都服务于 canon、memory、state 或审计链路，避免把语气、比喻、猜测当作事实。
+
+## 交付前核验
+- P0/P1/P2 优先级是否被保持，且没有让弱参考覆盖硬约束。
+- 是否能把关键判断回指到输入证据、上游契约或已批准计划。
+- 是否避免新增未授权的人物、地点、世界规则、未来 payoff 或格式协议。
+- 是否保留后续合并/检索需要的事实边界，且没有把推测写成既定事实。

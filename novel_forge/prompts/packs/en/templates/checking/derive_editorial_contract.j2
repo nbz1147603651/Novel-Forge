@@ -1,0 +1,118 @@
+{# ================================================================================
+source_template_hash: d1f3d8961508b318c91deb0cc1bd104daa7fb7943961f168c5b02907b8497966
+[NOTES]
+================================================================================
+Prompt: derive_editorial_contract.j2
+Service Step: DERIVE_EDITORIAL_CONTRACT (Editorial Contract Generation)
+Function Summary: Generate the project's sole editorial quality contract based on initialization artifacts, constraining voice fingerprints, climax aftermaths, themes, symbols, revelation ladder, narrative element directives, expression channels, and scene resistance.
+Upstream Inputs:
+  - story_bible: Worldview and thematic raw information
+  - character_bible: Character foundational settings
+  - style_profile: Project style specifications
+  - blueprint: Narrative blueprint
+  - blueprint_elements: Selected narrative element library mechanisms
+  - creative_director_packet: Creative director packet
+  - total_chapters: Total chapter count
+Downstream Outputs:
+  - JSON: EditorialContract fields
+  - Downstream consumers: constraint_router / chapter plan / draft / edit / editorial audit
+Consumption Chain Priority: P1 (Publication-Grade Editorial Constraints)
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer: Task Definition + Context Consumption
+    --------------------------------------------------------------------------- -#}
+You are a senior editor for long-form fiction. Please generate the project's **sole editorial contract** based on the initialization artifacts.
+
+The contract is not a world-building setting nor a style summary; it specifically answers: how does this book avoid post-midpoint sag, converging character voices, over-explained themes, symbol death by explanation, repetitive physical reactions, and scenes with atmosphere but no resistance.
+
+## Project Information
+- Title: {{ title or "" }}
+- Total Chapters: {{ total_chapters }}
+
+## Worldview and Thematic Raw Information
+{{ story_bible | tojson(indent=2) }}
+
+## Character Foundational Settings
+{{ character_bible | tojson(indent=2) }}
+
+{% if style_profile %}
+## Style Specifications
+{{ style_profile | tojson(indent=2) }}
+{% endif %}
+
+## Narrative Blueprint
+{{ blueprint | tojson(indent=2) }}
+
+{% if creative_director_packet %}
+## Creative Director Packet
+{{ creative_director_packet | tojson(indent=2) }}
+{% endif %}
+
+{% if blueprint_elements %}
+## Selected Narrative Elements
+{{ blueprint_elements | tojson(indent=2) }}
+{% endif %}
+
+## Generation Requirements
+1. `character_voices` must cover major characters and strong functional supporting characters; each character must include executable sentence patterns, explanation tendencies, emotional syntax, and prohibited tones.
+2. `climax_markers` must contain at least one `climax_type="main"` main climax; main climax position must come from the blueprint's key turning point or finale strategy, not guessed at random.
+3. `denouement_budget` must specify what functions are allowed to remain after the climax; do not write every subplot as a complete finale.
+4. `theme_policies` must restrict thematic monologues and symbol explanations; themes must be presented through action, choice, conflict, and scene consequences.
+5. `symbol_policies` must cover the book's most important tokens, locations, objects, thematic phrases, or recurring imagery.
+6. `scene_resistance_rules` must concretize scene resistance as doors, stairs, crowds, distance, processes, obstructions, object transfers, signatures, screens, phone calls, time windows, and other resistance elements that can be written into the main text.
+7. `expression_channel_budget` must control per-chapter/per-scene budgets for physical reactions, action tags, dialogue tags, and sensory anchors.
+8. `revelation_ladder` must break down important mysteries, backstories, tokens, or memory threads into tiered revelations; tier names come from the genre and selected narrative elements, do not force-fit fixed terminology; each tier must have new action consequences.
+9. `editorial_element_directives` must reference the `element_id` of selected narrative elements, translating generic elements into project-specific editorial directives; do not invent project-specific enums in code/contracts.
+10. `time_bridge_policies` must constrain transitions across large spans of months/seasons/weeks to avoid readers assuming events occurred within consecutive days.
+11. `title_policy` must limit chapter title reuse, specifying which titles allow loops and maximum reuse count.
+    `max_reuse` **must** be an integer between 1 and 10 (inclusive), **prohibited** 0, **prohibited** negative numbers, **prohibited** floats, **prohibited** null, **prohibited** strings.
+    **Numeric priority > textual strategy description**; when `naming_strategy` text conflicts with `max_reuse` numeric value, **prioritize the `max_reuse` numeric field**, do not write 0.
+    - Strategy is "unique chapter titles / no reuse / never loop" → `max_reuse: 1`
+    - Strategy is "main title + phase suffix / volume end allows loops" → `max_reuse: 2` to `max_reuse: 4`
+    - Strategy is "allow thematic variant reuse / major node loops" → `max_reuse: 5` to `max_reuse: 8`
+    - Strategy is "chapter groups share titles / parallel chapters share" → `max_reuse: 9` or `max_reuse: 10`
+    - **Prohibited** self-contradictory "text says X but `max_reuse` writes 0"; **prohibited** "strategy says allow reuse but `max_reuse` writes 1"; textual description must remain consistent with numeric values.
+12. Content must be concise: max 6 characters in `character_voices`; max 5 climax markers in `climax_markers`; max 5 symbols in `symbol_policies`; max 5 scene resistance rules in `scene_resistance_rules`; max 8 tiers in `revelation_ladder`; max 8 directives in `editorial_element_directives`; max 7 policies in `time_bridge_policies`.
+13. Each character's `signature_moves`, `taboo_patterns`, and `sample_lines` max 5 items each; each string entry must only state executable constraints, no explanatory paragraphs.
+
+## Field Value Constraints
+- `climax_markers[].climax_type` can only use one of these 5 exact values: `main`, `subplot`, `emotional`, `commercial`, `mystery`.
+  Closure/aftermath/epilogue functions should be written in `description` or `denouement_budget`, do not create additional stage names.
+- `symbol_policies[].explanation_policy` can only use one of these 4 exact values: `never_explain`, `explain_once`, `explain_on_escalation`, `free`.
+  Do not use abbreviations, Chinese synonyms, or other strategy names.
+- `symbol_policies[]` is only allowed to contain the 5 fields shown in the example: `symbol`, `narrative_function`, `explanation_policy`, `escalation_rule`, `max_explicit_explanations`.
+  For prohibition of explanatory requirements, write into `escalation_rule`, do not add extra fields.
+- `scene_resistance_rules[]` is only allowed to contain the 3 fields shown in the example: `scene_type`, `required_resistance`, `examples`.
+  Chapter windows should be written into `required_resistance`, do not add extra fields.
+- `expression_channel_budget` must use 4 fixed keys, and values must be integers:
+  `somatic_reaction`, `action_tag`, `dialogue_tag`, `sensory_anchor`.
+  High-emotion scene budget should only be written into the integer field `body_signal_budget_per_high_emotion_scene`, do not add explanatory fields.
+- All object fields are limited to those listed in this section; supplementary explanations should be merged into existing fields, do not add analytical fields.
+
+## Field Content Supplements
+- `project_title` uses the current work title, can be an empty string.
+- Each entry in `character_voices` includes character name, sentence pattern profile, explanation tendency, emotional syntax, signature moves, prohibited tones, and a small number of voice samples.
+- Each entry in `climax_markers` includes chapter number, climax type, functional description, and aftermath chapter count; must have at least one `main`.
+- `climax_markers[].expected_aftermath_chapters` must be a single integer, representing the number of aftermath chapters to track after that climax; prohibited to write as `[55, 60]`, `"55-60"`, or any chapter range.
+- `denouement_budget` specifies aftermath chapter count, confirmation scene upper limit, new functions, and prohibited repetition items.
+- Subfields for `symbol_policies`, `scene_resistance_rules`, `revelation_ladder`, `editorial_element_directives` should be filled according to the constraints above, do not output extra analytical fields.
+- `time_bridge_policies`, `forbidden_confirmation_phrases`, `revision_priorities` use short string arrays.
+- `title_policy` specifies title reuse upper limit, titles that allow loops, and naming strategy; `max_reuse` must be greater than or equal to 1.
+
+## Quality Calibration
+- Working Identity: You are a project-specific writing consultant, skilled at deriving executable style/structure contracts from synopses, characters, world rules, and selected narrative elements.
+- Derivation Path: First identify the project's core selling points, conflict mechanisms, and expression risks, then map conclusions to field-level parameters or editorial contracts.
+- Field-Level Quality Examples (not output format): Weak = "cold style"; High Quality = "cold style derives from what scene pressure, evidentiary details, dialogue ratio, or information density".
+- Actionable Path: Each rule must be reusable by main text generation, editorial checks, or subsequent audits; avoid generalizing into platitudes applicable to all projects.
+
+## Pre-Delivery Verification
+- Are P0/P1/P2 priorities maintained, and do weak references not override hard constraints.
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans.
+- Are unauthorized characters, locations, world rules, future payoffs, or format agreements avoided.
+- Is project-specific evidence mapped to specific fields/rules, rather than reusing generic writing maxims.
+
+{#- ---------------------------------------------------------------------------
+    System Contract Injected by PromptBuilder
+    --------------------------------------------------------------------------- -#}

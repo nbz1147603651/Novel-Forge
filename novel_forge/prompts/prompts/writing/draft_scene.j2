@@ -1,0 +1,265 @@
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：draft_scene.j2
+服务步骤：DRAFT_SCENE（高级场景级写作模式：局部正文）
+作用简述：按当前 scene contract 写单个场景正文，只兑现本场独占事件/揭示/状态变化。
+上游输入：stage_cards、current_scene、completed_scene_handoffs、adjacent_scene_handoffs、
+         chapter_number、target_word_count、reading_power_hint
+下游输出：TEXT：当前场景正文，不含标题、scene_id、Markdown 或解释说明。
+下游消费者：draft._draft_scene_level_text、scene_writing.stitch_scene_texts、
+         后续编辑/质量检查/修复与持久化流程
+消费链优先级：P0 = 只写当前场景且不越界泄露其他场景 owned facts；
+         P1 = 接住依赖场景 handoff 并交出本场 handoff_to_next；
+         P2 = 风格、声纹、感官与表达质量
+================================================================================
+#}
+{%- import "_base/_calculate_word_constraints.j2" as wc_macros -%}
+{%- from "_base/_artifact_source_contract.j2" import render_artifact_source_contract -%}
+{%- from "_base/_cognitive_constraints.j2" import render_cognitive_constraints -%}
+{%- from "_quality_standards.j2" import forbidden_system_markers, anti_exposition_rules, creative_specificity_rules, dialogue_format, traditional_time_marker_rules -%}
+{% set cards = stage_cards | default({}) %}
+{% set source = cards.source | default({}) %}
+{% set source_contract = source.chapter_contract | default({}, true) %}
+{% set chapter = cards.chapter | default({}) %}
+{% set position = chapter.chapter_position | default(chapter_position | default({})) %}
+{% set contract = source_contract if source_contract else (cards.contract | default({})) %}
+{% set plan_card = cards.plan | default({}) %}
+{% set opening_bridge = plan_card.opening_bridge | default({}) %}
+{% set characters = cards.characters | default([]) %}
+{% set knowledge = cards.knowledge | default({}) %}
+{% set narration = cards.narration | default({}) %}
+{% set style = cards.style | default({}) %}
+{% set editorial = cards.editorial | default({}) %}
+{% set element = cards.element | default({}) %}
+{% set memory = cards.memory | default({}) %}
+{% set quality = cards.quality | default({}) %}
+{% set current = current_scene | default({}) %}
+{% set completed = completed_scene_handoffs | default([]) %}
+{% set adjacent = adjacent_scene_handoffs | default([]) %}
+{% set retry_feedback = scene_retry_feedback | default([]) %}
+{% set cognitive_constraints = contract.cognitive_constraints | default([]) %}
+{% set chapter_pov_character_id = chapter.pov_character_id | default('', true) %}
+{% set chapter_involved_character_ids = chapter.involved_character_ids | default([], true) %}
+{% set chapter_required_character_ids = chapter.required_character_ids | default([], true) %}
+{% set chapter_support_character_ids = chapter.support_character_ids | default([], true) %}
+{% set chapter_cast_plan = chapter.cast_plan | default({}, true) %}
+{% set chapter_emotional_plan = chapter.emotional_plan | default({}, true) %}
+{% set contract_required_events = contract.required_events | default([], true) %}
+{% set contract_required_progressions = contract.required_progressions | default([], true) %}
+{% set contract_allowed_progressions = contract.allowed_progressions | default([], true) %}
+{% set contract_forbidden_changes = contract.forbidden_changes | default([], true) %}
+{% set contract_forbidden_progressions = contract.forbidden_progressions | default([], true) %}
+{% set contract_future_leak_risks = contract.future_leak_risks | default([], true) %}
+{% set contract_exit_state_targets = contract.exit_state_targets | default([], true) %}
+{% set contract_hard_facts = contract.hard_facts | default([], true) %}
+{% set contract_pov_character_id = contract.pov_character_id | default('', true) %}
+{% set contract_required_character_ids = contract.required_character_ids | default([], true) %}
+{% set contract_support_character_ids = contract.support_character_ids | default([], true) %}
+{% set contract_emotional_plan = contract.emotional_plan | default({}, true) %}
+{% set plan_closing_contract = plan_card.closing_contract | default('', true) %}
+{% set style_summary = style.summary | default('', true) %}
+{% set editorial_character_voices = editorial.character_voices | default([], true) %}
+{% set knowledge_character_cards = knowledge.character_cards | default([], true) %}
+{% set knowledge_chapter_ops = knowledge.chapter_ops | default([], true) %}
+{% set memory_expression_records = memory.expression_channel_records | default([], true) %}
+
+## 任务
+为第 {{ chapter.chapter_number | default(chapter_number) }} 章写一个场景正文：{{ current.scene_id }}。
+{% if position %}
+- 章节位置：第 {{ position.chapter_number | default(chapter.chapter_number | default(chapter_number)) }} / {{ position.total_chapters }} 章；is_last_chapter={{ position.is_last_chapter | default(false) }}。
+{% if position.is_last_chapter | default(false) %}
+- 本章是当前 outline 的全书终章，当前场景可服务全书级收束，但不得突破 source/contract 边界。
+{% else %}
+- 本章不是全书终章：当前场景不得写成全书结局、最终清算或最终命运定论。
+{% endif %}
+{% if position.is_previously_final_chapter | default(false) %}
+- 本章曾是旧终章但已被延长：当前场景按过渡/再开启节奏处理。
+{% endif %}
+{% endif %}
+
+只写当前场景，不输出场景标题、scene_id、规划术语或解释说明。
+
+{{ wc_macros.render_word_constraint_hard(current.target_words | default(target_word_count)) }}
+
+{{ render_artifact_source_contract(source, title="## Source Artifact 契约（P0）", mode="scene") }}
+
+## Artifact 消费规则
+- 当前步骤只消费 current_scene、已完成依赖场景 handoff、相邻场景边界和本章 source 投影。
+- 不读取 cross-scene intent，不补写其他场景 owned facts，不把章节契约外的后续计划写成正文。
+- 局部角色声纹只约束本场对白和叙述语感，不能新增人物经历、关系结论或认知变化。
+
+## 章级共享锚点
+- 章节目标：{{ chapter.goal }}
+- 章节 POV：{{ chapter.pov_character }}{% if chapter_pov_character_id %}（entity_id={{ chapter_pov_character_id }}）{% endif %}
+{% if chapter_involved_character_ids %}- 本章 active cast ids：{{ chapter_involved_character_ids | join('；') }}{% endif %}
+{% if chapter_required_character_ids %}- 必须主动服务剧情的角色 ids：{{ chapter_required_character_ids | join('；') }}{% endif %}
+{% if chapter_support_character_ids %}- 可支援出场的角色 ids：{{ chapter_support_character_ids | join('；') }}{% endif %}
+{% if chapter_cast_plan %}- Cast Plan（P0）：{{ chapter_cast_plan }}{% endif %}
+{% if chapter_emotional_plan %}- Emotional Plan（P0）：{{ chapter_emotional_plan }}{% endif %}
+{% if contract_pov_character_id %}- 契约 POV entity_id：{{ contract_pov_character_id }}{% endif %}
+{% if contract_required_character_ids %}- 契约 required character ids：{{ contract_required_character_ids | join('；') }}{% endif %}
+{% if contract_support_character_ids %}- 契约 support character ids：{{ contract_support_character_ids | join('；') }}{% endif %}
+{% if contract_emotional_plan %}- 契约情感计划：{{ contract_emotional_plan }}{% endif %}
+{% if contract_required_events %}- 全章必达事件：{{ contract_required_events | join('；') }}{% endif %}
+{% if contract_required_progressions %}- 必达推进：{{ contract_required_progressions | join('；') }}{% endif %}
+{% if contract_allowed_progressions %}- 允许铺垫：{{ contract_allowed_progressions | join('；') }}{% endif %}
+{% if contract_forbidden_changes %}- 禁止变化：{{ contract_forbidden_changes | join('；') }}{% endif %}
+{% if contract_forbidden_progressions %}- 禁止提前推进：{{ contract_forbidden_progressions | join('；') }}{% endif %}
+{% if contract_future_leak_risks %}- 未来泄露风险：{{ contract_future_leak_risks | join('；') }}{% endif %}
+{% if contract_exit_state_targets %}- 全章出口目标：{{ contract_exit_state_targets | join('；') }}{% endif %}
+{% if contract_hard_facts %}- 硬事实：{{ contract_hard_facts | join('；') }}{% endif %}
+{% if cognitive_constraints %}
+- 认知约束：当前场景不得把下列对象写到超过指定等级；只能使用观察、误判、怀疑、遮蔽或间接异常来铺垫。
+{{ render_cognitive_constraints(cognitive_constraints) }}
+{% endif %}
+{% if current.scene_id == "scene_01" and opening_bridge.action_handoff | default('', true) %}- 开场桥接：{{ opening_bridge.action_handoff }}{% endif %}
+{% if plan_closing_contract %}- 全章结尾契约：{{ plan_closing_contract }}{% endif %}
+
+## 当前场景契约（只能兑现这些）
+- 场景目标：{{ current.scene_goal or current.purpose }}
+- 概述：{{ current.summary }}
+- 冲突：{{ current.conflict }}
+- 角色：{{ current.required_characters | default([]) | join('、') }}
+- 入场状态：{{ current.entry_state or current.entry_state_refs | default([]) | join('；') }}
+- 独占事件：{{ current.owned_events | default([]) | join('；') }}
+- 独占揭示：{{ current.owned_revelations | default([]) | join('；') }}
+- 独占状态变化：{{ current.owned_state_changes | default([]) | join('；') }}
+- 禁止重叠：{{ current.forbidden_overlap | default([]) | join('；') }}
+- 必须结果：{{ current.required_outcome }}
+- 出口状态：{{ current.exit_state or current.exit_target_state }}
+- 交接给下一场：{{ current.handoff_to_next }}
+- 时间/地点：{{ current.time_marker }} / {{ current.location }}
+- POV：{{ current.pov_character or chapter.pov_character }} / {{ current.pov_scope or "limited" }}
+{% if current.world_rule_ids | default([]) %}- 本场世界规则 ID：{{ current.world_rule_ids | join('、') }}（只执行本场绑定规则，不自行扩写）{% endif %}
+{% if current.world_rule_usage | default('') %}- 世界规则落地：{{ current.world_rule_usage }}{% endif %}
+{% if current.world_rule_evidence_expectations | default([]) %}- 世界规则可观察证据：{{ current.world_rule_evidence_expectations | join('；') }}{% endif %}
+{% if current.world_rule_forbidden_boundaries | default([]) %}- 世界规则禁止边界：{{ current.world_rule_forbidden_boundaries | join('；') }}{% endif %}
+{{ traditional_time_marker_rules() }}
+{% if current.choice_pressure %}- 选择压力：{{ current.choice_pressure }}{% endif %}
+{% if current.scene_resistance %}- 场景阻力：{{ current.scene_resistance }}{% endif %}
+{% if current.sensory_notes %}- 感官锚点候选：{{ current.sensory_notes }}{% endif %}
+{% if current.dialogue_voice_targets %}- 对白声纹：{% for name, target in current.dialogue_voice_targets.items() %}{{ name }}={{ target }}{% if not loop.last %}；{% endif %}{% endfor %}{% endif %}
+{% if current.symbol_usage_policy %}- 象征物策略：{{ current.symbol_usage_policy }}{% endif %}
+{% if current.body_signal_budget is defined %}- 身体信号预算：最多 {{ current.body_signal_budget }} 个高情绪身体信号{% endif %}
+{% set current_pov_constraints = current.pov_knowledge_constraints | default({}) %}
+{% if current_pov_constraints.forbidden_knowledge | default([]) %}
+- POV 知识禁区：{{ current_pov_constraints.forbidden_knowledge | join('；') }}
+{% if current_pov_constraints.sensory_limits | default([]) %}- POV 感知限制：{{ current_pov_constraints.sensory_limits | join('；') }}{% endif %}
+{% endif %}
+
+{% if retry_feedback %}
+## 上一稿局部验收失败（P0，必须纠正）
+- 以下是上一稿未通过的客观交付问题；重新写当前场景正文，不得在正文解释、复述或暴露这些诊断。
+{% for item in retry_feedback %}
+- [{{ item.code | default('local_validation') }}] {{ item.message | default('') }}
+{% endfor %}
+- 只修复当前场景的交付质量；不得为补字数或消除诊断而新增未规划事件、揭示或人物状态变化。
+{% endif %}
+
+{% if completed %}
+## 已完成依赖场景交接
+{% for item in completed %}
+- {{ item.scene_id }}：{{ item.handoff_to_next }}{% if item.tail %}；尾句：{{ item.tail }}{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if adjacent %}
+## 相邻场景边界
+{% for item in adjacent %}
+- {{ item.role }} {{ item.scene_id }}：entry={{ item.entry_state }}；exit={{ item.exit_state }}；handoff={{ item.handoff_to_next }}
+{% endfor %}
+{% endif %}
+
+{% if characters %}
+## 角色卡
+{% for char in characters %}
+- {{ char.get('name', '') }}{% if char.get('role') %}（{{ char.get('role') }}）{% endif %}：{{ char.get('identity', '') }}{% if char.get('personality') %}；{{ char.get('personality') }}{% endif %}{% if char.get('voice') | default('') %}；声纹={{ char.get('voice') }}{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if narration.rule | default('') %}
+## 叙事人称规则
+- {{ narration.rule }}
+{% endif %}
+
+{% if knowledge_character_cards or knowledge_chapter_ops %}
+## 角色知识边界（P0）
+- 当前场景只能使用角色已知/怀疑/误信的信息；若本场让角色获知新信息，必须写出可见证据。
+{% for kb in knowledge_character_cards %}
+{% set changes = kb.chapter_promised_changes | default([]) %}
+- {{ kb.character }}{% if kb.is_pov %}（当前 POV）{% endif %}：已知={{ kb.known_facts | default([]) | join('；') or '无特殊已知事实' }}；怀疑={{ kb.suspicions | default([]) | join('；') or '无' }}；误信={{ kb.misbeliefs | default([]) | join('；') or '无' }}{% if changes %}；本章认知变化={{ changes | map(attribute='target_text') | list | join('；') }}{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if element.required_elements | default([]) or element.focused_extension_elements | default([]) or element.focus_constraints | default([]) %}
+## 叙事要素焦点
+{% for item in element.required_elements | default([]) %}
+- 必要要素：{{ item.get('name', '') }}{% if item.prompt_hint | default('') %}｜{{ item.prompt_hint }}{% endif %}
+{% endfor %}
+{% for item in element.focused_extension_elements | default([]) %}
+- 本场相关聚焦：{{ item.get('name', '') }}{% if item.prompt_hint | default('') %}｜{{ item.prompt_hint }}{% endif %}
+{% endfor %}
+{% if element.focus_constraints | default([]) %}- 执行约束：{{ element.focus_constraints | join('；') }}{% endif %}
+- 要素名称只用于幕后设计，正文必须转译成动作、对白、冲突和感官细节。
+{% endif %}
+
+{% if style_summary or editorial_character_voices %}
+## 声音与风格
+{% if style_summary %}- {{ style_summary }}{% endif %}
+{% for item in editorial_character_voices %}
+- {{ item.character }}：{{ item.sentence_profile }}；解释倾向={{ item.explanation_bias }}
+{% endfor %}
+{% endif %}
+
+{% if plan_card.forbidden_elements | default([]) or plan_card.forbidden_elements_soft | default([]) or plan_card.expression_channel_records | default([]) or memory_expression_records %}
+## 表达冷却与禁用通道
+{% if plan_card.forbidden_elements | default([]) %}- 硬禁元素：{{ plan_card.forbidden_elements | join('；') }}{% endif %}
+{% if plan_card.forbidden_elements_soft | default([]) %}- 建议替换通道：{{ plan_card.forbidden_elements_soft | join('；') }}{% endif %}
+{% set plan_expression_records = plan_card.expression_channel_records | default([]) %}
+{% for item in plan_expression_records %}
+- {{ item.channel | default('表达通道') }} / {{ item.channel_id | default('') }}：{{ item.text | default('') }}{% if item.replacement_axes | default([]) %}；替代方向={{ item.replacement_axes | join('、') }}{% endif %}
+{% endfor %}
+{% for item in memory_expression_records %}
+- 近期高频 {{ item.channel | default('表达通道') }}：{{ item.text | default('') }}
+{% endfor %}
+{% endif %}
+
+{% if quality.chapter_hook | default('') or quality.micro_payoffs | default([]) or quality.weak_senses | default([]) %}
+## 当前场景质量目标
+{% if quality.chapter_hook | default('') %}- 章尾钩子方向：{{ quality.chapter_hook }}{% endif %}
+{% if quality.micro_payoffs | default([]) %}- 微兑现候选：{{ quality.micro_payoffs | join('；') }}{% endif %}
+{% if quality.weak_senses | default([]) %}- 本章弱感官通道需补足：{{ quality.weak_senses | join('、') }}{% endif %}
+{% endif %}
+
+## 写作规则
+1. 只写当前场景，禁止提前写其他场景的 owned_events / owned_revelations / owned_state_changes。
+2. 若当前场景依赖前序，只接住"已完成依赖场景交接"，不要复述完整前文。
+3. 必须写出当前场景的可见动作、对白、阻力和选择，不用旁白概括替代事件发生。
+4. 非 POV 角色内心只能通过可观察动作、表情和台词呈现。
+5. 场景结尾必须交出 `handoff_to_next` 对应的动作、情绪或信息。
+6. 不输出标题、编号、Markdown 分隔符、任务解释或元叙事。
+7. 主动出场人物只允许来自本章 cast plan；历史称谓、误称、传说人物只能作为正文信息被提及，不能写成现场行动者。
+8. 情感表达必须落在行动、关系选择、代价和出口余韵上，避免把 emotional_plan 改写成空泛独白。
+9. 【P0 必须结果交付】「必须结果」（required_outcome）是本场硬性交付物：正文必须包含能直接映射到 required_outcome 描述的关键动作、实体和事件。不得用功能近似的替代物、概括性叙述或省略来规避。如果 required_outcome 指定了具体道具/动作/场景，正文必须使用该指定实体而非自创替代。
+10. 若本场绑定 world_rule_ids，必须把 world_rule_usage 与 evidence expectations 写成可观察动作、限制或代价，并严格避开 forbidden boundaries；不得只用设定说明代替执行证据。
+
+{{ dialogue_format() }}
+{{ anti_exposition_rules(title="") }}
+{{ creative_specificity_rules(title="") }}
+{{ forbidden_system_markers() }}
+{{ wc_macros.render_word_constraint_self_check(current.target_words | default(target_word_count)) }}
+
+## 质量校准
+- 工作身份：你是一位契约感很强的小说执行编辑，擅长把输入约束转化为有动作、有选择、有后果的叙事内容。
+- 创意推断路径：先找情感引擎与冲突压力，再落到动作、对白、场面调度和后果。
+- 字段级质量示例（非输出格式）：平弱=“角色很紧张”；高质量=“角色在具体选择前暴露代价、误判或情绪转折”。
+- 可操作路径：每个新增内容都服务于已给人物动机、场景阻力、悬念推进或情绪落点。
+
+## 交付前核验
+- P0/P1/P2 优先级是否被保持，且没有让弱参考覆盖硬约束。
+- 是否能把关键判断回指到输入证据、上游契约或已批准计划。
+- 是否避免新增未授权的人物、地点、世界规则、未来 payoff 或格式协议。
+- 是否把抽象目标转化为可观察的行动、冲突、状态变化或章节承接点。
+- 【必须结果核验】逐条对照 required_outcome：正文中是否存在与之直接对应的动作/实体/事件？若存在替代或缺失，必须立即修正回契约指定的实体和动作。

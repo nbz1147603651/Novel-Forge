@@ -1,0 +1,325 @@
+/* Source-aligned settings sections.
+ *
+ * The application shell is intentionally owned by design-tokens.css.  Keeping
+ * the top bar and canvas geometry shared with 章台 prevents the workspace from
+ * jumping when the two routes are switched in succession.  Page-local rules
+ * below only style settings content. */
+
+.settings-page {
+  /*
+   * The information architecture remains source-aligned, while the user has
+   * explicitly selected a denser primary workspace.  Keep the hierarchy, but
+   * let the model status cards enter the first 900px frame without oversized
+   * hero chrome.
+   */
+  gap: var(--nf-space-3);
+}
+
+.settings-page .settings-hero {
+  grid-template-columns: minmax(0, 1fr) minmax(380px, 470px);
+  gap: var(--nf-space-4);
+  min-height: 246px;
+  padding: var(--nf-space-4) var(--nf-space-5);
+  border-radius: 16px;
+}
+
+.settings-page .settings-hero-copy {
+  align-self: stretch;
+}
+
+.settings-page .settings-hero h2 {
+  margin: 8px 0 6px;
+  font-size: var(--nf-font-page);
+  line-height: 1.28;
+  letter-spacing: .025em;
+}
+
+.settings-page .settings-hero-copy > p {
+  margin: 0;
+  font-size: var(--nf-font-body);
+  line-height: 1.45;
+}
+
+.settings-page .settings-overview > p {
+  margin-bottom: 7px;
+  font-size: var(--nf-font-ui);
+}
+
+.settings-page .button-row {
+  gap: var(--nf-space-2);
+  margin-top: var(--nf-space-2);
+}
+
+.settings-page .setting-metric {
+  min-height: 68px;
+  padding: 7px 9px;
+  border-radius: 9px;
+}
+
+.settings-page .setting-metric h4 {
+  font-size: var(--nf-font-meta);
+}
+
+.settings-page .setting-metric strong {
+  margin-top: 4px;
+  font-family: inherit;
+  font-size: var(--nf-font-ui);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.settings-page .setting-metric p {
+  margin-top: 3px;
+  font-size: var(--nf-font-micro);
+  line-height: 1.25;
+}
+
+.settings-page .model-connection-status {
+  gap: var(--nf-space-2);
+}
+
+.settings-page .model-connection-card {
+  min-height: 78px;
+}
+
+.settings-page .model-connection-card:nth-child(n + 13) {
+  content-visibility: auto;
+  contain-intrinsic-size: 78px;
+}
+
+.settings-routing-body { contain: layout style; }
+.settings-session-save-notice { margin: var(--nf-space-2) 0 0; padding: var(--nf-space-2) var(--nf-space-3); border-left: 3px solid var(--nf-status-success); color: var(--nf-status-success); background: var(--nf-status-success-bg); font-size: var(--nf-font-meta); line-height: 1.45; animation: notice-slide-in 200ms cubic-bezier(.22, .61, .36, 1) both; }
+.settings-session-save-notice.is-error { border-color: var(--nf-accent-primary-pressed, #a34a2a); color: var(--nf-accent-primary-pressed, #a34a2a); background: color-mix(in srgb, var(--nf-accent-primary-pressed, #a34a2a) 8%, var(--nf-bg-surface)); }
+.settings-session-save-notice small { margin-left: 4px; color: var(--nf-text-muted); }
+.settings-session-save-notice > p { margin: 0; }
+.settings-session-save-notice ul { display: grid; gap: 3px; margin: 7px 0 0; padding-left: 18px; color: var(--nf-status-danger); font-size: var(--nf-font-2xs); }
+.settings-session-save-notice code { font: inherit; font-weight: 700; }
+.settings-transfer-notice { flex-basis: 100%; color: var(--nf-text-secondary); font-size: var(--nf-font-meta); line-height: 1.45; }
+.settings-transfer-global { display: block; margin: 0 0 10px; padding: 8px 12px; border-left: 3px solid var(--nf-accent-primary); background: var(--nf-bg-panel-muted, var(--nf-bg-surface)); }
+
+.settings-page .settings-section-heading h2 {
+  font-family: "Songti SC", "STSong", "NSimSun", Georgia, serif;
+  font-size: var(--nf-font-section);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--nf-text-heading, var(--nf-text-primary));
+}
+
+.settings-page .settings-section-heading p {
+  margin-top: 3px;
+  font-size: var(--nf-font-meta);
+  color: var(--nf-text-muted);
+  line-height: 1.4;
+}
+
+.settings-page .settings-card {
+  border-radius: 12px;
+}
+
+.settings-page {
+  --settings-accordion-font-family: Georgia, "Songti SC", serif;
+  --settings-accordion-font-size: var(--nf-font-section-lg);
+  --settings-accordion-font-weight: 600;
+  --settings-accordion-line-height: 1.35;
+  --settings-accordion-min-height: 48px;
+  --settings-accordion-inline-padding: var(--nf-space-5);
+}
+
+/* All first-level settings accordions share one type contract. Individual
+ * sections own their body layouts; this primitive owns their trigger rhythm. */
+.settings-page .settings-accordion-toggle {
+  min-height: var(--settings-accordion-min-height);
+  padding-inline: var(--settings-accordion-inline-padding);
+  font-family: var(--settings-accordion-font-family);
+  font-size: var(--settings-accordion-font-size);
+  font-weight: var(--settings-accordion-font-weight);
+  line-height: var(--settings-accordion-line-height);
+  letter-spacing: 0;
+}
+
+.settings-page .settings-accordion-toggle > span {
+  font-family: sans-serif;
+  font-size: var(--nf-font-section-sm);
+}
+
+.settings-page .settings-card-body {
+  gap: var(--nf-space-2);
+  padding: 0 var(--nf-space-3) var(--nf-space-3);
+}
+
+.settings-page .settings-card-body > p {
+  margin-top: var(--nf-space-2);
+  font-size: var(--nf-font-body);
+  line-height: 1.45;
+}
+
+.settings-page .settings-routing-body > p {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-page .setting-row {
+  min-height: 48px;
+  gap: var(--nf-space-4);
+  padding: var(--nf-space-2) 0;
+}
+
+.settings-page .setting-row span {
+  gap: 2px;
+}
+
+.settings-page .setting-row strong {
+  font-size: var(--nf-font-ui);
+}
+
+.settings-page .setting-row small {
+  font-size: var(--nf-font-micro);
+}
+
+.settings-page .setting-row select {
+  min-width: 160px;
+  height: var(--nf-control-height);
+  font-size: var(--nf-font-ui);
+}
+
+/* Settings page visual parity — transitions and animations */
+
+.settings-page .settings-card {
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+
+.settings-page .settings-card:hover {
+  border-color: color-mix(in srgb, var(--nf-accent-primary) 25%, transparent);
+}
+
+.settings-page .settings-card-toggle {
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.settings-page .setting-row select {
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.settings-page .setting-row select:focus {
+  border-color: var(--nf-accent-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--nf-accent-primary) 12%, transparent);
+}
+
+/* Theme grid — 3×4 responsive swatch picker */
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 12px 0 16px;
+}
+
+.theme-grid-item {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 22%, transparent);
+  border-radius: var(--nf-radius-card, 12px);
+  background: var(--nf-bg-surface, #fffaf3);
+  text-align: left;
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms cubic-bezier(.22, .61, .36, 1);
+}
+
+.theme-grid-item:hover {
+  border-color: color-mix(in srgb, var(--nf-accent-primary) 45%, transparent);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--nf-shadow) 10%, transparent);
+  transform: translateY(-1px);
+}
+
+.theme-grid-item.is-active {
+  border-color: var(--nf-accent-primary, #b65634);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--nf-accent-primary) 22%, transparent),
+              0 4px 12px color-mix(in srgb, var(--nf-shadow) 10%, transparent);
+}
+
+.theme-grid-swatch {
+  display: flex;
+  gap: 3px;
+  height: 22px;
+  overflow: hidden;
+  border-radius: 6px;
+}
+
+.theme-grid-swatch span {
+  flex: 1;
+  border-radius: 4px;
+}
+
+.theme-grid-item strong {
+  color: var(--nf-text-heading, #35281f);
+  font-size: var(--nf-font-body);
+  font-weight: 700;
+}
+
+.theme-grid-item small {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  color: var(--nf-text-muted, #8b7460);
+  font-size: var(--nf-font-meta);
+  line-height: 1.4;
+}
+
+@media (max-width: 1280px) {
+  .theme-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* Settings card body collapse animation */
+.settings-page .settings-card-body {
+  animation: settings-body-open 200ms cubic-bezier(.22, .61, .36, 1) both;
+}
+
+@keyframes settings-body-open {
+  from { opacity: 0; max-height: 0; }
+  to { opacity: 1; max-height: 2000px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-page .settings-card { transition: none; }
+  .settings-page .settings-card-toggle { transition: none; }
+  .settings-page .setting-row select { transition: none; }
+  .theme-grid-item { transition: none; }
+  .theme-grid-item:hover { transform: none; }
+  .settings-page .settings-card-body { animation: none; }
+}
+
+/* ── Locale Toggle ─────────────────────────────────────────────────────────── */
+
+.locale-toggle {
+  display: inline-flex;
+  gap: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--nf-border-subtle, color-mix(in srgb, var(--nf-text-body) 15%, transparent));
+}
+
+.locale-toggle-btn {
+  padding: 6px 14px;
+  font-size: var(--nf-font-ui, 13px);
+  font-weight: 500;
+  border: none;
+  background: var(--nf-bg-input, color-mix(in srgb, var(--nf-bg-surface) 80%, var(--nf-text-body) 5%));
+  color: var(--nf-text-muted, color-mix(in srgb, var(--nf-text-body) 60%, transparent));
+  cursor: pointer;
+  transition: background 150ms, color 150ms;
+}
+
+.locale-toggle-btn:first-child {
+  border-right: 1px solid var(--nf-border-subtle, color-mix(in srgb, var(--nf-text-body) 15%, transparent));
+}
+
+.locale-toggle-btn:hover {
+  background: color-mix(in srgb, var(--nf-accent-primary) 8%, var(--nf-bg-surface));
+}
+
+.locale-toggle-btn.is-active {
+  background: var(--nf-accent-primary, #b45309);
+  color: #fff;
+  font-weight: 600;
+}

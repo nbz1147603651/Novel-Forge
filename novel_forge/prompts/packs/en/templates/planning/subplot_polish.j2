@@ -1,0 +1,161 @@
+{# ================================================================================
+source_template_hash: cbd5b1f3cfd0aa04fc4da5544d63f37260b80bfd13a05771d02c7b4cb72ce56a
+[NOTES]
+================================================================================
+Prompt: subplot_polish.j2
+Service Step: SUBPLOT_POLISH (Subplot Polishing)
+Brief Description: Polish and optimize existing subplot plans, enhance weaving
+         relationships, optimize node events, improve resolution paths, and ensure
+         subplot consistency with the blueprint.
+Upstream Input:
+  - subplots: Subplot list to be polished (name, description, priority, involved_chapters,
+               chapter_events, weave_links, resolution_chapter,
+               resolution_target, resolution_type)
+  - all_subplots: All subplots (including unselected, for weaving reference)
+  - selected_names: Selected subplot name list for this round
+  - narrative blueprint: (synopsis, narrative_phases, key_turning_points,
+               character_arcs)
+Downstream Output:
+  - JSON: {"subplots": [...]}, polished subplot list
+  - Downstream Consumer: PLAN_OUTLINE / PLAN_CHAPTER
+Consumption Chain Priority:
+  P0 = weave_links Weaving structure constraints (at least 1 main line trigger/subplot feedback)
+  P1 = chapter_events Node event narrative function
+  P2 = resolution Resolution path clarity
+Brief Example:
+  Input: subplots=[{name:"Mystery of Origin Subplot", weave_links:[...]}]
+  Output: {"subplots":[{name:"Mystery of Origin Subplot", weave_links:[{link_type:"trigger_start",...}], ...}]}
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer: Task Definition + Context Consumption
+    --------------------------------------------------------------------------- -#}
+
+## Subplot Polish Prompt
+
+You are a professional narrative architect responsible for polishing and optimizing novel subplot plans.
+
+{% if generation_mode | default(false) %}
+### Subplot Generation Task
+
+There are no selected subplots to rewrite. Based on the narrative blueprint and the existing plans, **create {{ requested_count | default(2) }} new candidate subplots**. They will be reviewed by the author before anything is written to the project.
+
+Author direction: {{ user_hint | default("None supplied; fill a missing character-action, external-conflict, or thematic-echo axis in the main plot.") }}
+
+- Each candidate must be an independent external event line; do not rename a purely internal arc or duplicate an existing subplot.
+- Give every candidate 3–5 actionable chapter events, at least one main-plot trigger link, one feedback-to-main-plot link, and a concrete resolution.
+- Do not invent important characters, world rules, or endgame facts unsupported by the blueprint; anchor uncertain details in existing characters, phases, and turning points.
+- Return only new candidates. Do not modify or restate the existing entries in “All Subplots”.
+{% endif %}
+
+{% if subplots|length > 1 %}
+### Polishing Scope
+
+This round requires polishing **{{ subplots|length }} subplots**, please ensure the weaving relationships between them are coordinated.
+
+{% endif %}
+### Subplots to Polish
+
+{% for subplot in subplots %}
+---
+**Subplot Name**: {{ subplot.name }}
+**Subplot Description**: {{ subplot.description }}
+**Priority**: {{ subplot.priority }}
+**Chapter Range**: Ch.{{ subplot.involved_chapters | min }}-Ch.{{ subplot.involved_chapters | max }}
+**Resolution Chapter**: Ch.{{ subplot.resolution_chapter }}
+**Resolution Type**: {{ subplot.resolution_type }}
+**Resolution Target**: {{ subplot.resolution_target }}
+
+**Node Events**:
+{% for event in subplot.chapter_events %}
+- Ch.{{ event.chapter_number }}: {{ event.event }}
+{% endfor %}
+
+**Weaving Relationships**:
+{% for link in subplot.weave_links %}
+- {{ link.link_type }} → {{ link.target_subplot }}: {{ link.description }}
+{% endfor %}
+---
+{% endfor %}
+
+### Narrative Blueprint Context
+
+**Story Synopsis**: {{ blueprint.synopsis }}
+
+**Narrative Phases**:
+{% for phase in blueprint.narrative_phases %}
+- {{ phase.phase_name }} (Ch.{{ phase.chapter_start }}-Ch.{{ phase.chapter_end }}): {{ phase.description }}
+{% endfor %}
+
+**Key Turning Points**:
+{% for tp in blueprint.key_turning_points %}
+- Ch.{{ tp.chapter_number }}: {{ tp.description }}
+{% endfor %}
+
+**Main Plot Skeleton Nodes**:
+{% for node in blueprint.key_turning_points %}
+- Ch.{{ node.chapter_number }}: {{ node.label }} - {{ node.description }}
+{% endfor %}
+
+**Character Arcs**:
+{% for arc in blueprint.character_arcs %}
+- {{ arc.character }}: {{ arc.arc_summary }}
+{% endfor %}
+
+### All Subplots (Including Unselected, for Weaving Reference)
+
+{% for sp in all_subplots %}
+{% if sp.name not in selected_names %}
+- **{{ sp.name }}** (Ch.{{ sp.involved_chapters | min }}-Ch.{{ sp.involved_chapters | max }}): {{ sp.description }}
+  - Resolution: Ch.{{ sp.resolution_chapter }} ({{ sp.resolution_type }})
+{% endif %}
+{% endfor %}
+
+### Polishing Requirements
+
+Please polish the subplots according to the following requirements and write the results into the `subplots` array:
+
+1. **Enhance Weaving Relationships**: Ensure each subplot has clear weaving relationships with the main plot and other subplots
+   - At least 1 [Main Plot → Subplot] link (trigger_start or trigger_turn)
+   - At least 1 [Subplot → Main Plot] link (feed_main or reveal_key)
+   - If there are multiple subplots, add inter-subplot weaving relationships (constrain/enable/conflict/theme_echo)
+   - **When polishing multiple subplots simultaneously, please ensure their weaving relationships are coordinated**
+
+2. **Optimize Node Events**: Ensure each node event has clear narrative function
+   - Each event should either advance the subplot or create interaction with the main plot/other subplots
+   - Event descriptions should be specific and visual
+   - Event chapters should coordinate with key events in narrative phases
+
+3. **Improve Resolution Paths**: Ensure subplots have clear resolution methods
+   - resolution_target should point to specific main plot turning points or character fates
+   - resolution_type should be explicit (resolve/reveal/ascend/merge)
+   - Resolution chapters should fall within the narrative phase scope
+
+4. **Maintain Blueprint Consistency**: Ensure subplots align with the overall direction of the narrative blueprint
+   - Chapter ranges should fall within narrative phase scope
+   - Events should coordinate with key turning points
+   - Character arcs should echo subplot development
+
+{% if subplots|length > 1 %}
+5. **Multi-Subplot Coordination**: This round of polishing involves multiple subplots, please pay special attention to:
+   - Avoid conflicts where multiple subplots occur in the same chapter
+   - Ensure subplot weaving relationships form a network rather than isolated connections
+   - Consider temporal sequence and causal relationships between subplots
+{% endif %}
+
+## Quality Calibration
+- Work Identity: You are a long-form narrative architect skilled at breaking story assets intohandoff, verifiable, non-spoiler-heavy execution plans.
+- Planning Inference Path: First lock in P0 hard constraints, then allocate P1 pacing, and finally use P2 style/theme to supplement the presentation layer.
+- Field-Level Quality Examples (not output format): Weak = "advancing relationship"; High Quality = "clarify who acts for what, how relationships change, and how the next step connects."
+- Actionable Paths: Plan items should be directly checkable by subsequent writing/audit, avoid giving only abstract wishes or thematic slogans.
+
+## Pre-Delivery Verification
+- Are P0/P1/P2 priorities maintained, and no weak references overriding hard constraints?
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans?
+- Are unauthorized new characters, locations, world rules, future payoffs, or format agreements avoided?
+- Are abstract goals transformed into observable actions, conflicts, state changes, or chapter handoff points?
+
+{#- ---------------------------------------------------------------------------
+    Format Layer: Output Format and Schema
+    --------------------------------------------------------------------------- -#}

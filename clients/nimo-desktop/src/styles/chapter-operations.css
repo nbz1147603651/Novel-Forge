@@ -1,0 +1,70 @@
+.chapter-operation-dialog {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  width: min(480px, calc(100vw - 48px));
+  min-height: 286px;
+  box-sizing: border-box;
+  padding: 24px 28px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 19%, transparent);
+  border-radius: var(--nf-radius-dialog-compact);
+  color: var(--nf-text-body);
+  background: var(--nf-bg-dialog);
+  box-shadow: 0 22px 60px color-mix(in srgb, var(--nf-shadow) 29%, transparent);
+  animation: dialog-rise-in 180ms cubic-bezier(.22, .61, .36, 1);
+}
+
+/* Keep cleanup focused on confirmation: show the affected range and retained
+ * evidence, then close before execution. No fake in-dialog progress timeline. */
+.chapter-operation-dialog.is-clean { grid-template-rows: auto auto auto auto auto auto 1fr; max-height: calc(100vh - 48px); min-height: 0; overflow-y: auto; padding-top: 30px; }
+.chapter-operation-dialog.is-clean h2 { margin-bottom: 12px; font-size: var(--nf-font-page); }
+.chapter-operation-dialog.is-clean > p { line-height: 1.55; }
+.chapter-operation-dialog.is-clean .chapter-clean-cutoff { font-size: var(--nf-font-section-sm); }
+.chapter-operation-dialog.is-clean .chapter-clean-cutoff input { width: 72px; height: 48px; border-color: color-mix(in srgb, var(--nf-border-default) 35%, transparent); border-radius: 8px; }
+.chapter-operation-dialog.is-clean .chapter-operation-warning { margin-top: 20px; }
+.chapter-operation-dialog.is-clean footer { align-self: end; margin-top: 0; padding-top: 4px; }
+
+/* Mirrors ProjectSwitchConfirmDialog's 480×287 active-task confirmation.
+ * The source gives both decisions equal emphasis and makes the background
+ * continuation guarantee visible before either choice. */
+.chapter-operation-dialog.is-project-switch { grid-template-rows: auto auto auto auto 1fr; height: min(287px, calc(100vh - 48px)); min-height: 0; padding-top: 33px; padding-bottom: 22px; }
+.chapter-operation-dialog.is-project-switch h2 { margin-bottom: 21px; font-size: var(--nf-font-page); }
+.chapter-operation-dialog.is-project-switch > p { font-size: var(--nf-font-section-sm); line-height: 1.45; }
+.chapter-operation-dialog.is-project-switch hr { margin: 13px 0; }
+.chapter-operation-dialog.is-project-switch > small { font-size: var(--nf-font-section-sm); }
+.chapter-operation-dialog.is-project-switch footer { display: grid; grid-template-columns: 1fr 1fr; align-self: end; gap: 8px; margin-top: 0; padding-top: 4px; }
+.chapter-operation-dialog.is-project-switch .chapter-operation-primary, .chapter-operation-dialog.is-project-switch .chapter-operation-quiet { width: 100%; min-height: 40px; height: 40px; padding-inline: 18px; border-radius: 9px; font-size: var(--nf-font-section); }
+
+.chapter-operation-dialog h2 { margin: 0 0 4px; color: var(--nf-text-heading); font-family: Georgia, "Songti SC", serif; font-size: var(--nf-font-display); font-weight: 600; }
+.chapter-operation-dialog > p { margin: 0; color: var(--nf-text-secondary); font-size: var(--nf-font-subsection); line-height: 1.6; }
+.chapter-operation-dialog hr { width: 100%; height: 1px; margin: 2px 0; border: 0; background: color-mix(in srgb, var(--nf-border-default) 18%, transparent); }
+.chapter-operation-dialog > small { color: var(--nf-text-muted-soft); font-size: var(--nf-font-label); line-height: 1.5; }
+.chapter-operation-dialog footer { display: flex; align-items: center; gap: 8px; margin-top: auto; padding-top: 7px; }
+.chapter-operation-dialog footer > span { flex: 1; }
+.chapter-operation-quiet, .chapter-operation-primary, .chapter-operation-danger { min-height: 36px; padding: 0 18px; border: 1px solid color-mix(in srgb, var(--nf-border-default) 23%, transparent); border-radius: 10px; font-size: var(--nf-font-label); font-weight: 700; white-space: nowrap; }
+.chapter-operation-quiet { color: var(--nf-text-body); background: color-mix(in srgb, var(--nf-bg-input) 56%, var(--nf-bg-surface)); }
+.chapter-operation-primary { color: var(--nf-brand-logo-frame); border-color: var(--nf-accent-primary); background: var(--nf-accent-primary); }
+.chapter-operation-danger { color: var(--nf-accent-primary-pressed); border-color: color-mix(in srgb, var(--nf-accent-primary-pressed) 42%, transparent); background: color-mix(in srgb, var(--nf-accent-primary-pressed) 8%, var(--nf-bg-surface)); }
+.chapter-operation-danger:disabled { opacity: .58; }
+.chapter-clean-cutoff { display: flex; align-items: center; gap: 7px; color: var(--nf-text-heading); font-size: var(--nf-font-section-sm); font-weight: 700; }
+.chapter-clean-cutoff input { width: 70px; height: 45px; box-sizing: border-box; padding: 0 8px; border: 1px solid color-mix(in srgb, var(--nf-accent-primary) 38%, transparent); border-radius: 9px; color: var(--nf-text-heading); background: var(--nf-bg-input); font: inherit; }
+.chapter-clean-impact { display: grid; gap: 5px; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--nf-accent-primary) 22%, transparent); border-radius: 9px; color: var(--nf-text-secondary); background: color-mix(in srgb, var(--nf-bg-control) 48%, var(--nf-bg-surface)); font-size: var(--nf-font-label); line-height: 1.5; }
+.chapter-clean-impact strong { color: var(--nf-text-heading); }
+.chapter-operation-warning { color: var(--nf-accent-primary-pressed) !important; }
+.chapter-operation-checkbox { display: flex; gap: 7px; color: var(--nf-text-secondary); font-size: var(--nf-font-label); font-weight: 700; line-height: 1.5; }
+.chapter-operation-checkbox input { flex: 0 0 auto; margin: 2px 0 0; accent-color: var(--nf-accent-primary); }
+.studio-operation-notice { min-width: 0; margin: 6px 0 0; padding: 5px 10px; overflow: hidden; border-left: 3px solid var(--nf-accent-primary); color: var(--nf-text-secondary); background: color-mix(in srgb, var(--nf-bg-control) 38%, var(--nf-bg-surface)); font-size: var(--nf-font-label); line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 560px) { .chapter-operation-dialog { min-height: 0; padding: 20px; }.chapter-operation-dialog footer { flex-wrap: wrap; }.chapter-operation-dialog footer > span { display: none; } }
+
+/* Honor reduced motion (design-tokens has global guard, this is explicit
+ * for local animations that should not run when the user prefers reduced
+ * motion). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

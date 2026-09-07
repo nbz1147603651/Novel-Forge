@@ -1,0 +1,8 @@
+locale = "ja"
+display_name = "日本語 (ja)"
+status = "draft"
+base_language = "ja"
+length_unit = "characters"
+source_revision = ""
+coverage_required = false
+templates_dir = "templates"

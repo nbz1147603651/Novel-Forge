@@ -1,0 +1,1270 @@
+/* Source-shaped 卷帙 reader.  The page canvas owns its outer panel; the reader
+   itself stays intentionally flat until a project is selected. */
+.reader-page {
+  display: grid;
+  grid-template-rows: 42px minmax(0, 1fr);
+  gap: 0;
+  height: calc(100% + 6px);
+  min-height: 0;
+  /* PySide ProjectsPage owns a 12px root inset, then its reader header adds
+     a 6px inner inset.  Keep that relationship explicit instead of fitting
+     the select and the tab stack independently. */
+  margin: -7px -24px 0 -16px;
+}
+
+.page-canvas.is-reader-canvas {
+  overflow: hidden;
+  padding-bottom: 0;
+}
+
+.reader-header {
+  justify-content: flex-start;
+  min-height: 42px;
+  gap: 10px;
+  padding: 0 6px;
+}
+
+.reader-project-select {
+  width: clamp(208px, 22vw, 300px);
+  max-width: 100%;
+}
+
+.reader-project-select .dropdown-select-trigger {
+  width: 100%;
+  height: 34px;
+  justify-content: space-between;
+  padding: 0 11px 0 12px;
+  border-radius: 7px;
+  font: 600 var(--nf-font-body)/1.2 "Songti SC", "STSong", Georgia, serif;
+}
+
+.reader-project-select .dropdown-select-menu {
+  width: max-content;
+  min-width: 100%;
+  max-width: min(360px, calc(100vw - 32px));
+  max-height: min(360px, calc(100vh - 104px));
+}
+
+.reader-project-select .dropdown-select-option {
+  padding-block: 8px;
+  font: 600 var(--nf-font-body)/1.2 "Songti SC", "STSong", Georgia, serif;
+}
+
+.reader-project-select .dropdown-select-option > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reader-header > strong {
+  margin-left: 0;
+  color: var(--nf-text-heading);
+  font: 700 var(--nf-font-page)/1.3 "Songti SC", "STSong", Georgia, serif;
+  letter-spacing: .025em;
+}
+
+.reader-content {
+  display: grid;
+  min-height: 0;
+}
+
+.reader-content.is-reader-loaded {
+  /* QTabWidget's outer bar is 39px.  Its selected pane starts a 44px row
+     later, where the nested 37px tab bar is seated 7px below the outer bar.
+     This reproduces the source hierarchy without duplicating a second tab
+     component just to manufacture a spacer. */
+  grid-template-rows: 39px 44px minmax(0, 1fr);
+  align-content: start;
+  padding-top: 21px;
+  position: relative;
+}
+
+.reader-content.is-reader-loaded:not(.has-reader-inner-tabs) {
+  grid-template-rows: 39px minmax(0, 1fr);
+}
+
+.reader-empty {
+  display: grid;
+  place-items: center;
+  min-height: 0;
+  padding: 24px;
+  color: var(--nf-text-muted-soft);
+  font: var(--nf-font-section)/1.7 var(--nf-font-reading-family);
+  text-align: center;
+}
+
+.reader-tabs {
+  display: flex;
+  align-items: end;
+  gap: 2px;
+  min-height: 39px;
+  max-width: calc(100% - 4px);
+  width: calc(100% - 4px);
+  margin-left: 4px;
+  padding: 0;
+  border: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-color: color-mix(in srgb, var(--nf-accent-primary) 42%, transparent) transparent;
+  scrollbar-width: thin;
+}
+
+.reader-tabs button {
+  min-height: 39px;
+  padding: 0 16px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 20%, transparent);
+  border-radius: 8px 8px 0 0;
+  color: var(--nf-text-secondary);
+  background: color-mix(in srgb, var(--nf-bg-control) 62%, var(--nf-bg-surface));
+  /* 一级分类是当前卷帙的导航锚点；字号与权重必须高于其下的
+     二级分类，不能因为 Qt 的字体缩放而发生视觉层级倒置。 */
+  font: 700 var(--nf-font-section)/1 "Songti SC", "STSong", Georgia, serif;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reader-tabs button:hover {
+  background: color-mix(in srgb, var(--nf-bg-hover-secondary) 72%, var(--nf-bg-surface));
+}
+
+.reader-tabs button.is-active {
+  z-index: 1;
+  border-color: color-mix(in srgb, var(--nf-border-default) 26%, transparent);
+  color: var(--nf-text-heading);
+  background: var(--nf-bg-surface);
+}
+
+.reader-tabs button.is-active::after {
+  display: none;
+}
+
+.reader-outer-tabs {
+  margin-top: 0;
+}
+
+/* QTabBar reports its right-side 2px margin in each tab's source rect.  The
+   browser keeps that margin as flex gap, so these widths are source rect - 2. */
+.reader-outer-tabs button {
+  flex: 0 0 auto;
+  min-width: max-content;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.reader-inner-tabs {
+  width: calc(100% - 6px);
+  min-height: 37px;
+  height: 37px;
+  margin: 7px 0 0 5px;
+}
+
+.reader-inner-tabs button {
+  flex: 0 0 auto;
+  min-width: max-content;
+  min-height: 37px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--nf-bg-control) 45%, var(--nf-bg-surface));
+  /* 二级分类只负责收敛一级分类的范围，保持紧凑并低于一级导航。 */
+  font-size: var(--nf-font-body);
+  font-weight: 600;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.reader-document-empty {
+  height: 100%;
+  border-top: 1px solid color-mix(in srgb, var(--nf-border-default) 12%, transparent);
+}
+
+/* The source QTabWidget retains already opened editor pages.  Hidden panels
+   deliberately remain mounted for their local session/dirty guards, but have
+   no layout or paint cost.  The visible host keeps the source panel's rounded
+   edge as the only exposed radius. */
+.reader-persistent-panel {
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* Kept for non-default data states opened through the same EngineClient view. */
+.reader-page .reader-document {
+  min-height: 0;
+  margin-top: 0;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 18%, transparent);
+  border-radius: 12px;
+  overflow: auto;
+}
+
+/* Source-document parity host. The source PySide viewer gives the artifact,
+   rather than a marketing-style summary card, nearly the whole workbench. */
+.reader-page .reader-document.is-source-parity {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 0 0 10px 10px;
+  background: var(--nf-bg-surface);
+}
+
+.reader-source-toolbar,
+.reader-source-status {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  color: var(--nf-text-muted);
+  background: color-mix(in srgb, var(--nf-bg-control) 44%, var(--nf-bg-surface));
+}
+
+.reader-source-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  min-height: 43px;
+  padding: 5px 8px 5px 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--nf-border-default) 16%, transparent);
+}
+
+.reader-source-heading {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.reader-source-heading strong {
+  overflow: hidden;
+  color: var(--nf-text-heading);
+  font-family: var(--nf-font-ui-family);
+  font-size: var(--nf-font-label);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reader-source-heading span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-meta);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reader-source-actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.reader-source-toolbar button {
+  min-height: 29px;
+  padding: 0 10px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 25%, transparent);
+  border-radius: 6px;
+  color: var(--nf-text-secondary);
+  background: color-mix(in srgb, var(--nf-bg-surface) 82%, transparent);
+  font-size: var(--nf-font-body);
+  font-weight: 650;
+}
+
+.reader-source-toolbar button[aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--nf-accent-primary) 38%, var(--nf-border-default));
+  color: var(--nf-accent-primary-pressed);
+  background: color-mix(in srgb, var(--nf-accent-primary) 8%, var(--nf-bg-surface));
+}
+
+.reader-source-toolbar button:disabled {
+  cursor: not-allowed;
+  opacity: .45;
+}
+
+@media (max-width: 900px) {
+  .reader-source-toolbar { grid-template-columns: minmax(0, 1fr); }
+  .reader-source-heading { grid-template-columns: minmax(0, 1fr); }
+  .reader-source-heading span { display: none; }
+  .reader-source-actions { justify-content: flex-start; }
+}
+
+.reader-source-body {
+  min-width: 0;
+  min-height: 0;
+  padding: 10px 8px 18px;
+  overflow: auto;
+  color: var(--nf-text-body);
+  scrollbar-gutter: stable;
+}
+
+.reader-source-body > h1 {
+  margin: 0 0 16px;
+  color: var(--nf-text-heading-deep);
+  font-family: var(--nf-font-reading-family);
+  font-size: var(--nf-font-display);
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.reader-source-body .doc-rich {
+  width: 100%;
+  max-width: none;
+}
+
+/* Structured reports are data workbenches, not narrow prose columns.  Let
+   their tables and field groups use the document pane; individual prose
+   blocks retain their own comfortable reading measure in document-rich.css. */
+.reader-source-body .doc-kv-table,
+.reader-source-body .doc-section {
+  width: 100%;
+}
+
+.reader-source-body .doc-section {
+  margin: 8px 0;
+  padding: 8px 4px;
+  border: 0;
+  border-radius: 0;
+  background: color-mix(in srgb, var(--nf-bg-input-soft) 54%, transparent);
+}
+
+.reader-source-body .doc-h3 {
+  margin-top: 12px;
+}
+
+.reader-source-body .doc-hint-block {
+  margin: 4px 0;
+  padding: 8px 4px;
+  border: 0;
+  border-radius: 0;
+  background: color-mix(in srgb, var(--nf-bg-input-soft) 42%, transparent);
+}
+
+.reader-source-json {
+  min-height: 100%;
+  margin: 0;
+  color: var(--nf-text-body);
+  font-family: var(--nf-font-code-family);
+  font-size: var(--nf-font-ui);
+  line-height: 1.65;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.reader-source-status {
+  gap: 12px;
+  min-height: 31px;
+  padding: 4px 10px;
+  border-top: 1px solid color-mix(in srgb, var(--nf-border-default) 14%, transparent);
+  font-size: var(--nf-font-ui);
+}
+
+.reader-source-status [role="status"] {
+  margin-left: auto;
+  color: var(--nf-accent-primary-pressed);
+  font-weight: 700;
+}
+
+/* Full-content rendering: let the shared ContentRenderer surfaces expand to
+   their natural height so the outer .reader-document owns scrolling, instead
+   of nesting a second scroll region inside the dialog-oriented max-heights. */
+.reader-document-body.is-rich > .document-json-shell,
+.reader-document-body.is-rich > .rendered-markdown,
+.reader-document-body.is-rich > .document-plain {
+  max-height: none;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.reader-document-body.is-rich > .document-json-shell > .document-json,
+.reader-document-body.is-rich > .document-json-shell > .document-json-raw {
+  overflow: visible;
+}
+
+.reader-narrative-tools {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  min-height: 0;
+  padding: 12px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 15%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--nf-bg-panel) 46%, var(--nf-bg-surface));
+}
+
+/* Graph workbench fills available space without outer scroll */
+.reader-persistent-panel:has(.source-character-graph-workbench) {
+  overflow: hidden;
+}
+.reader-narrative-tools:has(.source-character-graph-workbench) {
+  overflow: hidden;
+}
+
+.reader-narrative-tools .narrative-tools { display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+/* The active workbench is always the last child (reader hides the notice);
+   let it fill the remaining height and scroll internally. */
+.reader-narrative-tools .narrative-tools > :last-child { flex: 1 1 auto; min-height: 0; }
+.reader-narrative-tools .character-workbench { min-height: 0; }
+
+/* Source chapter reader: the PySide page uses a nested 正文 / 报告 tab pair,
+   a searchable chapter list and a read-only document host.  Keep the list
+   local to this reader so selection never resets the outer document tabs. */
+.reader-chapter-workbench {
+  display: grid;
+  grid-template-columns: 196px minmax(0, 1fr);
+  grid-template-rows: 37px minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 15%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--nf-bg-panel) 44%, var(--nf-bg-surface));
+}
+
+.reader-chapter-mode {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 3px;
+  padding: 3px 5px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--nf-border-default) 14%, transparent);
+  background: color-mix(in srgb, var(--nf-bg-control) 33%, var(--nf-bg-surface));
+}
+
+.reader-chapter-workbench.is-rail-collapsed { grid-template-columns: 48px minmax(0, 1fr); }
+
+.reader-chapter-mode button {
+  min-width: 72px;
+  padding: 0 11px;
+  border: 1px solid transparent;
+  border-radius: 7px 7px 0 0;
+  color: var(--nf-text-muted);
+  background: transparent;
+  font-size: var(--nf-font-ui);
+  font-weight: 700;
+}
+
+.reader-chapter-mode button.is-active {
+  border-color: color-mix(in srgb, var(--nf-border-default) 18%, transparent);
+  color: var(--nf-accent-primary-pressed);
+  background: var(--nf-bg-surface);
+}
+
+.reader-chapter-mode .reader-chapter-rail-toggle {
+  min-width: 0;
+  margin-left: auto;
+  border-radius: 6px;
+  color: var(--nf-text-secondary);
+}
+
+.reader-chapter-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nf-space-2);
+  min-height: 0;
+  padding: var(--nf-space-2);
+  overflow: hidden;
+  border-right: 1px solid color-mix(in srgb, var(--nf-border-default) 13%, transparent);
+  background: color-mix(in srgb, var(--nf-bg-control) 25%, var(--nf-bg-surface));
+}
+.reader-chapter-list > label { flex-shrink: 0; }
+/* The chapter rail is the scroll container (virtualized for long rails). */
+.reader-chapter-scroll {
+  flex: 1;
+  display: grid;
+  align-content: start;
+  gap: 3px;
+  min-height: 0;
+  overflow: auto;
+}
+.reader-chapter-virtual-window { display: grid; gap: 3px; }
+
+.reader-chapter-list input {
+  width: 100%;
+  height: var(--nf-control-height);
+  padding: 0 9px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 22%, transparent);
+  border-radius: 7px;
+  outline: 0;
+  color: var(--nf-text-body);
+  background: var(--nf-bg-input);
+  font-size: var(--nf-font-ui);
+}
+
+.reader-chapter-list input:focus { border-color: var(--nf-accent-primary); box-shadow: 0 0 0 2px color-mix(in srgb, var(--nf-accent-primary) 13%, transparent); }
+.reader-chapter-list button { display: flex; align-items: center; justify-content: space-between; gap: 7px; min-height: 31px; padding: 0 8px; border: 1px solid transparent; border-radius: 6px; color: var(--nf-text-secondary); background: transparent; font-size: var(--nf-font-ui); text-align: left; white-space: nowrap; }
+/* Uniform row height keeps the virtual rail's fixed-height math accurate. */
+.reader-chapter-virtual-window button { flex-shrink: 0; height: 31px; min-height: 31px; overflow: hidden; }
+.reader-chapter-list button:hover { background: color-mix(in srgb, var(--nf-bg-hover-secondary) 62%, transparent); }
+.reader-chapter-list button.is-active { border-color: color-mix(in srgb, var(--nf-accent-primary) 34%, transparent); color: var(--nf-text-heading); background: color-mix(in srgb, var(--nf-accent-primary) 9%, var(--nf-bg-surface)); }
+.reader-chapter-list small { color: var(--nf-text-muted); font-size: var(--nf-font-micro); white-space: nowrap; }
+.reader-chapter-compact-number { display: none; font-weight: 750; }
+.reader-chapter-list.is-collapsed { align-items: stretch; padding: 5px; }
+.reader-chapter-list.is-collapsed > label { display: none; }
+.reader-chapter-list.is-collapsed button { justify-content: center; padding: 0; }
+.reader-chapter-list.is-collapsed .reader-chapter-label,
+.reader-chapter-list.is-collapsed small { display: none; }
+.reader-chapter-list.is-collapsed .reader-chapter-compact-number { display: block; }
+.reader-chapter-list p { margin: 8px 0; color: var(--nf-text-muted); font-size: var(--nf-font-ui); text-align: center; }
+.reader-chapter-document { min-width: 0; min-height: 0; overflow: auto; isolation: isolate; }
+.reader-chapter-document .reader-document { height: 100%; border: 0; border-radius: 0; }
+/* Chapter version tabs (终稿 + draft snapshots), mirroring PySide6 version tabs. */
+.reader-chapter-versions { display: flex; gap: 3px; padding: 6px 8px 0; border-bottom: 1px solid color-mix(in srgb, var(--nf-border-default) 14%, transparent); background: color-mix(in srgb, var(--nf-bg-control) 24%, var(--nf-bg-surface)); }
+.reader-chapter-versions button { min-height: 30px; padding: 0 12px; border: 1px solid transparent; border-radius: 7px 7px 0 0; color: var(--nf-text-muted); background: transparent; font-size: var(--nf-font-ui); font-weight: 700; }
+.reader-chapter-versions button:hover { color: var(--nf-text-heading); background: color-mix(in srgb, var(--nf-bg-hover-secondary) 60%, transparent); }
+.reader-chapter-versions button.is-active { border-color: color-mix(in srgb, var(--nf-border-default) 18%, transparent); color: var(--nf-accent-primary-pressed); background: var(--nf-bg-surface); }
+.reader-operation-notice { position: absolute; right: 16px; bottom: 12px; max-width: min(520px, calc(100% - 32px)); margin: 0; padding: 6px 9px; border: 1px solid color-mix(in srgb, var(--nf-accent-primary) 24%, transparent); border-radius: 7px; color: var(--nf-text-secondary); background: color-mix(in srgb, var(--nf-bg-surface) 94%, var(--nf-bg-input)); box-shadow: 0 4px 12px color-mix(in srgb, var(--nf-shadow) 10%, transparent); font-size: var(--nf-font-meta); line-height: 1.35; }
+.reader-tracking-workbench { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: var(--nf-space-2); min-height: 0; padding: var(--nf-space-2); overflow: auto; scrollbar-gutter: stable; }
+.reader-tracking-toolbar { display: flex; align-items: center; justify-content: space-between; gap: var(--nf-space-2); min-height: var(--nf-control-height); padding: 1px 2px 0; }
+.relationship-toolbar-main, .relationship-toolbar-filter { display: flex; align-items: center; flex-wrap: wrap; gap: var(--nf-space-2); min-width: 0; }
+.relationship-toolbar-filter { color: var(--nf-text-secondary); font-size: var(--nf-font-ui); }
+.relationship-toolbar-filter > span { white-space: nowrap; }
+.relationship-character-select { width: min(220px, 100%); min-width: 156px; }
+.relationship-character-select .dropdown-select-trigger { width: 100%; height: var(--nf-control-height); justify-content: space-between; }
+.relationship-character-select .dropdown-select-menu { width: 100%; max-height: min(280px, calc(100vh - 200px)); }
+
+@media (max-width: 980px) {
+  .reader-tracking-toolbar { align-items: flex-start; }
+  .relationship-toolbar-main { flex: 1 1 100%; justify-content: space-between; }
+}
+
+/* Shared source-style nested document groups.  These are purposefully slim:
+   the primary reader already supplies the large outer hierarchy. */
+.reader-source-tabs, .reader-report-leaves {
+  display: flex;
+  align-items: end;
+  gap: 3px;
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.reader-source-tabs {
+  min-height: 33px;
+  padding: 2px 5px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--nf-border-default) 15%, transparent);
+  background: color-mix(in srgb, var(--nf-bg-control) 30%, var(--nf-bg-surface));
+}
+
+.reader-source-tabs button, .reader-report-leaves button {
+  flex: 0 0 auto;
+  min-height: 29px;
+  padding: 0 9px;
+  border: 1px solid transparent;
+  border-radius: 6px 6px 0 0;
+  color: var(--nf-text-muted);
+  background: transparent;
+  font-size: var(--nf-font-ui);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.reader-source-tabs button:hover, .reader-report-leaves button:hover { color: var(--nf-text-heading); background: color-mix(in srgb, var(--nf-bg-hover-secondary) 65%, transparent); }
+.reader-source-tabs button.is-active, .reader-report-leaves button.is-active { border-color: color-mix(in srgb, var(--nf-border-default) 18%, transparent); color: var(--nf-accent-primary-pressed); background: var(--nf-bg-surface); }
+
+.reader-report-workbench, .reader-governance-workbench {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 15%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--nf-bg-panel) 38%, var(--nf-bg-surface));
+}
+
+.reader-report-workbench,
+.reader-report-workbench > .reader-document,
+.reader-report-workbench .reader-source-toolbar,
+.reader-report-workbench .reader-source-heading { min-width: 0; }
+
+.reader-report-workbench > .reader-document { overflow: auto; }
+
+.reader-report-leaves {
+  min-height: 34px;
+  padding: 3px 7px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--nf-border-default) 13%, transparent);
+  background: color-mix(in srgb, var(--nf-bg-input) 57%, var(--nf-bg-surface));
+}
+
+.reader-report-workbench > .reader-document, .reader-governance-workbench > .reader-document { border: 0; border-radius: 0; }
+
+@media (max-width: 1180px) {
+  .reader-source-toolbar { grid-template-columns: minmax(0, 1fr); }
+  .reader-source-actions { justify-content: flex-start; }
+}
+
+/* `text_revision_diff` is rendered by PySide6 as a reading surface, not as
+   a raw JSON inspection table.  Keep the familiar version score hierarchy,
+   then reserve the pane for the inline red/green prose comparison. */
+.reader-text-revision-diff {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--nf-bg-surface);
+}
+
+.reader-text-diff-summary {
+  border-bottom: 1px solid color-mix(in srgb, var(--nf-border-default) 16%, transparent);
+  background: color-mix(in srgb, var(--nf-bg-surface) 90%, var(--nf-bg-control));
+}
+
+.reader-text-diff-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-width: 0;
+  padding: 8px 18px 7px;
+}
+
+.reader-text-diff-summary h2 {
+  margin: 0;
+  padding: 0;
+  color: var(--nf-text-heading);
+  font-family: var(--nf-font-reading-family);
+  font-size: var(--nf-font-section);
+  font-weight: 700;
+  letter-spacing: .04em;
+}
+
+.reader-text-diff-summary > p {
+  margin: 0;
+  padding: 6px 18px;
+  border-block: 1px solid color-mix(in srgb, var(--nf-border-default) 11%, transparent);
+  color: var(--nf-text-muted);
+  background: color-mix(in srgb, var(--nf-bg-input) 32%, transparent);
+  font-size: var(--nf-font-meta);
+  line-height: 1.5;
+}
+
+.reader-text-diff-summary > p.is-accepted { color: var(--nf-status-success, #187c59); }
+.reader-text-diff-status { color: var(--nf-accent-primary-pressed); }
+
+.reader-text-diff-score {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 5px 9px;
+  min-width: 0;
+  color: var(--nf-text-muted);
+  text-align: right;
+}
+
+.reader-text-diff-score strong {
+  color: var(--nf-status-success, #187c59);
+  font-family: var(--nf-font-reading-family);
+  font-size: var(--nf-font-section-lg);
+  font-weight: 700;
+  letter-spacing: -.01em;
+  line-height: 1;
+}
+
+.reader-text-diff-score > span,
+.reader-text-diff-score small { color: var(--nf-text-muted); font-size: var(--nf-font-meta); }
+.reader-text-diff-score > span { white-space: nowrap; }
+.reader-text-diff-score > span.is-addition { color: var(--nf-status-success, #187c59); font-weight: 700; }
+.reader-text-diff-score > span.is-deletion { color: var(--nf-accent-primary-pressed); font-weight: 700; }
+.reader-text-diff-score small { overflow: hidden; max-width: 220px; text-overflow: ellipsis; white-space: nowrap; }
+
+.reader-text-diff-flow {
+  min-height: 0;
+  padding: 15px clamp(20px, 3vw, 38px) 21px;
+  overflow: auto;
+  color: var(--nf-text-body);
+  scrollbar-gutter: stable;
+}
+
+.reader-text-diff-flow h3 {
+  margin: 0 0 12px;
+  color: var(--nf-text-heading);
+  font-family: var(--nf-font-reading-family);
+  font-size: var(--nf-font-subsection);
+  font-weight: 700;
+  letter-spacing: .035em;
+}
+
+.reader-text-diff-flow p {
+  max-width: none;
+  margin: 0 0 14px;
+  font-family: var(--nf-font-reading-family);
+  font-size: var(--nf-font-section);
+  line-height: 2.02;
+  letter-spacing: .016em;
+}
+
+.reader-text-diff-delete,
+.reader-text-diff-add {
+  padding: 0 .08em;
+  white-space: pre-wrap;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.reader-text-diff-delete {
+  color: color-mix(in srgb, var(--nf-accent-primary-pressed) 90%, var(--nf-text-body));
+  background: color-mix(in srgb, var(--nf-accent-primary) 10%, transparent);
+  text-decoration-color: var(--nf-accent-primary);
+  text-decoration-thickness: 1px;
+}
+
+.reader-text-diff-add {
+  color: color-mix(in srgb, var(--nf-status-success, #187c59) 94%, var(--nf-text-body));
+  background: color-mix(in srgb, var(--nf-status-success, #187c59) 13%, transparent);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.reader-text-diff-empty { color: var(--nf-text-muted); }
+
+.reader-text-diff-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 37px;
+  padding: 4px 10px 4px 14px;
+  border-top: 1px solid color-mix(in srgb, var(--nf-border-default) 15%, transparent);
+  background: color-mix(in srgb, var(--nf-bg-control) 35%, var(--nf-bg-surface));
+}
+
+.reader-text-diff-footer details { min-width: 0; }
+.reader-text-diff-footer summary { overflow: hidden; color: var(--nf-text-muted); cursor: pointer; font-size: var(--nf-font-meta); text-overflow: ellipsis; white-space: nowrap; }
+.reader-text-diff-footer details[open] summary { margin-bottom: 7px; color: var(--nf-text-secondary); }
+.reader-text-diff-footer dl { display: grid; grid-template-columns: repeat(2, minmax(0, max-content)); gap: 4px 14px; margin: 0; color: var(--nf-text-muted); font-size: var(--nf-font-meta); }
+.reader-text-diff-footer dl div { display: flex; gap: 4px; }
+.reader-text-diff-footer dt::after { content: "："; }
+.reader-text-diff-footer dd { margin: 0; color: var(--nf-text-secondary); }
+.reader-text-diff-footer .button { flex: 0 0 auto; min-height: 27px; padding-inline: 8px; font-size: var(--nf-font-ui); }
+
+@media (max-width: 760px) {
+  .reader-text-diff-heading { align-items: flex-start; flex-direction: column; gap: 4px; padding-inline: 14px; }
+  .reader-text-diff-score { justify-content: flex-start; flex-wrap: wrap; text-align: left; }
+  .reader-text-diff-flow { padding-inline: 16px; }
+  .reader-text-diff-flow p { font-size: var(--nf-font-body); }
+  .reader-text-diff-footer { align-items: flex-start; }
+  .reader-text-diff-footer dl { grid-template-columns: 1fr; }
+}
+
+/* FinalRevisionWidget counterpart.  It keeps source edit/session semantics
+   local until the future EngineClient write contract exists. */
+.reader-final-revision {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 16%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--nf-bg-surface) 90%, transparent);
+}
+
+.reader-final-revision-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 39px;
+  padding: 4px 8px;
+  border-bottom: 1px solid color-mix(in srgb, var(--nf-border-default) 14%, transparent);
+  background: color-mix(in srgb, var(--nf-bg-control) 31%, var(--nf-bg-surface));
+}
+
+.reader-final-revision-toolbar > div { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 6px; color: var(--nf-text-muted); font-size: var(--nf-font-meta); }
+.reader-final-revision-toolbar > div:last-child { justify-content: flex-end; }
+.reader-final-revision-toolbar .button { min-height: 27px; padding-inline: 8px; font-size: var(--nf-font-ui); }
+.reader-revision-mode { padding: 4px 7px; border-radius: 5px; color: var(--nf-accent-primary-pressed); background: color-mix(in srgb, var(--nf-accent-primary) 10%, var(--nf-bg-surface)); font-weight: 700; }
+
+.reader-prose-read { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; min-height: 0; overflow: auto; }
+.reader-prose-read > header { padding: 17px 20px 12px; border-bottom: 1px solid color-mix(in srgb, var(--nf-border-default) 12%, transparent); }
+.reader-prose-read h2 { margin: 4px 0; color: var(--nf-text-heading); font: 600 var(--nf-font-page-lg)/1.35 var(--nf-font-reading-family); }
+.reader-prose-read header p, .reader-prose-read footer { margin: 0; color: var(--nf-text-muted-soft); font-size: var(--nf-font-ui); }
+.reader-prose-read > div { display: grid; align-content: start; gap: 13px; max-width: 850px; padding: 18px 20px; }
+.reader-prose-read > div p { margin: 0; color: var(--nf-text-body); font: var(--nf-font-section-sm)/1.95 var(--nf-font-reading-family); letter-spacing: .025em; }
+.reader-prose-read footer { padding: 9px 20px; border-top: 1px solid color-mix(in srgb, var(--nf-border-default) 12%, transparent); background: color-mix(in srgb, var(--nf-bg-control) 24%, var(--nf-bg-surface)); }
+
+.reader-revision-workspace { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(230px, .85fr); min-height: 0; overflow: hidden; }
+.reader-revision-workspace textarea { min-width: 0; min-height: 360px; padding: 16px 18px; border: 0; outline: 0; resize: none; color: var(--nf-text-body); background: var(--nf-bg-input); font: var(--nf-font-subsection)/1.8 var(--nf-font-reading-family); }
+.reader-revision-workspace aside { display: grid; align-content: start; gap: 11px; min-width: 0; padding: 13px; border-left: 1px solid color-mix(in srgb, var(--nf-border-default) 14%, transparent); background: color-mix(in srgb, var(--nf-bg-panel) 58%, var(--nf-bg-surface)); }
+.reader-revision-workspace aside header, .reader-revision-workspace aside > div { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.reader-revision-workspace aside strong { color: var(--nf-text-heading); font-size: var(--nf-font-ui); }.reader-revision-workspace aside header span, .reader-revision-workspace aside p { color: var(--nf-text-muted); font-size: var(--nf-font-meta); line-height: 1.55; }.reader-revision-workspace aside p { margin: 0; }.reader-revision-workspace blockquote, .reader-selection-preview { margin: 0; padding: 10px; border-left: 2px solid var(--nf-accent-primary); color: var(--nf-text-secondary); background: color-mix(in srgb, var(--nf-bg-input) 66%, var(--nf-bg-surface)); font-size: var(--nf-font-ui); line-height: 1.6; white-space: pre-wrap; }
+.reader-revision-workspace .button { min-height: 27px; padding-inline: 8px; font-size: var(--nf-font-ui); }
+
+.reader-dialog-field { display: grid; gap: 6px; color: var(--nf-text-secondary); font-size: var(--nf-font-ui); }.reader-dialog-field textarea { min-height: 74px; padding: 8px; border: 1px solid color-mix(in srgb, var(--nf-border-default) 22%, transparent); border-radius: 7px; outline: 0; color: var(--nf-text-body); background: var(--nf-bg-input); font: var(--nf-font-ui)/1.55 inherit; resize: vertical; }.reader-dialog-actions { display: flex; justify-content: flex-end; gap: 7px; }.reader-dialog-actions .button { min-height: 30px; font-size: var(--nf-font-ui); }
+
+/* FinalRevisionWidget dialogs.  These retain the source's compact measured
+   surfaces (560×300 selection, 840×560 preview, 560×360 scope) instead of
+   routing a document-specific workflow through the generic app dialog. */
+.reader-revision-dialog { display: grid; gap: 10px; width: min(560px, calc(100vw - 42px)); max-height: min(82vh, 560px); padding: 14px 16px; overflow: hidden; border: 1px solid color-mix(in srgb, var(--nf-border-default) 28%, transparent); border-radius: 11px; color: var(--nf-text-body); background: var(--nf-bg-dialog); box-shadow: 0 19px 52px color-mix(in srgb, var(--nf-shadow) 28%, transparent); animation: dialog-rise-in 180ms cubic-bezier(.22, .61, .36, 1); }
+.reader-revision-dialog.is-selection { min-height: 270px; }.reader-revision-dialog.is-preview { grid-template-rows: minmax(0, 1fr) auto; width: min(840px, calc(100vw - 42px)); height: min(560px, calc(100vh - 42px)); max-height: min(84vh, 560px); }.reader-revision-dialog.is-scope { min-height: 330px; }.reader-revision-dialog.is-confirm { width: min(440px, calc(100vw - 42px)); }
+.reader-revision-dialog > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }.reader-revision-dialog h2 { margin: 0; color: var(--nf-text-heading); font: 600 var(--nf-font-section-lg)/1.35 var(--nf-font-reading-family); }.reader-revision-dialog > header p, .reader-revision-dialog-copy { margin: 4px 0 0; color: var(--nf-text-muted); font-size: var(--nf-font-ui); line-height: 1.55; }.reader-revision-dialog-close { display: grid; width: 24px; height: 24px; place-items: center; border: 0; border-radius: 6px; color: var(--nf-text-muted); background: transparent; font-size: var(--nf-font-nav); line-height: 1; }.reader-revision-dialog-close:hover { color: var(--nf-text-heading); background: var(--nf-bg-hover-secondary); }
+.reader-revision-dialog-content { display: grid; align-content: start; gap: 9px; min-height: 0; overflow: auto; }.reader-revision-dialog.is-preview .reader-revision-dialog-content { grid-template-rows: auto auto minmax(0, 1fr); }.reader-revision-dialog > footer { display: flex; justify-content: flex-end; gap: 7px; }.reader-revision-dialog > footer .button { min-height: 30px; padding-inline: 10px; font-size: var(--nf-font-ui); }
+.reader-revision-analysis { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 6px; align-items: center; min-height: 36px; }.reader-revision-analysis > span { display: grid; width: 18px; height: 18px; place-items: center; color: var(--nf-accent-primary); font-size: var(--nf-font-section-sm); }.reader-revision-analysis > span.is-pending { animation: reader-revision-spin 560ms linear infinite; }.reader-revision-analysis > span.is-ready { color: var(--nf-status-success); }.reader-revision-analysis p { margin: 0; color: var(--nf-text-secondary); font-size: var(--nf-font-ui); line-height: 1.5; }
+.reader-revision-direction-chips { display: flex; align-items: center; min-height: 30px; gap: 6px; overflow-x: auto; }.reader-revision-direction-chips button { flex: 0 0 auto; min-height: 27px; padding: 0 8px; border: 1px solid color-mix(in srgb, var(--nf-border-default) 18%, transparent); border-radius: 6px; color: var(--nf-accent-primary-pressed); background: color-mix(in srgb, var(--nf-accent-primary) 7%, var(--nf-bg-surface)); font-size: var(--nf-font-meta); }.reader-revision-direction-chips button:disabled { color: var(--nf-text-muted); background: var(--nf-bg-control); }
+.reader-revision-save-summary { margin: 0; color: var(--nf-text-heading); font-size: var(--nf-font-subsection); font-weight: 700; }.reader-revision-notes { display: grid; gap: 4px; margin: 0; padding: 8px 10px 8px 25px; border-radius: 7px; color: var(--nf-text-secondary); background: color-mix(in srgb, var(--nf-bg-control) 42%, var(--nf-bg-surface)); font-size: var(--nf-font-ui); line-height: 1.55; }.reader-revision-diff { min-height: 220px; max-height: 290px; margin: 0; padding: 10px; overflow: auto; border: 1px solid color-mix(in srgb, var(--nf-border-default) 17%, transparent); border-radius: 7px; color: var(--nf-text-body); background: var(--nf-bg-input); font: var(--nf-font-ui)/1.55 var(--nf-font-code-family); white-space: pre-wrap; }.reader-revision-dialog.is-preview .reader-revision-save-summary { font-size: var(--nf-font-nav); }.reader-revision-dialog.is-preview .reader-revision-notes { gap: 3px; padding: 0 0 0 20px; border-radius: 0; color: var(--nf-text-muted); background: transparent; font-size: var(--nf-font-section); line-height: 1.45; }.reader-revision-dialog.is-preview .reader-revision-diff { min-height: 0; max-height: none; border-radius: 0; font: var(--nf-font-section)/1.45 var(--nf-font-code-family); white-space: pre; }.reader-revision-dialog.is-preview > footer .button { min-height: 36px; font-size: var(--nf-font-section); }
+.reader-revision-scope { display: grid; gap: 5px; margin: 0; padding: 0; border: 0; }.reader-revision-scope legend { padding: 0 0 4px; color: var(--nf-text-heading); font-size: var(--nf-font-ui); font-weight: 700; }.reader-revision-scope label { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 7px; align-items: start; padding: 6px 7px; border: 1px solid transparent; border-radius: 7px; }.reader-revision-scope label:has(input:checked) { border-color: color-mix(in srgb, var(--nf-accent-primary) 31%, transparent); background: color-mix(in srgb, var(--nf-accent-primary) 7%, var(--nf-bg-surface)); }.reader-revision-scope input, .reader-revision-checkbox input { margin: 2px 0 0; accent-color: var(--nf-accent-primary); }.reader-revision-scope span { display: grid; gap: 2px; }.reader-revision-scope b { color: var(--nf-text-heading); font-size: var(--nf-font-ui); }.reader-revision-scope small { color: var(--nf-text-muted); font-size: var(--nf-font-meta); line-height: 1.45; }.reader-revision-checkbox { display: flex; align-items: center; gap: 6px; color: var(--nf-text-secondary); font-size: var(--nf-font-ui); }
+.reader-revision-guard { margin: 0; padding: 6px 9px; color: var(--nf-status-danger); background: color-mix(in srgb, var(--nf-status-danger-bg) 70%, var(--nf-bg-surface)); font-size: var(--nf-font-meta); }.reader-revision-candidate-boundary { margin: 0; color: var(--nf-text-muted); font-size: var(--nf-font-meta); }
+@keyframes reader-revision-spin { to { transform: rotate(1turn); } }
+
+/* InteractiveOutlineWidget counterpart: read and polish live inside the
+   existing reader panel, so its session cannot disturb the reader's tab or
+   document selection state. */
+.reader-outline-workbench { display: grid; grid-template-rows: auto 40px minmax(0, 1fr); height: 100%; min-height: 0; overflow: hidden; border: 1px solid color-mix(in srgb, var(--nf-border-default) 15%, transparent); border-radius: 10px; background: color-mix(in srgb, var(--nf-bg-surface) 90%, transparent); }
+.reader-outline-coverage { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 10px 16px; border-bottom: 1px solid var(--nf-border-default); color: var(--nf-text-secondary); font-size: var(--nf-font-ui); }
+.reader-outline-coverage > span { flex: 1; }
+.reader-outline-coverage > small, .reader-outline-coverage > p { flex-basis: 100%; margin: 0; color: var(--nf-text-muted); }
+.reader-outline-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 9px; padding: 4px 7px; border-bottom: 1px solid color-mix(in srgb, var(--nf-border-default) 14%, transparent); background: color-mix(in srgb, var(--nf-bg-control) 30%, var(--nf-bg-surface)); }.reader-outline-toolbar .button { min-height: 27px; padding-inline: 8px; font-size: var(--nf-font-ui); }
+.reader-outline-toolbar-actions { display: flex; align-items: center; gap: 5px; min-width: 0; }.reader-outline-toolbar-actions .is-active { border-color: color-mix(in srgb, var(--nf-accent-primary) 34%, transparent); color: var(--nf-accent-primary-pressed); background: color-mix(in srgb, var(--nf-accent-primary) 9%, var(--nf-bg-surface)); }.reader-outline-task-note { overflow: hidden; color: var(--nf-text-muted); font-size: var(--nf-font-meta); text-overflow: ellipsis; white-space: nowrap; }
+.reader-outline-mode { display: inline-flex; align-self: stretch; gap: 2px; }.reader-outline-mode button { min-width: 57px; padding: 0 9px; border: 1px solid transparent; border-radius: 7px 7px 0 0; color: var(--nf-text-muted); background: transparent; font-size: var(--nf-font-ui); font-weight: 700; }.reader-outline-mode button.is-active { border-color: color-mix(in srgb, var(--nf-border-default) 18%, transparent); color: var(--nf-accent-primary-pressed); background: var(--nf-bg-surface); }
+.reader-outline-body { display: grid; grid-template-columns: minmax(190px, .42fr) minmax(0, 1.58fr); min-height: 0; }.reader-outline-body > aside { display: grid; align-content: start; gap: 3px; min-height: 0; padding: 7px; overflow: auto; border-right: 1px solid color-mix(in srgb, var(--nf-border-default) 13%, transparent); background: color-mix(in srgb, var(--nf-bg-control) 23%, var(--nf-bg-surface)); }.reader-outline-body > aside label { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 5px; align-items: center; padding: 5px; border: 1px solid transparent; border-radius: 7px; }.reader-outline-body > aside label.is-active { border-color: color-mix(in srgb, var(--nf-accent-primary) 32%, transparent); background: color-mix(in srgb, var(--nf-accent-primary) 8%, var(--nf-bg-surface)); }.reader-outline-body > aside input { margin: 0; accent-color: var(--nf-accent-primary); }.reader-outline-body > aside button { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 5px; min-width: 0; padding: 0; border: 0; color: var(--nf-text-secondary); background: transparent; text-align: left; }.reader-outline-body > aside button span, .reader-outline-body > aside button small { color: var(--nf-text-muted); font-size: var(--nf-font-micro); white-space: nowrap; }.reader-outline-body > aside button strong { overflow: hidden; color: var(--nf-text-heading); font-size: var(--nf-font-ui); text-overflow: ellipsis; white-space: nowrap; }
+.reader-outline-content { min-width: 0; min-height: 0; overflow: auto; }.reader-outline-content > article { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; min-height: 100%; }.reader-outline-content > article header { padding: 17px 19px 12px; border-bottom: 1px solid color-mix(in srgb, var(--nf-border-default) 12%, transparent); }.reader-outline-content > article h2 { margin: 4px 0 0; color: var(--nf-text-heading); font: 600 var(--nf-font-page-lg)/1.35 var(--nf-font-reading-family); }.reader-outline-content > article > p { max-width: 820px; margin: 0; padding: 18px 19px; color: var(--nf-text-body); font: var(--nf-font-subsection)/1.85 var(--nf-font-reading-family); }.reader-outline-content > article footer { padding: 9px 19px; border-top: 1px solid color-mix(in srgb, var(--nf-border-default) 12%, transparent); color: var(--nf-text-muted); background: color-mix(in srgb, var(--nf-bg-control) 23%, var(--nf-bg-surface)); font-size: var(--nf-font-meta); }
+.reader-outline-polish { display: grid; grid-template-columns: minmax(300px, 1.15fr) minmax(240px, .85fr); min-height: 100%; }.reader-outline-polish-controls, .reader-outline-preview { display: grid; align-content: start; gap: 10px; padding: 14px; }.reader-outline-polish-controls { border-right: 1px solid color-mix(in srgb, var(--nf-border-default) 13%, transparent); }.reader-outline-polish-controls > label:first-child { display: flex; align-items: center; justify-content: space-between; color: var(--nf-text-heading); font-size: var(--nf-font-ui); font-weight: 700; }.reader-outline-polish-controls > label:first-child span { color: var(--nf-text-muted); font-size: var(--nf-font-meta); font-weight: 400; }.reader-outline-polish-controls > div { display: flex; flex-wrap: wrap; gap: 5px; }.reader-outline-polish-controls .button { min-height: 28px; padding-inline: 8px; font-size: var(--nf-font-ui); }.reader-outline-direction { display: grid; gap: 5px; color: var(--nf-text-secondary); font-size: var(--nf-font-ui); font-weight: 700; }.reader-outline-direction textarea { min-height: 74px; padding: 8px; border: 1px solid color-mix(in srgb, var(--nf-border-default) 22%, transparent); border-radius: 7px; outline: 0; color: var(--nf-text-body); background: var(--nf-bg-input); font: var(--nf-font-ui)/1.55 inherit; resize: vertical; }.reader-outline-preview { background: color-mix(in srgb, var(--nf-bg-panel) 49%, var(--nf-bg-surface)); }.reader-outline-preview header { display: flex; align-items: center; justify-content: space-between; gap: 7px; }.reader-outline-preview strong { color: var(--nf-text-heading); font-size: var(--nf-font-ui); }.reader-outline-preview header span { padding: 4px 6px; border-radius: 5px; color: var(--nf-text-muted); background: var(--nf-bg-control); font-size: var(--nf-font-meta); }.reader-outline-preview p { margin: 0; color: var(--nf-text-secondary); font-size: var(--nf-font-ui); line-height: 1.6; }.reader-outline-preview ul { display: grid; gap: 5px; margin: 0; padding: 0; list-style: none; }.reader-outline-preview li { display: grid; gap: 3px; padding: 8px; border: 1px solid color-mix(in srgb, var(--nf-border-default) 13%, transparent); border-radius: 7px; background: color-mix(in srgb, var(--nf-bg-input) 60%, var(--nf-bg-surface)); }.reader-outline-preview li strong { color: var(--nf-text-heading); font-size: var(--nf-font-ui); }.reader-outline-preview li span { color: var(--nf-text-muted); font-size: var(--nf-font-meta); }.reader-outline-history { display: grid; grid-template-columns: minmax(120px, auto) minmax(0, 1fr); gap: 10px; color: var(--nf-text-secondary); font-size: var(--nf-font-ui); }
+.reader-outline-focus { display: grid; gap: 6px; margin: 0; padding: 9px 10px; border: 1px solid color-mix(in srgb, var(--nf-border-default) 14%, transparent); border-radius: 7px; background: color-mix(in srgb, var(--nf-bg-inset) 42%, var(--nf-bg-surface)); }.reader-outline-focus legend { padding-inline: 4px; color: var(--nf-text-secondary); font-size: var(--nf-font-ui); font-weight: 700; }.reader-outline-focus > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px 10px; }.reader-outline-focus label { display: flex; align-items: center; gap: 5px; color: var(--nf-text-secondary); font-size: var(--nf-font-meta); }.reader-outline-focus input { margin: 0; accent-color: var(--nf-accent-primary); }
+.reader-outline-maintenance { display: grid; align-content: start; gap: 16px; min-height: 100%; padding: 20px; }.reader-outline-maintenance > header { display: grid; gap: 5px; padding-bottom: 14px; border-bottom: 1px solid color-mix(in srgb, var(--nf-border-default) 12%, transparent); }.reader-outline-maintenance h2, .reader-outline-maintenance p { margin: 0; }.reader-outline-maintenance h2 { color: var(--nf-text-heading); font: 600 var(--nf-font-page-lg)/1.35 var(--nf-font-reading-family); }.reader-outline-maintenance > header p { max-width: 900px; color: var(--nf-text-secondary); font-size: var(--nf-font-ui); line-height: 1.65; }.reader-outline-maintenance-form { display: grid; justify-items: start; gap: 10px; max-width: 720px; padding: 15px; border: 1px solid color-mix(in srgb, var(--nf-border-default) 15%, transparent); border-radius: 9px; background: color-mix(in srgb, var(--nf-bg-control) 28%, var(--nf-bg-surface)); }.reader-outline-maintenance-form > strong { color: var(--nf-text-heading); font-size: var(--nf-font-ui); }.reader-outline-maintenance-form > p { color: var(--nf-text-muted); font-size: var(--nf-font-meta); }.reader-outline-maintenance-form fieldset { display: flex; gap: 14px; margin: 0; padding: 0; border: 0; }.reader-outline-maintenance-form legend { margin-bottom: 7px; color: var(--nf-text-secondary); font-size: var(--nf-font-ui); font-weight: 700; }.reader-outline-maintenance-form fieldset label, .reader-outline-maintenance-check { display: inline-flex; align-items: center; gap: 5px; color: var(--nf-text-secondary); font-size: var(--nf-font-ui); }.reader-outline-extension-value { display: grid; gap: 5px; color: var(--nf-text-secondary); font-size: var(--nf-font-ui); font-weight: 700; }.reader-outline-extension-value input { width: 170px; min-height: 34px; padding: 0 9px; border: 1px solid color-mix(in srgb, var(--nf-border-default) 22%, transparent); border-radius: 7px; color: var(--nf-text-body); background: var(--nf-bg-input); font-size: var(--nf-font-ui); }.reader-outline-maintenance-status { max-width: 720px; padding: 10px 12px; border-left: 3px solid var(--nf-accent-primary); color: var(--nf-text-secondary); background: color-mix(in srgb, var(--nf-accent-primary) 7%, var(--nf-bg-surface)); font-size: var(--nf-font-ui); line-height: 1.6; }
+/* Contract-sync result banner — mirrors PySide6 `_show_sync_status` tones
+   (success / neutral / warning / error) for the four sync outcomes. */
+.reader-outline-sync { display: grid; align-content: start; gap: 7px; padding: 11px; border: 1px solid color-mix(in srgb, var(--nf-border-default) 16%, transparent); border-radius: 8px; }
+.reader-outline-sync strong { font-size: var(--nf-font-ui); }
+.reader-outline-sync p { margin: 0; color: var(--nf-text-secondary); font-size: var(--nf-font-ui); line-height: 1.6; }
+.reader-outline-sync.is-success { border-color: color-mix(in srgb, var(--nf-status-success) 34%, transparent); background: color-mix(in srgb, var(--nf-status-success) 9%, var(--nf-bg-surface)); }
+.reader-outline-sync.is-success strong { color: var(--nf-status-success); }
+.reader-outline-sync.is-neutral { background: color-mix(in srgb, var(--nf-bg-control) 40%, var(--nf-bg-surface)); }
+.reader-outline-sync.is-neutral strong { color: var(--nf-text-secondary); }
+.reader-outline-sync.is-warning { border-color: color-mix(in srgb, var(--nf-status-warning, #f59e0b) 38%, transparent); background: color-mix(in srgb, var(--nf-status-warning, #f59e0b) 9%, var(--nf-bg-surface)); }
+.reader-outline-sync.is-warning strong { color: var(--nf-status-warning, #b45309); }
+.reader-outline-sync.is-error { border-color: color-mix(in srgb, var(--nf-status-danger) 36%, transparent); background: color-mix(in srgb, var(--nf-status-danger) 9%, var(--nf-bg-surface)); }
+.reader-outline-sync.is-error strong { color: var(--nf-status-danger); }
+
+/* TokenAnalyticsTab counterpart.  The source implementation delays this
+   panel until its tab is opened; this component follows the same boundary. */
+.reader-token-workbench { display: grid; grid-template-rows: auto minmax(0, 1fr); height: 100%; min-height: 0; overflow: hidden; border: 1px solid color-mix(in srgb, var(--nf-border-default) 15%, transparent); border-radius: 10px; background: color-mix(in srgb, var(--nf-bg-surface) 91%, transparent); }
+.reader-token-workbench > header { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 38px; padding: 3px 6px 0; border-bottom: 1px solid color-mix(in srgb, var(--nf-border-default) 14%, transparent); background: color-mix(in srgb, var(--nf-bg-control) 28%, var(--nf-bg-surface)); }
+.reader-token-workbench > header > div { display: flex; align-items: end; gap: 5px; min-width: 0; }.reader-token-workbench > header > div:first-child { flex: 1; }.reader-token-workbench .reader-source-tabs { flex: 1; min-height: 34px; padding: 0; border: 0; background: transparent; }.reader-token-workbench .button { min-height: 27px; padding-inline: 8px; font-size: var(--nf-font-ui); }
+.reader-token-overview, .reader-token-pricing, .reader-token-steps { display: grid; align-content: start; gap: 12px; padding: 15px; overflow: auto; }.reader-token-overview > p, .reader-token-pricing > p { max-width: 850px; margin: 0; color: var(--nf-text-secondary); font-size: var(--nf-font-ui); line-height: 1.65; }
+.reader-token-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }.reader-token-metrics section { min-width: 0; padding: 11px; border: 1px solid color-mix(in srgb, var(--nf-border-default) 14%, transparent); border-radius: 8px; background: color-mix(in srgb, var(--nf-bg-control) 32%, var(--nf-bg-surface)); }.reader-token-metrics span { display: block; color: var(--nf-text-muted); font-size: var(--nf-font-meta); }.reader-token-metrics strong { display: block; margin-top: 5px; color: var(--nf-accent-primary-pressed); font-family: Georgia, "Songti SC", serif; font-size: var(--nf-font-section-lg); font-variant-numeric: tabular-nums; }.reader-token-metrics small { display: block; min-height: 17px; margin-top: 5px; overflow: hidden; color: var(--nf-text-muted-soft); font-size: var(--nf-font-meta); line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }
+.reader-token-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); min-height: 58px; align-self: start; gap: 1px; margin: 0; overflow: hidden; border: 1px solid color-mix(in srgb, var(--nf-border-default) 14%, transparent); border-radius: 8px; background: color-mix(in srgb, var(--nf-border-default) 14%, transparent); }.reader-token-summary > div { display: grid; align-content: center; min-width: 0; min-height: 56px; padding: 8px 10px; background: var(--nf-bg-surface); }.reader-token-summary dt { color: var(--nf-text-muted); font-size: var(--nf-font-meta); }.reader-token-summary dd { margin: 3px 0 0; color: var(--nf-text-secondary); font-size: var(--nf-font-ui); font-variant-numeric: tabular-nums; }
+.reader-token-overview-detail { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }.reader-token-overview-detail section { min-width: 0; overflow: hidden; border: 1px solid color-mix(in srgb, var(--nf-border-default) 14%, transparent); border-radius: 8px; background: color-mix(in srgb, var(--nf-bg-control) 22%, var(--nf-bg-surface)); }.reader-token-overview-detail header { display: flex; align-items: center; justify-content: space-between; min-height: 32px; padding: 0 10px; border-top: 0; color: var(--nf-text-heading); background: color-mix(in srgb, var(--nf-bg-control) 42%, var(--nf-bg-surface)); }.reader-token-overview-detail header span, .reader-token-overview-detail small { color: var(--nf-text-muted); font-size: var(--nf-font-meta); }.reader-token-split-track { display: flex; height: 8px; margin: 10px 10px 7px; overflow: hidden; border-radius: 999px; background: color-mix(in srgb, var(--nf-bg-control-hover) 60%, var(--nf-bg-surface)); }.reader-token-split-track > i { display: block; height: 100%; min-width: 0; }.reader-token-split-track .is-input, .reader-token-split-legend .is-input { background: var(--nf-accent-primary); }.reader-token-split-track .is-output, .reader-token-split-legend .is-output { background: var(--nf-status-success); }.reader-token-split-track .is-unclassified, .reader-token-split-legend .is-unclassified { background: var(--nf-text-muted-soft); }.reader-token-split-legend { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 9px; min-height: 30px; padding: 0 10px; border-top: 1px solid color-mix(in srgb, var(--nf-border-default) 11%, transparent); color: var(--nf-text-secondary); font-size: var(--nf-font-ui); }.reader-token-split-legend > span { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }.reader-token-split-legend > span > i { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; }.reader-token-split-legend strong, .reader-token-step strong { color: var(--nf-accent-primary-pressed); font-variant-numeric: tabular-nums; }.reader-token-step { display: grid; grid-template-columns: minmax(88px, 1fr) minmax(68px, .7fr) auto auto; align-items: center; gap: 8px; min-height: 34px; padding: 0 10px; border-top: 1px solid color-mix(in srgb, var(--nf-border-default) 11%, transparent); color: var(--nf-text-secondary); font-size: var(--nf-font-ui); }.reader-token-step > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.reader-token-step-track { height: 5px; overflow: hidden; border-radius: 999px; background: color-mix(in srgb, var(--nf-bg-control-hover) 55%, var(--nf-bg-surface)); }.reader-token-step-track > i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--nf-accent-primary), var(--nf-accent-primary-pressed)); }
+.reader-token-table { display: grid; align-content: start; min-height: 0; padding: 14px; overflow: auto; }.reader-token-table > div { display: grid; grid-template-columns: minmax(0, 1fr) repeat(3, minmax(90px, .28fr)); align-items: center; gap: 9px; min-height: 35px; padding: 0 9px; border-top: 1px solid color-mix(in srgb, var(--nf-border-default) 12%, transparent); color: var(--nf-text-secondary); font-size: var(--nf-font-ui); }.reader-token-table > div:first-child { border-top: 0; }.reader-token-table > div:has([role="columnheader"]) { color: var(--nf-text-muted); background: color-mix(in srgb, var(--nf-bg-control) 34%, var(--nf-bg-surface)); font-size: var(--nf-font-meta); font-weight: 700; }.reader-token-table strong { color: var(--nf-text-heading); }
+.reader-token-empty { margin: 0; padding: 18px 9px; color: var(--nf-text-muted); font-size: var(--nf-font-ui); }.reader-token-price-table input, .reader-token-price-table select { width: 100%; min-width: 0; height: 29px; padding: 0 7px; border: 1px solid color-mix(in srgb, var(--nf-border-default) 22%, transparent); border-radius: 6px; outline: 0; color: var(--nf-text-body); background: var(--nf-bg-input); font: inherit; }
+.reader-token-filter { display: flex; gap: 5px; }.reader-token-filter button { min-height: 28px; padding: 0 9px; border: 1px solid color-mix(in srgb, var(--nf-border-default) 15%, transparent); border-radius: 7px; color: var(--nf-text-muted); background: color-mix(in srgb, var(--nf-bg-control) 38%, var(--nf-bg-surface)); font-size: var(--nf-font-ui); }.reader-token-filter button.is-active { border-color: color-mix(in srgb, var(--nf-accent-primary) 38%, transparent); color: var(--nf-accent-primary-pressed); background: color-mix(in srgb, var(--nf-accent-primary) 10%, var(--nf-bg-surface)); }
+.reader-token-pricing { grid-template-columns: minmax(140px, .5fr) minmax(180px, .65fr) minmax(0, 1fr); align-items: end; }.reader-token-pricing > p { grid-column: 1 / -1; }.reader-token-pricing label { display: grid; gap: 5px; color: var(--nf-text-secondary); font-size: var(--nf-font-ui); }.reader-token-pricing select, .reader-token-pricing input { height: var(--nf-control-height); padding: 0 8px; border: 1px solid color-mix(in srgb, var(--nf-border-default) 22%, transparent); border-radius: 7px; outline: 0; color: var(--nf-text-body); background: var(--nf-bg-input); font-size: var(--nf-font-ui); }.reader-token-pricing input:disabled { opacity: .58; }.reader-token-pricing .reader-token-table { grid-column: 1 / -1; padding: 0; }
+
+@media (max-width: 700px) {
+  .reader-chapter-workbench { grid-template-columns: 156px minmax(0, 1fr); }
+  .reader-token-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .reader-token-overview-detail { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 700px) {
+  .reader-page { margin-inline: 0; }
+  .reader-project-select { width: min(361px, 100%); }
+  .reader-header > strong { display: none; }
+  .reader-tabs { overflow-x: auto; }
+}
+
+/* Tab transition polish — smooth visual feedback when switching categories */
+.reader-tabs button,
+.reader-inner-tabs button,
+.reader-source-tabs button,
+.reader-report-leaves button {
+  transition: color 150ms ease, background 150ms ease, border-color 150ms ease;
+}
+
+/* Reader document fade-in when content loads */
+.reader-page .reader-document {
+  animation: reader-doc-fade-in 200ms cubic-bezier(.22, .61, .36, 1) both;
+}
+
+@keyframes reader-doc-fade-in {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Empty state — refined typography matching PySide6 centered empty panel */
+.reader-document-empty {
+  display: grid;
+  place-items: center;
+  min-height: 300px;
+  color: var(--nf-text-muted-soft);
+  font-family: "Songti SC", "STSong", Georgia, serif;
+  font-size: var(--nf-font-section-sm);
+  line-height: 1.8;
+  letter-spacing: 0.04em;
+}
+
+/* Chapter list scroll fade — subtle edge indicator on the scrolling rail. */
+.reader-chapter-scroll {
+  mask-image: linear-gradient(
+    to bottom,
+    black 0%,
+    black calc(100% - 24px),
+    transparent 100%
+  );
+}
+
+/* Revision dialog smooth entrance */
+.reader-revision-dialog {
+  animation: dialog-rise-in 180ms cubic-bezier(.22, .61, .36, 1),
+             dialog-fade-in 150ms ease-out;
+}
+
+/* Prose reading view — smooth scroll and selection color */
+.reader-prose-read > div p::selection {
+  background: color-mix(in srgb, var(--nf-accent-primary) 18%, transparent);
+  color: var(--nf-text-heading);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reader-page .reader-document,
+  .reader-revision-dialog {
+    animation: none;
+  }
+  .reader-tabs button,
+  .reader-inner-tabs button,
+  .reader-source-tabs button,
+  .reader-report-leaves button {
+    transition: none;
+  }
+  .reader-chapter-scroll {
+    mask-image: none;
+  }
+}
+
+/* Character inline relationships sub-panel (mirrors PySide6 档案/关系/图谱 sub-tabs) */
+.character-inline-relationships {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 18%, transparent);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--nf-bg-panel) 40%, var(--nf-bg-surface));
+}
+.character-inline-relationships header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.character-inline-relationships h4 {
+  margin: 0;
+  color: var(--nf-text-heading);
+  font-size: var(--nf-font-ui);
+}
+.character-inline-relationships header span {
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-meta);
+}
+.character-inline-relationship-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.character-inline-relationship-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 6px 9px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--nf-bg-input) 50%, var(--nf-bg-surface));
+  font-size: var(--nf-font-ui);
+  line-height: 1.5;
+}
+.character-rel-direction {
+  color: var(--nf-accent-primary);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.character-inline-relationship-list strong {
+  color: var(--nf-text-heading);
+  flex-shrink: 0;
+}
+.character-rel-type {
+  color: var(--nf-text-secondary);
+  flex-shrink: 0;
+}
+.character-inline-relationship-list small {
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-meta);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Revision context menu (right-click in textarea) */
+.reader-revision-context-items {
+  list-style: none;
+  margin: 0;
+  padding: 5px;
+  min-width: 158px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 30%, transparent);
+  border-radius: 9px;
+  background: var(--nf-bg-dialog);
+  box-shadow: 0 8px 28px color-mix(in srgb, var(--nf-shadow) 22%, transparent);
+  animation: dialog-rise-in 120ms cubic-bezier(.22, .61, .36, 1);
+}
+.reader-revision-context-items li {
+  margin: 0;
+}
+.reader-revision-context-items button {
+  display: block;
+  width: 100%;
+  padding: 7px 12px;
+  border: 0;
+  border-radius: 6px;
+  color: var(--nf-text-body);
+  background: transparent;
+  font-size: var(--nf-font-ui);
+  text-align: left;
+  cursor: pointer;
+}
+.reader-revision-context-items button:hover {
+  color: var(--nf-text-heading);
+  background: var(--nf-bg-hover-secondary);
+}
+
+/* Humanize preview in revision dialog */
+.reader-revision-humanize-preview {
+  margin: 8px 0;
+  padding: 10px 12px;
+  border-left: 2px solid var(--nf-accent-primary);
+  color: var(--nf-text-secondary);
+  background: color-mix(in srgb, var(--nf-bg-input) 60%, var(--nf-bg-surface));
+  font-size: var(--nf-font-ui);
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.dashboard-cleanup-notice {
+  grid-column: 1 / -1;
+  margin: 8px 0 0;
+  color: #f4dfc5;
+  font-size: var(--nf-font-meta);
+}
+
+.dashboard-cleanup-list {
+  display: grid;
+  gap: 6px;
+  max-height: 270px;
+  margin: 0;
+  overflow: auto;
+  padding: 0;
+  list-style: none;
+}
+
+.dashboard-cleanup-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 3px 12px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 70%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--nf-bg-input) 56%, var(--nf-bg-surface));
+}
+
+.dashboard-cleanup-list code {
+  overflow: hidden;
+  color: var(--nf-text-heading);
+  font-size: var(--nf-font-meta);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-cleanup-list span,
+.dashboard-cleanup-list small {
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-meta);
+}
+
+.dashboard-cleanup-list small {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+
+/* Token total is reconciled from aggregate, split, model, and step records.
+   The overview visualizes that calculation with the same theme token family as
+   the rest of the reader rather than introducing component-owned colours. */
+.reader-token-insight-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.reader-token-insight-grid > section {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 14%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--nf-bg-control) 22%, var(--nf-bg-surface));
+}
+
+.reader-token-insight-grid header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 34px;
+  padding: 0 11px;
+  border-bottom: 1px solid color-mix(in srgb, var(--nf-border-default) 11%, transparent);
+  color: var(--nf-text-heading);
+  background: color-mix(in srgb, var(--nf-bg-control) 42%, var(--nf-bg-surface));
+  font-size: var(--nf-font-ui);
+}
+
+.reader-token-insight-grid header span {
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-meta);
+}
+
+.reader-token-composition {
+  display: grid;
+  grid-template-columns: 126px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-height: 132px;
+  padding: 12px;
+}
+
+.reader-token-donut {
+  display: grid;
+  place-items: center;
+  width: 112px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+}
+
+.reader-token-donut > div {
+  display: grid;
+  place-items: center;
+  width: 76px;
+  aspect-ratio: 1;
+  padding: 8px;
+  border-radius: 50%;
+  color: var(--nf-text-secondary);
+  background: var(--nf-bg-surface);
+  text-align: center;
+}
+
+.reader-token-donut strong {
+  overflow: hidden;
+  max-width: 100%;
+  color: var(--nf-text-heading);
+  font-family: Georgia, "Songti SC", serif;
+  font-size: var(--nf-font-subsection);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reader-token-donut span {
+  margin-top: 3px;
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-micro);
+  line-height: 1.2;
+}
+
+.reader-token-composition-legend {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 10%, transparent);
+  border-radius: 7px;
+  overflow: hidden;
+}
+
+.reader-token-insight-grid .reader-token-split-legend {
+  min-height: 31px;
+  padding-inline: 9px;
+  border-top: 1px solid color-mix(in srgb, var(--nf-border-default) 10%, transparent);
+  background: var(--nf-bg-surface);
+}
+
+.reader-token-insight-grid .reader-token-split-legend:first-child {
+  border-top: 0;
+}
+
+.reader-token-insight-grid .reader-token-split-track {
+  margin: 0 12px 12px;
+}
+
+.reader-token-cost-card {
+  display: grid;
+  align-content: start;
+}
+
+.reader-token-cost-formula {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 18px 12px 7px;
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-meta);
+}
+
+.reader-token-cost-formula > span {
+  color: var(--nf-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.reader-token-cost-formula > i {
+  color: var(--nf-text-muted-soft);
+  font-style: normal;
+}
+
+.reader-token-cost-formula > strong {
+  margin-left: 2px;
+  color: var(--nf-accent-primary-pressed);
+  font-family: Georgia, "Songti SC", serif;
+  font-size: var(--nf-font-section);
+  font-variant-numeric: tabular-nums;
+}
+
+.reader-token-cost-card > p {
+  min-height: 38px;
+  margin: 0;
+  padding: 0 12px 10px;
+  color: var(--nf-text-secondary);
+  font-size: var(--nf-font-meta);
+  line-height: 1.55;
+}
+
+.reader-token-cost-card dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  margin: auto 0 0;
+  border-top: 1px solid color-mix(in srgb, var(--nf-border-default) 11%, transparent);
+  background: color-mix(in srgb, var(--nf-border-default) 12%, transparent);
+}
+
+.reader-token-cost-card dl > div {
+  min-width: 0;
+  padding: 7px 10px;
+  background: var(--nf-bg-surface);
+}
+
+.reader-token-cost-card dt {
+  overflow: hidden;
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-micro);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reader-token-cost-card dd {
+  margin: 3px 0 0;
+  color: var(--nf-text-secondary);
+  font-size: var(--nf-font-ui);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 980px) {
+  .reader-token-insight-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 620px) {
+  .reader-token-composition { grid-template-columns: 96px minmax(0, 1fr); gap: 8px; padding: 9px; }
+  .reader-token-donut { width: 88px; }
+  .reader-token-donut > div { width: 60px; }
+  .reader-token-donut strong { font-size: var(--nf-font-ui); }
+  .reader-token-cost-formula { padding: 12px 10px 6px; }
+}

@@ -1,0 +1,220 @@
+{# source_template_hash: b4e548b3236706dd23565c550100244525aab2e397305753e2497589eb566f97 #}
+{%- from "_base/_calculate_word_constraints.j2" import render_word_constraint_hard, render_word_constraint_self_check -%}
+{%- from "_base/_artifact_source_contract.j2" import render_artifact_source_contract -%}
+{%- from "_base/_quality_calibration.j2" import render_quality_calibration, render_pre_delivery_checklist -%}
+{%- from "_base/_editorial_card.j2" import render_editorial_card -%}
+{%- from "_base/_knowledge_card.j2" import render_knowledge_card -%}
+{%- from "_quality_standards.j2" import creative_specificity_rules -%}
+{%- from "_base/_repair_attempt_guidance.j2" import render_repair_attempt_guidance -%}
+
+{#
+================================================================================
+[Notes]
+================================================================================
+Prompt: edit_chapter.j2
+Service Step: EDIT_CHAPTER (Chapter Editing)
+Brief Description: Local editing of draft based on stage cards. The editing phase
+          is responsible for cleaning language, fixing known issues,
+          adjusting word count and rhythm, but must not replan the chapter.
+Upstream Input:
+  - draft_text: Current chapter body text
+  - stage_cards.source: ChapterSourceSlice, containing boundary-constrained source projection
+  - stage_cards: contract / bridge / plan / style / memory / repair derived cards
+  - chapter_repair_report / word_count_warning / word_count_restructure: This round's repair signals
+Downstream Output:
+  - TEXT: Revised complete chapter body text
+Consumption Chain Priority:
+  P0 = Word Count Hard Constraints / Contract Preservation / Facts and Prohibited Changes
+  P1 = Current Report Issues / Language Quality / Rhythm
+  P2 = Style Capsule / Serial Hook Capsule
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer
+    --------------------------------------------------------------------------- -#}
+
+{% set cards = stage_cards | default({}) %}
+{% set source = cards.source | default({}) %}
+{% set source_contract = source.chapter_contract | default({}, true) %}
+{% set chapter = cards.chapter | default({}) %}
+{% set contract = source_contract if source_contract else (cards.contract | default({})) %}
+{% set bridge = cards.bridge | default({}) %}
+{% set plan_card = cards.plan | default({}) %}
+{% set element = cards.element | default({}) %}
+{% set narration = cards.narration | default({}) %}
+{% set style = cards.style | default({}) %}
+{% set editorial = cards.editorial | default({}) %}
+{% set quality = cards.quality | default({}) %}
+{% set repair = cards.repair | default({}) %}
+{% set characters = cards.characters | default([]) %}
+{% set knowledge = cards.knowledge | default({}) %}
+{% set bridge_boundary = bridge.boundary_window_policy | default({}) %}
+{% set cognitive_constraints = contract.cognitive_constraints | default([]) %}
+
+## Task
+Perform the {{ iteration }} round of editing on Chapter {{ chapter.chapter_number | default(chapter_number, true) }}.
+
+{{ render_word_constraint_hard(chapter.target_word_count | default(target_word_count | default(0), true)) }}
+
+{{ render_artifact_source_contract(source, title="## Source Artifact Boundary (P0)", mode="repair") }}
+
+## Editing Consumption Rules
+- This round only handles current text, report tickets, word count matters, pronoun/alignment, and other explicit repair signals and necessary source boundaries.
+- Do not freely rewrite the entire chapter, do not redo chapter planning, do not add new plot facts, main events, character perceptions, relationship conclusions, or future payoffs.
+- If no ticket/window points to something, editing only does language, rhythm, and system trace cleanup; must not change facts.
+
+## Unbreakable Cards
+{% if contract.required_events | default([]) %}- Required Events: {{ contract.required_events | join('; ') }}{% endif %}
+{% if contract.required_progressions | default([]) %}- Required Progressions: {{ contract.required_progressions | join('; ') }}{% endif %}
+{% if contract.allowed_progressions | default([]) %}- Allowed Setups: {{ contract.allowed_progressions | join('; ') }}{% endif %}
+{% if contract.forbidden_changes | default([]) %}- Prohibited Changes: {{ contract.forbidden_changes | join('; ') }}{% endif %}
+{% if contract.forbidden_progressions | default([]) %}- Prohibited Early Progressions: {{ contract.forbidden_progressions | join('; ') }}{% endif %}
+{% if contract.future_leak_risks | default([]) %}- Future Leak Risks: {{ contract.future_leak_risks | join('; ') }}{% endif %}
+{% if contract.exit_state_targets | default([]) %}- Exit Targets: {{ contract.exit_state_targets | join('; ') }}{% endif %}
+{% if cognitive_constraints %}
+- Cognitive constraints are listed once in the Source Artifact boundary above. Editing may fix language and rhythm only; preserve every named role's coverage and never turn doubt or indirect anomalies into confirmation or public revelation.
+{% endif %}
+{% if bridge.action_handoff | default('') %}- Opening Action Handoff: {{ bridge.action_handoff }}{% endif %}
+{% if bridge_boundary.opening_paragraphs | default(0) %}- Opening Acceptance Window: First {{ bridge_boundary.opening_paragraphs }} paragraphs{% endif %}
+{% if bridge.opening_acceptance_criteria | default([]) %}- Opening Acceptance Criteria: {{ bridge.opening_acceptance_criteria | join('; ') }}{% endif %}
+{% if plan_card.opening_contract | default('') %}- Opening Contract: {{ plan_card.opening_contract }}{% endif %}
+{% if plan_card.closing_contract | default('') %}- Closing Contract: {{ plan_card.closing_contract }}{% endif %}
+{% if repair.preserve | default([]) %}- Must Preserve: {{ repair.preserve | join('; ') }}{% endif %}
+{% if repair.do_not_introduce | default([]) %}- Must Not Introduce: {{ repair.do_not_introduce | join('; ') }}{% endif %}
+
+{% if plan_card.scene_intents | default([]) %}
+## Scene Outcome Checklist
+{% for scene in plan_card.scene_intents %}
+- {{ scene.scene_id }}: {{ scene.summary }} → {{ scene.required_outcome | default('') }} / {{ scene.exit_target_state | default('') }}{% if scene.scene_resistance | default('') %}; resistance: {{ scene.scene_resistance }}{% endif %}{% if scene.choice_pressure | default('') %}; choice pressure: {{ scene.choice_pressure }}{% endif %}{% if scene.sensory_notes | default([]) %}; sensory candidates: {{ scene.sensory_notes }}{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if element.required_elements | default([]) or element.focused_extension_elements | default([]) or element.focus_constraints | default([]) %}
+## Narrative Element Key Constraints
+{% for item in element.required_elements %}
+- Required Element: {{ item.get('name', '') }}{% if item.prompt_hint | default('') %} | {{ item.prompt_hint }}{% endif %}
+{% endfor %}
+{% for item in element.focused_extension_elements %}
+- This Chapter Focus: {{ item.get('name', '') }}{% if item.prompt_hint | default('') %} | {{ item.prompt_hint }}{% endif %}
+{% endfor %}
+{% if element.focus_constraints | default([]) %}- Execution Constraints: {{ element.focus_constraints | join('; ') }}{% endif %}
+{% endif %}
+
+{% if characters %}
+## Character Identity Cards (Must Not Break During Editing)
+{% for char in characters %}
+- {{ char.get('name', '') }}{% if char.get('role') | default('') %} ({{ char.get('role') }}){% endif %}: {{ char.get('identity', '') | default('') }}{% if char.get('personality') | default('') %}; {{ char.get('personality') }}{% endif %}
+{% endfor %}
+{% endif %}
+
+{{ render_knowledge_card(knowledge, mode="edit") }}
+
+{{ render_editorial_card(editorial, mode="edit") }}
+
+{% if narration.rule | default('') %}
+## Narrative POV Rules
+- {{ narration.rule }}
+{% endif %}
+
+{% if word_count_restructure is defined and word_count_restructure %}
+## Word Count Restructuring (P0)
+- Direction: {{ word_count_restructure.direction }}; Current: {{ word_count_restructure.actual }}; Target: {{ word_count_restructure.target }}
+- Acceptable Range: {{ word_count_restructure.acceptable_min }}-{{ word_count_restructure.acceptable_max }}
+- Forbidden Changes: {{ word_count_restructure.forbidden_changes | join('; ') }}
+- Contract Anchors: {{ word_count_restructure.contract_anchors | join('; ') }}
+{% endif %}
+
+{% if plan_card.forbidden_elements | default([]) or plan_card.forbidden_elements_soft | default([]) %}
+## Rhetoric Prohibition and Replacement Boundaries (Avoid During Editing)
+{% if plan_card.forbidden_elements | default([]) %}
+- Hard Prohibition Candidates: {{ plan_card.forbidden_elements | join('; ') }}
+{% endif %}
+{% if plan_card.forbidden_elements_soft | default([]) %}
+- Soft Prohibition Candidates: {{ plan_card.forbidden_elements_soft | join('; ') }}
+{% endif %}
+{% if plan_card.intentional_callbacks | default([]) %}
+- Allowed Intentional Callbacks: {{ plan_card.intentional_callbacks | join('; ') }}
+{% endif %}
+During editing, prioritize using different imagery/action channels; if belonging to intentional callbacks or plot anchors, preserve narrative function but avoid mechanical repetition of wording.
+{% endif %}
+
+{% if pronouns_fix_instruction %}
+## Pronoun Directional Repair (P0)
+{{ pronouns_fix_instruction }}
+{% endif %}
+
+{% if alignment_must_cover | default([]) or alignment_repair_actions | default([]) or alignment_weak_subplot_points | default([]) %}
+## Alignment Directional Repair (P0)
+{% if alignment_must_cover | default([]) %}- Must Cover: {{ alignment_must_cover | join('; ') }}{% endif %}
+{% if alignment_repair_actions | default([]) %}- Repair Actions: {{ alignment_repair_actions | join('; ') }}{% endif %}
+{% if alignment_weak_subplot_points | default([]) %}- Weak Subplot Points: {{ alignment_weak_subplot_points | join('; ') }}{% endif %}
+{% if alignment_preserve_points | default([]) %}- Preserve Points: {{ alignment_preserve_points | join('; ') }}{% endif %}
+{% endif %}
+
+{{ render_repair_attempt_guidance(repair_attempt_guidance | default(none)) }}
+
+{% if chapter_quality_repair_tickets | default([]) %}
+## Standard Repair Tickets (P0/P1)
+This round must prioritize processing the following tickets; each ticket must be handled one-to-one by ticket_id, only repair within the scope pointed to by the ticket, must not rewrite unrelated plot.
+{% for ticket in chapter_quality_repair_tickets %}
+- ticket_id={{ ticket.ticket_id }}; finding_ids={{ ticket.finding_ids | default([]) | join(', ') or 'none' }}
+  [{{ ticket.severity }}] {{ ticket.issue_type }}: {{ ticket.target_summary }}
+  Goal: {{ ticket.repair_goal }}
+  {% if ticket.metadata and ticket.metadata.evidence_quote | default('') %}Evidence: {{ ticket.metadata.evidence_quote }}{% endif %}
+  {% if ticket.acceptance_criteria | default([]) %}Acceptance: {{ ticket.acceptance_criteria | join('; ') }}{% endif %}
+  {% if ticket.postconditions | default([]) %}Post-verification:{% for item in ticket.postconditions %}{{ item.description | default(item.validator_id | default('')) }}{% if not loop.last %}; {% endif %}{% endfor %}{% endif %}
+  {% if ticket.target_paragraph_start | default(0) %}Scope: Paragraph {{ ticket.target_paragraph_start }}{% if ticket.target_paragraph_end and ticket.target_paragraph_end != ticket.target_paragraph_start %}-{{ ticket.target_paragraph_end }}{% endif %}{% else %}Scope: Full Chapter Local Positioning{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if chapter_repair_report | default(none) %}
+## Current Quality Report
+{% if chapter_repair_report.factual_errors %}- Factual Errors: {{ chapter_repair_report.factual_errors | join('; ') }}{% endif %}
+{% if chapter_repair_report.expression_errors %}- Expression Issues: {{ chapter_repair_report.expression_errors | join('; ') }}{% endif %}
+{% if chapter_repair_report.repair_actions %}- Repair Actions: {{ chapter_repair_report.repair_actions | join('; ') }}{% endif %}
+{% endif %}
+
+{% if word_count_warning %}- Word Count Warning: {{ word_count_warning }}{% endif %}
+{% if scene_stitch_report | default(none) %}
+## Scene-level Stitching Unified Polish (P0)
+- Mode: Scene-level writing has completed local stitching; this round only does full-chapter tone, transition, rhythm, and paragraph breathing unification.
+- Scene Count: {{ scene_stitch_report.scene_count }}; Missing Scenes: {{ scene_stitch_report.missing_scenes | default([]) | join(', ') or "none" }}
+- Possible Transition Gaps: {{ scene_stitch_report.possible_transition_gaps | default([]) | join('; ') or "none" }}
+- Forbidden: adding unplanned events, unplanned revelations, unplanned character state changes; can only make existing scenes connect more smoothly.
+{% endif %}
+{% if quality.in_chapter_payoffs | default([]) %}- Serial Hook Micro-payoffs: {{ quality.in_chapter_payoffs | join('; ') }}{% endif %}
+{% if quality.chapter_hook | default('') %}- Chapter Hook Direction: {{ quality.chapter_hook }}{% endif %}
+{% if style.summary | default('') or style.modules | default([]) or style.hook_preferred_types | default([]) or style.micro_payoff_types | default([]) %}
+## Style Capsule
+{% if style.summary | default('') %}- {{ style.summary }}{% endif %}
+{% if style.hook_preferred_types | default([]) %}- Hook Preferences: {{ style.hook_preferred_types | join(', ') }}{% if style.hook_chapter_end_required | default(false) %}; Chapter end must form executable hook{% endif %}{% endif %}
+{% if style.micro_payoff_types | default([]) %}- Micro-payoffs: {{ style.micro_payoff_types | join(', ') }}{% if style.micro_payoff_min_per_chapter | default(0) %}; Minimum per chapter: {{ style.micro_payoff_min_per_chapter }}{% endif %}{% endif %}
+{% for module in style.modules | default([]) %}- {{ module.name | default('Unnamed Module') }}: {{ module.rules | default([]) | join('; ') }}
+{% endfor %}
+{% if style.banned_phrases | default([]) %}- Banned Phrases: {{ style.banned_phrases | join('; ') }}{% endif %}
+{% endif %}
+
+## Current Body Text
+{{ draft_text }}
+
+## Editing Rules
+1. Only edit current body text, do not redo plan, do not add main events.
+2. Prioritize P0: word count, facts, prohibited changes, opening reception, closing exit.
+3. If fixing language, preserve original plot outcomes and paragraph responsibilities; do not ruin causal chains for the sake of polishing.
+4. Forbidden: adding non-planned POVs, behind-the-scenes perspectives, prohibited characters' positive actions, unplanned organizations/items/major revelations.
+5. When word count is too short, add process, action, effective dialogue, and sensory anchors; when word count is too long, delete redundant explanations and low-information narration.
+6. Delete system traces, planning terminology, report terminology, and metanarrative words.
+7. After repair, full text must still satisfy `{{ render_word_constraint_self_check(chapter.target_word_count | default(target_word_count | default(0), true)) }}`.
+8. When triggering repetition risk, prioritize compressing repetition channels: keep the one carrying new information, change the rest to action, dialogue, decision, or scene staging.
+9. Do not add new details just because there are multiple sensory cues in the plan; only add details that can improve causality, relationship, or transition clarity.
+10. Editing contract cards take priority over general style preferences: voice signature, symbol explanation, aftermath, and body signal budgets must be reflected in deletion/editing actions.
+{{ creative_specificity_rules(title="") }}
+
+{{ render_quality_calibration() }}
+
+{{ render_pre_delivery_checklist() }}
+
+{#- ---------------------------------------------------------------------------
+    Formatting Layer
+    --------------------------------------------------------------------------- -#}

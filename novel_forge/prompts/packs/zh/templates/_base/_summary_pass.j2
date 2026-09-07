@@ -1,0 +1,12 @@
+{% macro render_summary_pass(summary_pass='', source_scope='') -%}
+{% if summary_pass == 'evidence_chunk' %}
+## 层级摘要阶段
+- 当前输入范围：{{ source_scope | default('局部证据分块') }}。
+- 只归纳本分块中实际出现的事件、状态与未决问题；不得推断其他分块或全局结局。
+- 保留可供最终合并核验的人物名、事件因果、状态出口和证据边界。
+{% elif summary_pass == 'evidence_merge' %}
+## 层级摘要阶段
+- 当前输入范围：{{ source_scope | default('完整覆盖分块的合并结果') }}。
+- 按分块标签合并时间线、人物变化和未决问题；消除重复，但不得新增分块中不存在的事实。
+{% endif %}
+{%- endmacro %}

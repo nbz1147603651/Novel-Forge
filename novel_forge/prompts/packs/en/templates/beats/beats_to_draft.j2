@@ -1,0 +1,265 @@
+{#- Style: Provided by style_profile; if missing, fall back to genre/tone/extra_instructions only. -#}
+{%- set _has_style_profile = style_profile is defined and style_profile -%}
+{%- set genre = (spec.genre if spec is defined else '') -%}
+{%- from "_styles/_render_style_profile.j2" import render_style_profile_for_stage -%}
+{%- import "_base/_render_style_profile_global.j2" as style_global -%}
+{%- import "_base/_calculate_word_constraints.j2" as wc_macros -%}
+{%- from "_quality_standards.j2" import creative_specificity_rules -%}
+
+{# ================================================================================
+source_template_hash: 302d1b57c4ad081cc7e4c490175cd1bccfe9c6a1ee6fc05fefe6d73d07587c5a
+【NOTES】
+================================================================================
+Prompt: beats_to_draft.j2
+Service Step: DRAFT (Short Story Draft)
+Brief Description: Based on beats list (Beats), narrative blueprint (Blueprint) and execution constraints (ExecutionPlan),
+         write the main text of a short story, supporting segmented (SegmentPlan) mode.
+Upstream Inputs:
+  - spec: User-provided story specification (genre, tone, language, length_target, pov_hint,
+          conflict_hint, world_hint, characters_hint, opening_style, ending_style)
+  - blueprint: From SHORT_BLUEPRINT (synopsis, anchor_elements, emotional_arc,
+               ending_strategy, turning_points, element_selection)
+  - beats: From SPEC_TO_BEATS (beats.beats, beats.structure_note)
+  - execution_plan: Execution plan (opening_contract, ending_contract, anchor_guardrails,
+                   beat_execution_plan, completion_contract)
+  - style_profile: From PROFILE_STYLE (summary, global_style, hook_config, etc.)
+  - segment_plan: Segment plan (optional, for segmented writing)
+  - segment_bridge: Segment bridging (previous_tail_excerpt, carry_forward,
+                   current_objective, unresolved_threads, transition_rule,
+                   opening_contract, ending_contract, completion_contract)
+  - segment_beats: Beats list for current segment
+  - segment_execution_plan: Current segment execution plan
+Downstream Outputs:
+  - TEXT: Short story main text
+  - Downstream Consumer: EDIT (editing)/ EVALUATE (quality evaluation)
+Consumption Chain Priority:
+  P0 = word count control / segment_plan coverage / opening/resolution constraints
+  P1 = beats sequence / execution_plan execution constraints
+  P2 = style_profile style suggestions
+Brief Example:
+  Input: beats={beats:[{sequence:1, beat_type:"opening", summary:"..."}]}, segment_plan={...}
+  Output: "Chapter 1 main text content..."
+================================================================================
+#}
+
+{# ============================================================
+   Guidance Layer: P0 Hard Constraints + Core Execution Sources
+   ============================================================ #}
+
+## Word Count Control (★ Hard Constraint)
+{% if segment_plan is defined and segment_plan %}
+{{ wc_macros.render_word_constraint_hard(target_word_count, label="Segment Target") }}
+{% else %}
+{{ wc_macros.render_word_constraint_hard(spec.length_target, label="Full Story Target") }}
+{% endif %}
+
+{% if segment_plan is defined and segment_plan %}
+- Current Segment: Segment {{ segment_plan.segment_index }}/{{ segment_plan.total_segments }}
+{% endif %}
+
+{# ============================================================
+   ★ Core Execution Sources (beats + blueprint + execution_plan)
+   ============================================================ #}
+
+{% if segment_plan is defined and segment_plan %}
+Please write one segment of this short story according to the current segment plan.
+{% else %}
+Please write a complete short story based on the beats list.
+{% endif %}
+
+## Story Information
+- Genre: {{ spec.genre }} | Tone: {{ spec.tone }} | Language: {{ describe_language(spec.language) }}
+{% if segment_plan is defined and segment_plan %}
+- Full Story Target Word Count: {{ story_target_word_count or spec.length_target }}
+{% else %}
+{% endif %}
+{% if spec.pov_hint %}- POV: {{ spec.pov_hint }}{% endif %}
+{% if narrative_person_rule %}- Narrative Person Rule: {{ narrative_person_rule }}{% endif %}
+{% if spec.conflict_hint %}- Core Conflict: {{ spec.conflict_hint }}{% endif %}
+{% if spec.world_hint %}- Worldview/Setting: {{ spec.world_hint }}{% endif %}
+{% if spec.characters_hint %}- Character Hints: {{ spec.characters_hint }}{% endif %}
+{% if _has_style_profile %}- Style Priority: Project-specific style_profile provided, writing follows it.{% else %}- Style Priority: Project-specific style_profile missing, temporarily falling back to genre, tone, and extra_instructions.{% endif %}
+{% if blueprint is defined and blueprint and blueprint.synopsis %}
+
+## Narrative Blueprint
+Please refer to the following narrative blueprint during writing to ensure emotional trajectory and structural intentions are reflected.
+
+- Synopsis: {{ blueprint.synopsis }}
+{% if blueprint.anchor_elements is defined and blueprint.anchor_elements %}
+{% set anchor = blueprint.anchor_elements %}
+### ⚓ Narrative Anchors (Strict Adherence Required)
+{% if anchor.time_frame %}- Time Frame: {{ anchor.time_frame }} (Must not exit this time range){% endif %}
+{% if anchor.primary_locations %}- Setting Constraints: {{ anchor.primary_locations | join('、') }} (All scenes must come from this list){% endif %}
+{% if anchor.core_characters %}- Characters Appearing: {% for c in anchor.core_characters %}{{ c.name }} ({{ c.role }}){% if not loop.last %}, {% endif %}{% endfor %} (No new characters may be created){% endif %}
+{% if anchor.central_event %}- Core Event: {{ anchor.central_event }}{% endif %}
+{% endif %}
+{% if blueprint.emotional_arc %}- Emotional Arc: {{ blueprint.emotional_arc }}{% endif %}
+{% if blueprint.ending_strategy %}- Ending Strategy: {{ blueprint.ending_strategy }}{% endif %}
+{% if blueprint.turning_points %}- Key Turning Points: {% for tp in blueprint.turning_points %}{{ tp.description }} (Position {{ tp.position_percent }}%){% if not loop.last %}; {% endif %}{% endfor %}{% endif %}
+{% if blueprint.element_selection is defined and blueprint.element_selection and blueprint.element_selection.extension_elements %}
+### Narrative Elements Writing Reference
+The following extended narrative elements can serve as genre expression references; please naturally select based on length, scene, and conflict needs:
+{% for elem in blueprint.element_selection.extension_elements %}
+- **{{ elem.name }}**: {{ elem.prompt_hint }}
+{% endfor %}
+{% endif %}
+{% endif %}
+{% if execution_plan is defined and execution_plan %}
+
+## Local Execution Constraints
+{% if execution_plan.opening_contract %}- Opening Execution Goal: {{ execution_plan.opening_contract }}{% endif %}
+{% if execution_plan.ending_contract %}- Ending Execution Goal: {{ execution_plan.ending_contract }}{% endif %}
+{% if execution_plan.anchor_guardrails %}
+### Anchor Guardrails
+{% if execution_plan.anchor_guardrails.time_frame %}- Time Frame: {{ execution_plan.anchor_guardrails.time_frame }}{% endif %}
+{% if execution_plan.anchor_guardrails.locations %}- Core Settings: {{ execution_plan.anchor_guardrails.locations | join('、') }}{% endif %}
+{% if execution_plan.anchor_guardrails.characters %}- Core Characters: {{ execution_plan.anchor_guardrails.characters | join('、') }}{% endif %}
+{% if execution_plan.anchor_guardrails.central_event %}- Core Event: {{ execution_plan.anchor_guardrails.central_event }}{% endif %}
+{% endif %}
+{% if execution_plan.beat_execution_plan %}
+{% if segment_plan is defined and segment_plan %}
+### Current Segment Word Count & Phase Allocation
+{% else %}
+### Beat Word Count & Phase Allocation
+{% endif %}
+{% for item in execution_plan.beat_execution_plan %}
+{{ item.sequence | default(loop.index) }}. Target ~{{ item.word_budget | default(0) }} words | Phase: {{ item.phase_name | default('Unnamed Phase') }}{% if item.phase_goal | default('') %} | Phase Task: {{ item.phase_goal }}{% endif %}
+   {% if item.time_anchor | default('') %}Time: {{ item.time_anchor }}{% endif %}{% if item.location_anchor | default('') %} | Location: {{ item.location_anchor }}{% endif %}
+   {% if item.character_focus | default([]) %}Character Focus: {{ item.character_focus | join('、') }}{% endif %}
+   {% if item.turning_point_hint | default('') %}Turning Point Requirement: {{ item.turning_point_hint }}{% endif %}
+{% endfor %}
+{% endif %}
+{% if execution_plan.completion_contract %}
+### Completeness Closing Contract
+{% if execution_plan.completion_contract.core_question %}- Core Question: {{ execution_plan.completion_contract.core_question }}{% endif %}
+{% if execution_plan.completion_contract.resolution_target %}- Resolution Target: {{ execution_plan.completion_contract.resolution_target }}{% endif %}
+{% if execution_plan.completion_contract.ending_strategy %}- Ending Strategy: {{ execution_plan.completion_contract.ending_strategy }}{% endif %}
+{% if execution_plan.completion_contract.final_emotional_landing %}- Final Emotional Landing: {{ execution_plan.completion_contract.final_emotional_landing }}{% endif %}
+{% endif %}
+{% endif %}
+
+{% if segment_plan is defined and segment_plan %}
+## Current Segment Task
+- Structural Role: {{ segment_plan.structural_roles | join('、') if segment_plan.structural_roles else 'Continuation and Advancement' }}
+{% if segment_plan.phase_names %}- Current Phase: {{ segment_plan.phase_names | join('、') }}{% endif %}
+{% if segment_plan.segment_goal %}- Segment Goal: {{ segment_plan.segment_goal }}{% endif %}
+{% if segment_plan.time_anchors %}- Time Anchors: {{ segment_plan.time_anchors | join('、') }}{% endif %}
+{% if segment_plan.location_anchors %}- Setting Anchors: {{ segment_plan.location_anchors | join('、') }}{% endif %}
+{% if segment_plan.character_focus %}- Character Focus: {{ segment_plan.character_focus | join('、') }}{% endif %}
+{% if segment_plan.turning_points %}- Turning Points That Must Be Delivered in This Segment: {{ segment_plan.turning_points | join('; ') }}{% endif %}
+
+## Segment Bridge Contract
+{% if segment_bridge.previous_tail_excerpt %}- Previous Segment Tail Excerpt: {{ segment_bridge.previous_tail_excerpt }}{% endif %}
+{% if segment_bridge.carry_forward %}- Must Carry Forward: {{ segment_bridge.carry_forward | join('; ') }}{% endif %}
+{% if segment_bridge.current_objective %}- Segment Advancement Goal: {{ segment_bridge.current_objective }}{% endif %}
+{% if segment_bridge.unresolved_threads %}- Threads to Be Fulfilled Later: {{ segment_bridge.unresolved_threads | join('; ') }}{% endif %}
+{% if segment_bridge.transition_rule %}- Transition Rule: {{ segment_bridge.transition_rule }}{% endif %}
+{% if segment_bridge.avoid %}- Explicitly Prohibited: {{ segment_bridge.avoid | join('; ') }}{% endif %}
+{% if segment_bridge.opening_contract %}- Segment Opening Hard Constraint: {{ segment_bridge.opening_contract }}{% endif %}
+{% if segment_bridge.ending_contract %}- Segment Ending Hard Constraint: {{ segment_bridge.ending_contract }}{% endif %}
+{% if segment_bridge.completion_contract %}
+### Segment Closing Contract
+{% if segment_bridge.completion_contract.core_question %}- Core Question: {{ segment_bridge.completion_contract.core_question }}{% endif %}
+{% if segment_bridge.completion_contract.resolution_target %}- Resolution Target: {{ segment_bridge.completion_contract.resolution_target }}{% endif %}
+{% if segment_bridge.completion_contract.ending_strategy %}- Ending Strategy: {{ segment_bridge.completion_contract.ending_strategy }}{% endif %}
+{% if segment_bridge.completion_contract.final_emotional_landing %}- Final Emotional Landing: {{ segment_bridge.completion_contract.final_emotional_landing }}{% endif %}
+{% endif %}
+
+## Beats to Cover in Current Segment
+{% for beat in segment_beats %}
+{{ beat.sequence }}. [{{ beat.beat_type | upper }}] {{ beat.summary }} (Tension {{ beat.tension_level }}/10)
+   Characters: {{ beat.characters_involved | default([]) | join('、') }}{% if beat.setting | default('') %} | Setting: {{ beat.setting }}{% endif %}
+{% if beat.emotional_note | default('') %}   Emotion: {{ beat.emotional_note }}{% endif %}
+{% endfor %}
+{% if segment_execution_plan and not (execution_plan is defined and execution_plan and execution_plan.beat_execution_plan) %}
+### Current Segment Word Allocation
+{% for item in segment_execution_plan %}
+{{ item.sequence | default(loop.index) }}. Target ~{{ item.word_budget | default(0) }} words{% if item.phase_goal | default('') %} | Task: {{ item.phase_goal }}{% endif %}
+   {% if item.time_anchor | default('') %}Time: {{ item.time_anchor }}{% endif %}{% if item.location_anchor | default('') %} | Location: {{ item.location_anchor }}{% endif %}
+   {% if item.character_focus | default([]) %}Character Focus: {{ item.character_focus | join('、') }}{% endif %}
+{% endfor %}
+{% endif %}
+{% else %}
+## Beats Sequence
+{% for beat in beats.beats %}
+{{ beat.sequence }}. [{{ beat.beat_type | upper }}] {{ beat.summary }} (Tension {{ beat.tension_level }}/10)
+   Characters: {{ beat.characters_involved | default([]) | join('、') }}{% if beat.setting | default('') %} | Setting: {{ beat.setting }}{% endif %}
+{% if beat.emotional_note | default('') %}   Emotion: {{ beat.emotional_note }}{% endif %}
+{% endfor %}
+{% if beats.structure_note | default('') %}
+Structure: {{ beats.structure_note }}
+{% endif %}
+{% endif %}
+
+{# ============================================================
+   Advisory: Style / Sensory / Dialogue (Suggestive, not overriding P0/Core Execution)
+   ============================================================ #}
+
+{{ render_style_profile_for_stage(style_profile | default(None), stage="draft", include_banned_phrases=true) }}
+{%- set _dlg_min = style_global.dialogue_ratio_min(style_profile | default(None)) | trim | int -%}
+{%- set _dlg_max = style_global.dialogue_ratio_max(style_profile | default(None)) | trim | int -%}
+
+## Writing Requirements
+1. **Write realistically in current beats order**, do not skip beats that must be covered in this segment.
+2. **"Show" instead of "Tell"**: Present emotions through actions, senses, and subtle reactions; avoid plain judgments (e.g., "He was angry" → "His knuckles turned white").
+3. **Personalized dialogue**: Each character has a unique voice, with subtext and implied meanings.
+4. **Rhythm control**: Use short sentences for action scenes, longer sentences for emotion/reflection.
+{% if spec.opening_style %}5. **Opening**: Use "{{ spec.opening_style }}" approach to start; the first paragraph must establish suspense or atmosphere.
+{% else %}5. **Opening**: The first paragraph must be engaging, avoid flat background exposition.
+{% endif %}
+{% if spec.ending_style %}6. **Ending**: Close with "{{ spec.ending_style }}" approach, leaving room for reflection.
+{% else %}6. **Ending**: Have a complete sense of closure, avoid abrupt endings orchronological listing (chronological listing) style endings.
+{% endif %}
+7. **Anchor stability**: Do not add main settings, main characters, or key events outside the blueprint; if there are time jumps, they must be naturally explained in the text.
+8. **Turning point landing**: If execution_plan or current segment plan specifies that a turning_point_hint must be carried, the text must actually feature the turning point.
+9. **Word allocation**: Strictly follow the word allocation above; do not compress key turning points, climax, or closure into a single sentence.
+10. **System cleanliness**: Prohibit any prompt words, structural labels, or meta-explanatory tones.
+11. **Narrative person stability**: {% if narrative_person_rule %}{{ narrative_person_rule }}{% else %}If first person is not explicitly required, default to third person limited.{% endif %}{% if not (narrative_person_allows_first_person | default(false)) %} The main narration must not be written in first person; characters' self-references in dialogue can be preserved.{% endif %}
+{% if segment_plan is defined and segment_plan %}
+12. **Only complete current segment responsibilities**: Do not write all subsequent paragraphs at once, nor use meta-language like "to be continued" or "to be revealed in the next segment".
+13. **Natural bridging**: If not the first segment, must directly continue from the previous segment's tail, not restart with full background introduction or mechanical recap.
+    - **Continuity check**: Does the opening continue from the previous segment's time, location, POV, emotion, and action?
+    - **Causality chain complete**: Is the beginning of this segment a direct logical consequence of the previous segment's events?
+14. **The segment itself must be a complete piece of writing**: The current paragraph must have its own complete mini-rhythm; it cannot read like an outline or half-draft.
+{% if segment_plan.is_first %}
+15. **First segment must start stably**: The first paragraph must anchor the character, situation, anomaly, and start the conflict.
+{% endif %}
+{% if segment_plan.is_final %}
+16. **Final segment must close stably**: This segment must actually complete the resolution; the final segment must fulfill at least two of the following:
+    - Answer or providestage-level response to the core question
+    - Complete the character's emotional landing
+    - Fulfill the resolution beat's event outcome
+    - Let the theme form a perceptible resonance
+17. **Prohibit cliffhanger endings**: Do not end at the start of an action, sudden anomaly, half-spoken dialogue, simple suspense, or "just about to start the real story" position.
+{% else %}
+16. **Preserve forward space but don't leave hanging**: The ending can leave driving momentum, but should not feel like a sudden cut-off.
+{% endif %}
+{% else %}
+12. **Complete short story, not serializedfragment**: Must write complete beginning-middle-ending. Open endings are allowed, but not stopping at "just about to start the real story" or "to be revealed in the next chapter".
+13. **Final segment must land**: The final segment must complete at least two of the following:
+    - Answer or providestage-level response to the core question
+    - Complete the character's emotional landing
+    - Fulfill the resolution beat's event outcome
+    - Let the theme form a perceptible resonance
+14. **Prohibit headless/tailless**: The beginning cannot lack character/situation anchoring; the ending cannot only have sudden anomaly, action start, half-spoken dialogue, or simply create suspense.
+{% endif %}
+18. **Sensory diversity**: Ensure at least 3 types of sensory descriptions (visual, auditory, tactile, olfactory, gustatory).
+19. **Dialogue density**: Ensure dialogue content (direct quotes in quotation marks) accounts for {{ _dlg_min }}%-{{ _dlg_max }}% of the full text, and there are at least 2-3 dialogue segments that truly drive information, relationship, or decision changes.
+{{ creative_specificity_rules(title="### Creative Specificity") }}
+
+## Quality Calibration
+- Work Identity: You are a highly contract-conscious novel execution editor, skilled at transforming input constraints into narrative content with actions, choices, and consequences.
+- Creative Inference Path: First find the emotional engine and conflict pressure, then land on actions, dialogue, scene orchestration, and consequences.
+- Field-Level Quality Examples (not output format): Weak = "Character is nervous"; High-quality = "Character reveals cost, misjudgment, or emotional twist before making a concrete choice".
+- Actionable Path: Every new content must serve the given character motivation, scene resistance, suspense advancement, or emotional landing point.
+
+## Pre-Delivery Verification
+- Are P0/P1/P2 priorities maintained, and no weak references overriding hard constraints?
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans?
+- Are unauthorized new characters, locations, world rules, future payoffs, or format agreements avoided?
+- Are abstract goals transformed into observable actions, conflicts, state changes, or chapter continuation points?
+
+{#- ---------------------------------------------------------------------------
+    Format Layer: Output Format and Schema
+    --------------------------------------------------------------------------- -#}
+- ❌ Do not include segment labels like "Section 1/Section 2/Segment Summary"

@@ -1,0 +1,78 @@
+{# source_template_hash: 7a451fdee8d5c1b12de5d934bdea406e5863220b53a85096c956c952803a281a #}
+{#
+================================================================================
+【Remarks】
+================================================================================
+Prompt: extract_plot_thread_deltas.j2
+Service Step: EXTRACT_PLOT_THREAD_DELTAS (Canon Fragment: Plot Thread Changes)
+Brief Description: Only extract plot thread changes that advance, reveal, dormancy, or resolve in this chapter; prioritize reusing existing thread_id.
+Upstream Input: chapter_number/chapter_text/summary_exit/existing_thread_ids/prior_plot_threads
+Downstream Output: JSON: {"plot_thread_deltas": [...]}
+Downstream Consumer: EXTRACT_CANON Local Merger, Plot Thread Tracker
+Consumption Chain Priority: P0 = reuse existing thread_id; P1 = only write changed clues; P2 = avoid synonymous new creation
+================================================================================
+#}
+{#- Guidance Layer -#}
+Extract only plot thread changes. Return an empty array when no explicit changes exist.
+
+## Fact Source Boundary (P0)
+- Extract plot thread advancement only from the final text corresponding to FinalArtifact / `chapter_text`.
+- existing_thread_ids, prior_plot_threads, and summary_exit are only used for ID reuse and status change determination, not as new fact sources.
+- No planted/revealed/resolved/escalated status without textual evidence in the body may be written.
+
+## Output Field Description
+- `plot_thread_deltas`: List of plot thread changes, each containing thread_id, title, status change (active/resolved/dormant/escalated/advancing/planted/revealed), and this chapter's advancement summary.
+
+{% if shared_evidence_anchor %}
+## Shared Evidence Anchor
+{{ shared_evidence_anchor | tojson(indent=2) }}
+Use this as the common basis for this fragment; dimension-specific information can only supplement, not overwrite anchor facts.
+{% endif %}
+
+## Chapter Anchor
+- Chapter {{ chapter_number }}
+{% if summary_exit %}{{ summary_exit | tojson(indent=2) }}{% endif %}
+
+{% if existing_thread_ids %}
+## Existing thread_id (Priority Reuse)
+{% for tid in existing_thread_ids %}- {{ tid }}{% endfor %}
+{% endif %}
+
+{% if prior_plot_threads %}
+## Prior State Plot Threads
+{% for pt in prior_plot_threads %}
+- {{ pt.thread_id }} ({{ pt.title }}): status={{ pt.status }}{% if pt.summary %}, summary={{ pt.summary }}{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if character_state_deltas %}
+## Confirmed Character State Changes (Plot Thread Advancement Must Not Conflict With These)
+{{ character_state_deltas | tojson(indent=2) }}
+{% endif %}
+
+{% if relationship_deltas %}
+## Confirmed Relationship Changes (Can Be Used as Plot Thread Advancement Evidence)
+{{ relationship_deltas | tojson(indent=2) }}
+{% endif %}
+
+## Body Text
+{{ chapter_text }}
+
+## Requirements
+- Maximum {{ max_plot_thread_deltas | default(8) }} entries.
+- thread.status only allows active/resolved/dormant/escalated/advancing/planted/revealed.
+- Only create new threads when truly new main/subplot lines and no suitable existing ID exists.
+
+## Quality Calibration
+- Work Identity: You are an evidence-prioritized narrative fact extractor, skilled at extracting traceable, mergeable state information from body text and upstream anchors.
+- Extraction Path: First identify explicit facts in the body text, then cross-reference with shared anchors and known states, finally keeping only information consumable by subsequent mergers.
+- Evidence Calibration: Maintain consistency when upstream fragments have confirmed the same facts; use conservative field values to express unknown or pending confirmation when evidence is insufficient.
+- Actionable Path: Each piece of information serves canon, memory, state, or audit chains; avoid treating tone, metaphor, or speculation as facts.
+
+## Pre-Delivery Verification
+- Whether P0/P1/P2 priorities are maintained and no weak references override hard constraints.
+- Whether key judgments can trace back to input evidence, upstream contracts, or approved plans.
+- Whether unauthorized characters, locations, world rules, future payoffs, or format agreements are avoided.
+- Whether factual boundaries needed for subsequent merging/retrieval are preserved, and no speculation is written as established fact.
+
+{#- Format Layer -#}

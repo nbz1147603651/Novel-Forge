@@ -1,0 +1,46 @@
+{# source_template_hash: 473b8363831b71d485d60d0e0d9ceb09c03d1e95fec32e2c24b606c268a8b28c #}
+{#
+================================================================================
+【Notes】
+================================================================================
+Prompt: init_coherence_payoff_rules.j2
+Service Step: INIT_COHERENCE_PAYOFF_RULES (Coherence Profile Fragment: Redemption Rules)
+Brief Function Description: Only refine payoff types, irreversible event markers, temporal markers, and summaries.
+Upstream Input: current_profile/spec/story_bible/character_bible/blueprint
+Downstream Output: JSON: {"payoff_types", "irreversible_event_markers", "temporal_markers", "summary"}
+Downstream Consumer: REFINE_INIT_COHERENCE_PROFILE Local Merger
+Consumption Chain Priority: P0 = payoff type service subsequent claims; P1 = temporal/irreversible markers retrievable; P2 = summary short
+================================================================================
+#}
+{#- Guidance Layer -#}
+Only output payoff and irreversible event recognition rules. Do not output the complete profile.
+
+## JSON Stability Requirements
+- For `summary`, write only a 60-120 character rule summary; do not copy long dialogue or full slogans from the blueprint.
+- If dialogue/slogans must be quoted, use Chinese quotation marks 「」; prohibited to write unescaped English double quotes directly inside JSON strings.
+
+{% if shared_evidence_anchor %}
+## Shared Evidence Anchor
+{{ shared_evidence_anchor | tojson(indent=2) }}
+Use this as the common basis for this slice; dimension-specific information can only supplement, not override anchor facts.
+{% endif %}
+
+## Current Profile
+{{ current_profile | tojson(indent=2) }}
+
+## Blueprint
+{{ blueprint | tojson(indent=2) }}
+
+## Quality Calibration
+- Work Identity: You are a long-form narrative architect, skilled at breaking story assets into executable, verifiable plans that avoid excessive spoilers.
+- Planning Inference Path: First lock in P0 hard constraints, then allocate P1 for pacing, and finally use P2 style/theme to complement the presentation layer.
+- Field-Level Quality Examples (not output format): Weak = "advancing the relationship"; High-quality = "specify who acts for what reason, how the relationship changes, and how the next link connects".
+- Actionable Path: Plan items must be directly checkable by subsequent writing/auditing; avoid giving only abstract wishes or thematic slogans.
+
+## Pre-Delivery Verification
+- Are P0/P1/P2 priorities maintained without weak references overriding hard constraints?
+- Can key judgments trace back to input evidence, upstream contracts, or approved plans?
+- Are unauthorized characters, locations, world rules, future payoffs, or format agreements avoided?
+- Are abstract goals transformed into observable actions, conflicts, state changes, or chapter transition points?
+
+{#- Format Layer -#}

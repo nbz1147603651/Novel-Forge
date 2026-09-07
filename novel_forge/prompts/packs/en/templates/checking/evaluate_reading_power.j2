@@ -1,0 +1,200 @@
+{# ================================================================================
+source_template_hash: 797a166084a3b6a35ebc840429bcda2028e997df099ba3bf4272f825a5d06349
+【Notes】
+================================================================================
+Prompt: evaluate_reading_power.j2
+Service Step: EVALUATE_READING_POWER (Reading Power Evaluation)
+Brief Description: Evaluate the reading power of a chapter, including end-of-chapter hooks, previous chapter hook fulfillment, micro-payoffs, and other dimensions.
+Upstream Input:
+  - chapter_number: Chapter number
+  - genre: Genre type
+  - chapter_type: Chapter type
+  - previous_hook_description: Previous chapter hook description
+  - expected_hook: Outline hook expectation (type/strength/description)
+  - expected_payoffs: Outline micro-payoff expectation list
+  - chapter_text: Chapter body text
+  - suspense_timeline_entries: Cross-chapter suspense chain tracking entries
+Downstream Output:
+  - JSON: {"hook_type", "hook_strength", "hook_description", "prev_hook_fulfilled", ...}
+  - Downstream Consumer: RepairStep / EvaluateStep
+Consumption Chain Priority: P1 (Missing end-of-chapter hook / Previous chapter hook not responded) > P2 (Insufficient micro-payoffs / Transition chapter judgment)
+Brief Example:
+  Input: chapter_number=5, previous_hook_description="Protagonist surrounded"
+  Output: {"hook_type": "crisis", "hook_strength": "strong", "prev_hook_fulfilled": true}
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer: Task Definition + Context Consumption
+    --------------------------------------------------------------------------- -#}
+You are a professional web novel editor, expert in reading power analysis. Please evaluate the reading power of the following chapter.
+
+{% set strict_review = strict_review | default(false, true) %}
+{% set independent_reviewer_note = independent_reviewer_note | default("", true) %}
+{% set preferred_payoff_types = preferred_payoff_types | default([], true) %}
+{% set hook_score_config = hook_score_config | default({}, true) %}
+{% set expected_hook = expected_hook | default({}, true) %}
+{% set expected_payoffs = expected_payoffs | default([], true) %}
+{% set excerpt_strategy = excerpt_strategy | default("", true) %}
+{% set suspense_timeline_entries = suspense_timeline_entries | default([], true) %}
+{% set suspense_schedule = suspense_schedule | default([], true) %}
+{% set narrative_phase_context = narrative_phase_context | default({}, true) %}
+{% set main_plot_points = main_plot_points | default([], true) %}
+
+{% if strict_review %}
+## Re-review Mode
+This is an independent re-review after fixes. Please use strict but restrained standards to verify if the reading power fixes are effective:
+- Prioritize verifying previous chapter hook responses, expected end-of-chapter hooks, micro-payoff gaps, and whether main plot advancement has improved.
+- Only report reading power dimension issues; do not expand to prompt leakage, address forms, coherence, or causality chain issues.
+- Do not deduct points for local rewriting style changes; only judge low if the reader's motivation to continue reading remains insufficient.
+{% if independent_reviewer_note %}
+Independent Re-review Note: {{ independent_reviewer_note }}
+{% endif %}
+{% endif %}
+
+## Chapter Information
+- Chapter {{ chapter_number }}
+- Genre: {{ genre }}
+- Chapter Type: {{ chapter_type }}
+- Minimum Micro-payoffs Per Chapter: {{ min_payoffs }}
+{% if preferred_payoff_types %}- Preferred Micro-payoff Types: {{ preferred_payoff_types | join(', ') }}{% endif %}
+{% if hook_score_config %}
+- Hook Score Config: Strong={{ hook_score_config.hook_score_strong }}, Medium={{ hook_score_config.hook_score_medium }}, Weak={{ hook_score_config.hook_score_weak }}, Payoff Cap={{ hook_score_config.payoff_cap }}
+{% endif %}
+
+## Previous Chapter Hook
+{{ previous_hook_description }}
+
+{%- if expected_hook %}
+## Outline Hook Expectation
+The outline plans the following hook expectations for this chapter. Please evaluate the actual output against them:
+- **Expected Type**: {{ expected_hook.hook_type }}
+- **Expected Strength**: {{ expected_hook.hook_strength }}
+- **Expected Description**: {{ expected_hook.hook_description }}
+{%- endif %}
+
+{%- if expected_payoffs %}
+## Outline Micro-payoff Expectation
+The outline plans the following micro-payoff expectations for this chapter. Please evaluate whether the actual output covers them:
+{% for payoff in expected_payoffs %}
+- **{{ payoff.payoff_type }}**: {{ payoff.description }} (Expected Strength: {{ payoff.strength }})
+{% endfor %}
+{%- endif %}
+
+## Chapter Body
+{% if excerpt_strategy %}
+> Excerpt Note: {{ excerpt_strategy }}
+{% endif %}
+{{ chapter_text }}
+
+---
+
+## Evaluation Dimensions
+
+### 1. End-of-Chapter Hook (Hook)
+Analyze whether the chapter ending forms an effective hook that makes readers want to click the next chapter.
+- **`hook_type`**: crisis (crisis approaching) / mystery (suspense/information gap) / emotion (strong emotional trigger) / choice (dilemma) / desire (good news coming) / none (no obvious hook)
+- **`hook_strength`**: strong / medium / weak
+
+### 2. Previous Chapter Hook Fulfillment
+Did the hook left in the previous chapter get a response in this chapter (not necessarily fully resolved, but must have some connection)?
+
+{% if suspense_timeline_entries %}
+### 2.5 Cross-Chapter Suspense Chain Tracking
+
+The following suspense comes from outline planning. Please evaluate whether this chapter fulfills them:
+
+{% for entry in suspense_timeline_entries %}
+#### Suspense: {{ entry.suspense_id }}
+- Source: Chapter {{ entry.setup_chapter }}
+- Description: "{{ entry.suspense_description }}"
+- Planned Resolution Chapter: Chapter {{ entry.planned_resolution_chapter }}
+- Current Urgency: {{ entry.urgency_level }}
+- Fulfilled in This Chapter? (Yes/No)
+- Fulfillment Method: (If fulfilled, describe how)
+{% endfor %}
+
+Please write the suspense IDs explicitly fulfilled in this chapter to `resolved_suspense_ids`, and suspense IDs that are not fulfilled but are checked in this chapter to `unresolved_suspense_ids`. Only count as fulfilled when there are concrete responses, reveals, action results, or emotional settlements in the main text; simply re-raising the same type of hook does not count as fulfillment.
+{% endif %}
+
+### 3. In-Chapter Micro-payoff
+What small satisfactions did readers gain in this chapter? Mark each micro-payoff with type, and write results to `micro_payoffs` array:
+- information: Revealing new information/truth
+- relationship: Relationship advancement/confirmation
+- ability: Ability improvement/demonstration
+- resource: Gaining items/wealth
+- recognition: Gaining recognition/status
+- emotion: Emotional release/resonance
+- clue: Foreshadowing payoff/clue advancement
+
+### 4. Transition Chapter Judgment
+Is this chapter a transition/setup chapter (low conflict, mainly information transfer or scene transition)? Write judgment to `is_transition`.
+
+### 4.5 Character Drive
+Do readers care about this chapter's characters' fates? Do character actions have clear internal motivations (not just pushed by the plot)?
+- **Drive Strength**: strong (character makes active choices to drive plot) / moderate (character responds to events but has personal stance) / weak (character passively follows, no personal will)
+
+{%- if suspense_schedule %}
+### 5. Information Release Pacing
+
+Suspense schedule to focus on this chapter:
+{% for entry in suspense_schedule %}
+- **{{ entry.suspense_id }}**: {{ entry.suspense_description }}
+  (Source: Chapter {{ entry.setup_chapter }} → Planned Resolution: Chapter {{ entry.planned_resolution_chapter }})
+  Urgency: {{ entry.urgency_level }}
+{% endfor %}
+
+This Chapter's Major Revelation Budget: {{ revelation_budget }}
+Minimum Unresolved Threads to Preserve: {{ min_unresolved_threads }}
+
+Please evaluate:
+- **Information Release Pacing**: rushed (too many reveals too fast, readers can't digest) / balanced (moderate pace) / slow (insufficient reveals, low information) / stagnant (almost no new information release)
+- **`information_pacing_score`**: Must output 0-2 number, not 0-1 ratio; 2.0=fully met, 1.5=basically met, 1.0=partially met, 0=failed. If judged as balanced, should typically not be lower than 1.5.
+- **Major Revelation Count**: How many major reveals in this chapter (number)
+- **Over Budget**: Whether exceeding major revelation budget
+- **Scheduled Suspense Reveal Status**: Whether any suspense that should be revealed this chapter was not revealed
+{% endif %}
+
+{%- if narrative_phase_context or main_plot_points %}
+### 6. Main Plot Advancement Quality
+
+{% if narrative_phase_context %}
+Current Narrative Phase: {{ narrative_phase_context.phase_name }}
+Phase Description: {{ narrative_phase_context.description }}
+Phase Tension Level: {{ narrative_phase_context.tension_level }}
+{% endif %}
+
+{% if main_plot_points %}
+This Chapter's Main Plot Advancement Points:
+{% for point in main_plot_points %}
+- {{ point }}
+{% endfor %}
+{% endif %}
+
+Consecutive Main Plot Stall Chapters: {{ consecutive_main_plot_stall | default(0) }}
+
+Please evaluate:
+- **Main Plot Advancement Depth**: deep (substantial advancement, changing situation/relationship/cognition) / moderate (phase progress, moving toward goal) / surface (touches main plot but no substantial advancement) / stalled (completely derailed or stagnant)
+- **Tension Match**: Whether current chapter tension matches phase expectations (matched / elevated / depressed)
+- **`tension_match_score`**: Must output 0-2 number, not 0-1 ratio; 2.0=fully matched, 1.5=basically matched, 1.0=partially matched, 0=obvious mismatch. If judged as matched, should typically not be lower than 1.5.
+{% endif %}
+
+## Review Boundary
+- This task only evaluates reading power: end-of-chapter hooks, previous chapter hook fulfillment, micro-payoffs, suspense release, main plot advancement depth, and character drive.
+- Does not evaluate prompt leakage, forbidden elements, POV intrusion, address forms, illegal time scales, cross-chapter continuity, or causality chains; these are handled by local checks, chapter checks, continuity, and causality modules.
+
+## Quality Calibration
+- Work Identity: You are a rigorous novel quality reviewer, skilled at using short evidence, clear boundaries, and downstream-executable suggestions to locate issues.
+- Review Path: First confirm input evidence, then judge issue type, impact scope, and repair boundaries, finally give downstream-executable location information.
+- Field-level Quality Example (not output format): Weak="here is incoherent"; High-quality="point out which two pieces of evidence conflict, risk level, verifiable issue".
+- Actionable Path: Each judgment must support rechecking or repairing; low-confidence content should be downgraded to pending verification issues.
+
+## Pre-delivery Verification
+- Are P0/P1/P2 priorities maintained, and do weak references not override hard constraints?
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans?
+- Are unauthorized new characters, places, world rules, future payoffs, or format agreements avoided?
+- Are short evidence, risk level, location information, and downstream-verifiable issues provided?
+
+{#- ---------------------------------------------------------------------------
+    Format Layer: Output Format and Schema
+    --------------------------------------------------------------------------- -#}

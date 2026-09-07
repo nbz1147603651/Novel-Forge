@@ -1,0 +1,178 @@
+{# source_template_hash: 844a31f85de9d22c05946de48ec485c84f8c2b0a516e1749df94aac5ec52259d #}
+{%- from "_quality_standards.j2" import creative_specificity_rules -%}
+{%- from "_base/_artifact_source_contract.j2" import render_artifact_source_contract -%}
+{%- from "_base/_repair_attempt_guidance.j2" import render_repair_attempt_guidance, render_repair_self_check -%}
+{%- from "_base/_repair_quality_calibration.j2" import render_repair_quality_calibration, render_repair_pre_delivery_checklist -%}
+
+{#
+================================================================================
+【Notes】
+================================================================================
+Prompt: repair_reading_power.j2
+Service Step: REPAIR_READING_POWER (Reading Drive Repair)
+Brief Description: Only fix reading drive issues: previous chapter hook response, current chapter micro-payoffs, chapter-end hook.
+                 Do not replan main events, do not introduce new POVs or future chapter reveals.
+Upstream Input:
+  - chapter_text: Text to be corrected
+  - typed_issues / issue_types: Reading drive issues
+  - expected_hook / expected_payoffs / previous_hook_description
+  - stage_cards.source: ChapterSourceSlice, including forbidden reveal boundaries
+  - stage_cards.quality / stage_cards.repair / stage_cards.style locally derived cards
+Downstream Output:
+  - TEXT: Corrected complete main text
+Consumption Chain Priority:
+  P0 = prev_hook_unfulfilled / hook_missing / hook_too_weak
+  P1 = payoff_missing / outline_mismatch / verified style voice preservation
+  P2 = word count boundaries
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer
+    --------------------------------------------------------------------------- -#}
+
+{% set cards = stage_cards | default({}) %}
+{% set source = cards.source | default({}) %}
+{% set source_contract = source.chapter_contract | default({}, true) %}
+{% set quality = cards.quality | default({}) %}
+{% set contract = source_contract if source_contract else (cards.contract | default({})) %}
+{% set plan_card = cards.plan | default({}) %}
+{% set bridge_card = cards.bridge | default({}) %}
+{% set repair = cards.repair | default({}) %}
+{% set style = cards.style | default({}) %}
+{% set editorial = cards.editorial | default({}) %}
+{% set knowledge = cards.knowledge | default({}) %}
+{% set cognitive_constraints = contract.cognitive_constraints | default([]) %}
+
+Please perform targeted reading drive repair on Chapter {{ chapter_number }}.
+
+{{ render_artifact_source_contract(source, title="## Source Artifact Boundaries (P0)", mode="repair") }}
+
+## ticket/window Rules
+- First examine typed_issues, expected_hook, expected_payoffs, previous_hook_description and the main text evidence window.
+- Only fix hooks, micro-payoffs, and information rhythm related tickets; do not freely rewrite the entire chapter, do not use macro creative planning to add new plot.
+- Hooks can only create questions, pressure, orstage-level responses; do not add future answers, confirmatory reveals, or events outside the contract.
+
+## Reading Drive Goals
+{% if previous_hook_description %}- Previous Chapter Hook: {{ previous_hook_description }}{% endif %}
+{% if expected_hook %}- Expected Chapter-End Hook: {{ expected_hook }}{% endif %}
+{% if expected_payoffs %}- Expected Micro-Payoffs: {{ expected_payoffs }}{% endif %}
+{% if quality.chapter_hook %}- Current Hook Direction: {{ quality.chapter_hook }}{% endif %}
+{% if quality.in_chapter_payoffs %}- In-Chapter Payoff Direction: {{ quality.in_chapter_payoffs | join('; ') }}{% endif %}
+{% if quality.force_resolve_suspense %}- Must Resolve Suspense: {{ quality.force_resolve_suspense | join('; ') }}{% endif %}
+{% if bridge_card.pending_questions %}- Bridge Suspense: {{ bridge_card.pending_questions | join('; ') }}{% endif %}
+
+{% if contract.required_events or contract.forbidden_changes or contract.forbidden_progressions or contract.future_leak_risks or contract.exit_state_targets or plan_card.closing_contract or cognitive_constraints %}
+## Immutable Chapter Boundaries
+{% if contract.required_events %}- Required Events: {{ contract.required_events | join('; ') }}{% endif %}
+{% if contract.forbidden_changes %}- Forbidden Changes: {{ contract.forbidden_changes | join('; ') }}{% endif %}
+{% if contract.forbidden_progressions %}- Forbidden Early Progressions: {{ contract.forbidden_progressions | join('; ') }}{% endif %}
+{% if contract.future_leak_risks %}- Future Leak Risks: {{ contract.future_leak_risks | join('; ') }}{% endif %}
+{% if contract.exit_state_targets %}- Exit Targets: {{ contract.exit_state_targets | join('; ') }}{% endif %}
+{% if plan_card.closing_contract %}- Closing Contract: {{ plan_card.closing_contract }}{% endif %}
+{% if cognitive_constraints %}
+- Cognitive boundaries are listed once in the Source Artifact above. Hooks may create questions and misdirection only; do not grant knowledge or publicly explain future truths for extra impact.
+{% endif %}
+{% endif %}
+
+{% if repair.do_not_introduce %}## Must Not Introduce
+{{ repair.do_not_introduce | join('; ') }}
+{% endif %}
+{% if character_whitelist_note %}{{ character_whitelist_note }}{% endif %}
+{% if knowledge.character_cards or knowledge.chapter_ops %}
+## Character Knowledge Boundaries (Must Not Be Broken During Repair)
+- Hooks, micro-payoffs, and information rhythm can only change reader-visible information; character cognition must be obtained through observations, dialogues, or events in the main text.
+{% for kb in knowledge.character_cards %}
+{% set changes = kb.chapter_promised_changes | default([]) %}
+- {{ kb.character }}{% if kb.is_pov %} (Current POV){% endif %}: known={{ kb.known_facts | default([]) | join('; ') or 'no special known facts' }}; suspicions={{ kb.suspicions | default([]) | join('; ') or 'none' }}; misconceptions={{ kb.misbeliefs | default([]) | join('; ') or 'none' }}{% if changes %}; this_chapter_cognition_change={{ changes | map(attribute='target_text') | list | join('; ') }}{% endif %}
+{% endfor %}
+{% endif %}
+{% if forbidden_elements %}Rhetoric Hard Ban: {{ forbidden_elements | join('; ') }}{% endif %}
+{% if forbidden_elements_soft %}Rhetoric Soft Ban: {{ forbidden_elements_soft | join('; ') }}{% endif %}
+{% if intentional_callbacks %}Allowed Callbacks: {{ intentional_callbacks | join('; ') }}{% endif %}
+
+{% set style_modules = style.modules | default([]) %}
+{% set style_banned = style.banned_phrases | default([]) %}
+{% set editorial_voices = editorial.character_voices | default([]) %}
+{% if style.summary | default('') or style_modules or style_banned or editorial_voices %}
+## Style and Voice Preservation (P1, Does Not Override Reading Drive Tickets)
+- This section is only for making hooks, micro-payoffs, and information rhythm repairs blend back into the original text's tone; do not add future answers, major events, character cognition, or relationship conclusions for style purposes.
+{% if style.summary | default('') %}- Style Summary: {{ style.summary }}{% endif %}
+{% if style.dialogue_ratio | default('') or style.pace_mode | default('') %}- Dialogue/Pace: {{ style.dialogue_ratio | default('') }} / {{ style.pace_mode | default('') }}{% endif %}
+{% if style.emotional_style | default('') or style.environment_ratio | default('') or style.info_density | default('') %}- Emotion/Environment/Info Density: {{ style.emotional_style | default('') }} / {{ style.environment_ratio | default('') }} / {{ style.info_density | default('') }}{% endif %}
+{% for module in style_modules %}
+- {{ module.name | default('Style Module') }}: {{ module.rules | default([]) | join('; ') }}
+{% endfor %}
+{% if style_banned %}- Project-Level Banned Phrases: {{ style_banned | join(', ') }}{% endif %}
+{% if editorial_voices %}
+- Dialogue Voice References (only for the window being repaired, do not copy samples):
+{% for item in editorial_voices %}
+  - {{ item.character | default('Character') }}: {{ item.sentence_profile | default('') }}; emotion_syntax={{ item.emotion_syntax | default('') }}{% if item.sample_lines | default([]) %}; samples={{ item.sample_lines[:2] | join(' / ') }}{% endif %}{% if item.taboo_patterns | default([]) %}; banned={{ item.taboo_patterns | join(', ') }}{% endif %}
+{% endfor %}
+{% endif %}
+{% endif %}
+
+{% if memory_guidance %}
+## Historical Reading Drive Repair Guidance
+{% if memory_guidance.strategy_recommendation %}
+- Recommended Strategy: {{ memory_guidance.strategy_recommendation.preferred_strategy }} ({{ memory_guidance.strategy_recommendation.reason }}, confidence {{ memory_guidance.strategy_recommendation.confidence }})
+{% if memory_guidance.strategy_recommendation.warning %}- Risk Warning: {{ memory_guidance.strategy_recommendation.warning }}{% endif %}
+{% endif %}
+{% if memory_guidance.matched_issues %}
+- Similar Historical Issues:
+{% for match in memory_guidance.matched_issues %}
+  - Chapter {{ match.chapter | default(match.chapter_number) }} / {{ match.issue_type }}: {{ match.summary }}{% if match.lesson_learned %}; lesson: {{ match.lesson_learned }}{% endif %}{% if match.failure_pattern %}; failure pattern: {{ match.failure_pattern }}{% endif %}
+{% endfor %}
+{% endif %}
+{% if memory_guidance.recommended_strategies %}- Borrowable Strategies: {{ memory_guidance.recommended_strategies | join('; ') }}{% endif %}
+{% if memory_guidance.avoid_strategies %}- Strategies to Avoid: {{ memory_guidance.avoid_strategies | join('; ') }}{% endif %}
+{% if memory_guidance.success_rate is defined and memory_guidance.success_rate is not none %}- Historical Success Rate: {{ memory_guidance.success_rate }}{% if memory_guidance.total_attempts is defined %} (sample {{ memory_guidance.total_attempts }} attempts){% endif %}{% endif %}
+{% if memory_guidance.warning %}- Cross-Chapter Reminder: {{ memory_guidance.warning }}{% endif %}
+{% endif %}
+
+{{ render_repair_attempt_guidance(repair_attempt_guidance | default(none)) }}
+
+## Issues to Repair
+{% if structured_issues_block | default('') %}
+{{ structured_issues_block }}
+{% else %}
+{% for issue_type, issues_list in typed_issues.items() %}
+{% if issues_list %}
+### {{ issue_type }}
+{% for issue in issues_list %}
+- [Issue {{ issue.issue_id | default('not provided', true) }}] [{{ issue.severity }}] {{ issue.summary }}{% if issue.location %} ({{ issue.location }}){% endif %}{% if issue.evidence %}; evidence: {{ issue.evidence }}{% endif %}{% if issue.fix_suggestion %}; suggestion: {{ issue.fix_suggestion }}{% endif %}
+{% if issue.postconditions %}
+  Acceptance: {% for condition in issue.postconditions %}{{ condition.description }}{% if not loop.last %}; {% endif %}{% endfor %}
+{% endif %}
+{% endfor %}
+{% endif %}
+{% endfor %}
+{% endif %}
+
+## Main Text
+{{ chapter_text }}
+
+## Repair Rules
+1. prev_hook_unfulfilled: Respond to the previous chapter hook in the first half of the chapter with specific actions, discoveries, dialogues, or results.
+2. payoff_missing: Add an information, relationship, ability, resource, recognition, emotion, or clue-type micro-payoff at a natural position.
+3. hook_missing / hook_too_weak: Only modify the necessary ending paragraphs, so the ending forms a specific, trackable, clickable next-chapter driving force.
+4. outline_mismatch: Return the hook direction to the expected type, but do not overturn this chapter's main events.
+5. information_pacing_slow / information_pacing_stagnant: Add one new clue, relationship confirmation, situation change, orstage-level answer; do not fill information with expository tone.
+6. main_plot_surface / main_plot_stalled: Make the main plot goal, obstacle, result, or character cognition have one visible advancement; do not change this chapter's main event outcome.
+7. tension_depressed: Strengthen key paragraph pressure, cost, expectations, or chapter-end carrying pressure, but do not add unplanned major events.
+8. character_drive_weak: Have the core character make motivated choices, tests, rejections, or actions that bear consequences.
+9. revelation_over_budget: Postpone, split, or downgrade over-budget major reveals tostage-level clues.
+10. Keep the word count after repair between {{ word_count_min }}-{{ word_count_max }}.
+11. Prohibit adding unplanned POVs, banned characters, future chapter answers, additional major events, or large padding sections.
+12. Do not write explanations, reports, JSON, or repair notes; the main text must be complete.
+{{ creative_specificity_rules(title="") }}
+
+{{ render_repair_self_check("reading_power") }}
+
+{{ render_repair_quality_calibration("repair") }}
+
+{{ render_repair_pre_delivery_checklist("repair") }}
+
+{#- ---------------------------------------------------------------------------
+    Format Layer
+    --------------------------------------------------------------------------- -#}

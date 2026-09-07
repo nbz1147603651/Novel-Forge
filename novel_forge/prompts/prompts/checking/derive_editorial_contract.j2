@@ -1,0 +1,118 @@
+{# ================================================================================
+【备注】
+================================================================================
+提示词：derive_editorial_contract.j2
+服务步骤：DERIVE_EDITORIAL_CONTRACT（编辑契约生成）
+作用简述：基于初始化产物生成全书唯一编辑质量契约，约束声纹、高潮余波、主题、
+         象征物、揭示阶梯、叙述要素指令、表达通道和场景阻力。
+上游输入：
+  - story_bible：世界观与主题原始信息
+  - character_bible：角色基础设定
+  - style_profile：项目风格规范
+  - blueprint：叙事蓝图
+  - blueprint_elements：已选择的叙述要素库机制
+  - creative_director_packet：创意总监包
+  - total_chapters：总章数
+下游输出：
+  - JSON：EditorialContract 字段
+  - 下游消费者：constraint_router / chapter plan / draft / edit / editorial audit
+消费链优先级：P1（出版级编辑约束）
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    指导层：任务定义 + 上下文消费
+    --------------------------------------------------------------------------- -#}
+你是一位资深长篇小说责任编辑。请根据初始化产物生成本项目的**唯一编辑契约**。
+
+契约不是世界观设定，也不是文风总结；它专门回答：这本书怎样避免后期拖沓、人物声音趋同、主题过解释、象征物被解释死、身体反应反复使用、场景只有氛围没有阻力。
+
+## 项目信息
+- 作品名：{{ title or "" }}
+- 总章数：{{ total_chapters }}
+
+## 世界观与主题原始信息
+{{ story_bible | tojson(indent=2) }}
+
+## 角色基础设定
+{{ character_bible | tojson(indent=2) }}
+
+{% if style_profile %}
+## 风格规范
+{{ style_profile | tojson(indent=2) }}
+{% endif %}
+
+## 叙事蓝图
+{{ blueprint | tojson(indent=2) }}
+
+{% if creative_director_packet %}
+## 创意总监包
+{{ creative_director_packet | tojson(indent=2) }}
+{% endif %}
+
+{% if blueprint_elements %}
+## 已选择叙述要素
+{{ blueprint_elements | tojson(indent=2) }}
+{% endif %}
+
+## 生成要求
+1. `character_voices` 必须覆盖主要角色和强功能配角；每个角色要写出可执行的句式、解释倾向、情绪句法和禁用口吻。
+2. `climax_markers` 必须至少包含一个 `climax_type="main"` 的主高潮；主高潮位置必须来自蓝图的关键转折或终局策略，不能随便猜。
+3. `denouement_budget` 必须给出高潮后允许保留的功能，不允许把每条支线都写成终局型圆满。
+4. `theme_policies` 必须限制主题独白和象征物解释，要求主题通过行动、选择、冲突和场景后果呈现。
+5. `symbol_policies` 必须覆盖本书最重要的信物、地点、物件、主题句或反复意象。
+6. `scene_resistance_rules` 必须把场景阻力具体化为门、台阶、人群、距离、流程、遮挡、物件传递、签字、屏幕、电话、时间窗口等可写进正文的阻力。
+7. `expression_channel_budget` 必须控制身体反应、动作标签、对白标签、感官锚点的单章/单场预算。
+8. `revelation_ladder` 必须把重要悬疑、前史、信物或记忆线拆成分级揭示；分级名称来自题材与已选叙述要素，不要硬套固定术语；每级都要有新的行动后果。
+9. `editorial_element_directives` 必须引用已选择叙述要素的 `element_id`，把通用要素转译为本项目编辑指令；不要在代码/契约里发明作品专属枚举。
+10. `time_bridge_policies` 必须约束大跨度月份/季节/几周后转场，避免读者误以为连续数日内发生。
+11. `title_policy` 必须限制章节标题复用，说明哪些标题允许回环、最多复用几次。
+    `max_reuse` **必须**是 1-10 的整数（包含 1 和 10），**禁止** 0，**禁止** 负数，**禁止** 浮点，**禁止** null，**禁止** 字符串。
+    **数值优先级 > 文字策略描述**；当 `naming_strategy` 文本与 `max_reuse` 数值冲突时，**以 `max_reuse` 数值字段为准**，不要写 0。
+    - 策略是"每章标题唯一 / 禁止复用 / 永不回环" → `max_reuse: 1`
+    - 策略是"主标题+阶段后缀 / 卷终允许回环" → `max_reuse: 2` 到 `max_reuse: 4`
+    - 策略是"允许主题变体重用 / 重大节点回环" → `max_reuse: 5` 到 `max_reuse: 8`
+    - 策略是"章节分组共享标题 / 平行章节共用" → `max_reuse: 9` 或 `max_reuse: 10`
+    - **禁止** "文本说 X 但 `max_reuse` 写 0" 这种自相矛盾；**禁止** "策略说允许复用但 `max_reuse` 写 1"；必须保持文本描述与数值一致。
+12. 内容需紧凑：`character_voices` 最多 6 个；`climax_markers` 最多 5 个；`symbol_policies` 最多 5 个；`scene_resistance_rules` 最多 5 个；`revelation_ladder` 最多 8 级；`editorial_element_directives` 最多 8 条；`time_bridge_policies` 最多 7 条。
+13. 每个角色的 `signature_moves`、`taboo_patterns`、`sample_lines` 各最多 5 条；每条字符串只写可执行约束，不写解释段落。
+
+## 字段取值约束
+- `climax_markers[].climax_type` 只能使用这 5 个精确值之一：`main`、`subplot`、`emotional`、`commercial`、`mystery`。
+  收束/余波/尾声功能请写入 `description` 或 `denouement_budget`，不要另造阶段名。
+- `symbol_policies[].explanation_policy` 只能使用这 4 个精确值之一：`never_explain`、`explain_once`、`explain_on_escalation`、`free`。
+  不要使用简写、中文近义词或其他策略名。
+- `symbol_policies[]` 只允许包含示例中的 5 个字段：`symbol`、`narrative_function`、`explanation_policy`、`escalation_rule`、`max_explicit_explanations`。
+  禁止解释类要求请写入 `escalation_rule`，不要新增额外字段。
+- `scene_resistance_rules[]` 只允许包含示例中的 3 个字段：`scene_type`、`required_resistance`、`examples`。
+  章节窗口请写入 `required_resistance`，不要新增额外字段。
+- `expression_channel_budget` 固定使用 4 个 key，且 value 必须是整数：
+  `somatic_reaction`、`action_tag`、`dialogue_tag`、`sensory_anchor`。
+  高情绪场景预算只写入 `body_signal_budget_per_high_emotion_scene` 整数字段，不要新增说明字段。
+- 所有对象字段限于本节列出的字段；补充说明并入既有字段，不新增分析字段。
+
+## 字段内容补充
+- `project_title` 使用当前作品名，可为空字符串。
+- `character_voices` 的每项包含角色名、句式画像、解释倾向、情绪句法、标志性动作、禁用口吻和少量声纹样例。
+- `climax_markers` 的每项包含章节号、高潮类型、功能描述和余波章数；必须至少有一个 `main`。
+- `climax_markers[].expected_aftermath_chapters` 必须是单个整数，表示该高潮之后需要追踪的余波章数；禁止写成 `[55, 60]`、`"55-60"` 或任何章节范围。
+- `denouement_budget` 写明余波章数、确认场景上限、新功能和禁止重复项。
+- `symbol_policies`、`scene_resistance_rules`、`revelation_ladder`、`editorial_element_directives` 的子字段按上文约束填写，不输出额外分析字段。
+- `time_bridge_policies`、`forbidden_confirmation_phrases`、`revision_priorities` 使用短字符串数组。
+- `title_policy` 写明标题复用上限、允许回环的标题和命名策略；`max_reuse` 必须大于等于 1。
+
+## 质量校准
+- 工作身份：你是一位项目特异性写作顾问，擅长从梗概、角色、世界规则和已选叙事要素中推导可执行的风格/结构契约。
+- 推导路径：先识别本项目的核心卖点、冲突机制和表达风险，再把结论映射到字段级参数或编辑契约。
+- 字段级质量示例（非输出格式）：平弱=“风格冷峻”；高质量=“说明冷峻来自何种场景压力、证据细节、对白比例或信息密度”。
+- 可操作路径：每条规则都要能被正文生成、编辑检查或后续审计复用，避免泛化成所有项目都适用的空话。
+
+## 交付前核验
+- P0/P1/P2 优先级是否被保持，且没有让弱参考覆盖硬约束。
+- 是否能把关键判断回指到输入证据、上游契约或已批准计划。
+- 是否避免新增未授权的人物、地点、世界规则、未来 payoff 或格式协议。
+- 是否把项目特异性依据映射到具体字段/规则，而不是复用通用写作口诀。
+
+{#- ---------------------------------------------------------------------------
+    系统契约由 PromptBuilder 注入
+    --------------------------------------------------------------------------- -#}

@@ -1,0 +1,10 @@
+{
+  "fixture_id": "reject-candidate-verification-hash-mismatch",
+  "kind": "candidate_evidence",
+  "source_hash": "source-v1",
+  "candidate_base_hash": "source-v1",
+  "candidate_hash": "candidate-v1",
+  "verification_candidate_hash": "candidate-v0",
+  "verification_passed": true,
+  "expect_adopted": false
+}

@@ -1,0 +1,265 @@
+{%- from "_styles/_render_style_profile.j2" import render_style_profile_for_stage -%}
+{%- import "_base/_render_style_profile_global.j2" as style_global -%}
+
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：evaluate_draft.j2
+服务步骤：EVALUATE（短篇/长篇通用质量评估）
+作用简述：对短篇或长篇单章正文进行七维度质量评估（一致性、连贯性、实质推进、
+          人物、风格、吸引力、节奏），输出评估分数与修复建议。
+上游输入：
+  - draft_text: 来自 EDIT 步骤的编辑后正文
+  - tone/genre/chapter_goal/theme/opening_style/ending_style/target_word_count: 规格参数
+  - blueprint: 蓝图/本章投影约束；长篇只允许 bounded chapter context，不接收完整未来蓝图
+  - beats: 节拍参考；长篇由本章 scene_intents 投影生成
+  - execution_plan: 执行目标；长篇由本章 plan/cross_scene_intent 投影生成
+  - causal_link: 因果链约束
+  - rewrite_notes: 重写方向
+下游输出：
+  - JSON: scores / overall_score / passed / summary / repair_suggestions
+  - 下游消费者：EditStep（用于循环修复）
+消费链优先级：
+  P0 = 因果链 / POV / immutable_facts（字数仅在字数阀门开启时参与）
+  P1 = 一致性 / 连贯性 / 人物 / 提示词泄露
+  P2 = 风格 / 吸引力 / 节奏
+简要例子：
+  输入：draft_text="林远穿过小巷...", causal_link={previous_event:"发现尸体"}
+  输出：scores 中逐维给出差异化分数与理由，不使用固定全 8.0 示例。
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    指导层：任务定义 + 上下文消费
+    --------------------------------------------------------------------------- -#}
+{{ render_style_profile_for_stage(style_profile | default(None), stage="eval") }}
+{%- set _dialogue_ratio = style_global.global_style_value(style_profile | default(None), 'dialogue_ratio') | trim -%}
+{%- set _emotional_style = style_global.global_style_value(style_profile | default(None), 'emotional_style') | trim -%}
+{%- set _environment_ratio = style_global.global_style_value(style_profile | default(None), 'environment_ratio') | trim -%}
+{%- set _info_density = style_global.global_style_value(style_profile | default(None), 'info_density') | trim -%}
+{%- set _dlg_min = style_global.dialogue_ratio_min(style_profile | default(None)) | trim | int -%}
+{%- set _dlg_max = style_global.dialogue_ratio_max(style_profile | default(None)) | trim | int -%}
+{%- set _word_count_gate_enabled = word_count_gate_enabled | default(true) -%}
+
+请对以下小说正文做质量评估。
+
+{% if tone | default('') or genre | default('') or chapter_goal | default('') or theme | default('') or opening_style | default('') or ending_style | default('') or target_word_count | default(0) or not _word_count_gate_enabled %}
+## 本章创作规格
+{% if tone | default('') %}- 基调：{{ tone }}{% endif %}
+{% if genre | default('') %}- 类型：{{ genre }}{% endif %}
+{% if chapter_goal | default('') %}- 章节目标：{{ chapter_goal }}{% endif %}
+{% if theme | default('') %}- 主题：{{ theme }}{% endif %}
+{% if opening_style | default('') %}- 开篇方式：{{ opening_style }}{% endif %}
+{% if ending_style | default('') %}- 结尾方式：{{ ending_style }}{% endif %}
+{% if target_word_count | default(0) and _word_count_gate_enabled %}- 目标字数：{{ target_word_count }}{% endif %}
+{% if target_word_count | default(0) and not _word_count_gate_enabled %}- 目标字数：{{ target_word_count }}（字数阀门关闭，仅作规划背景，不参与评分或 passed 判断）{% endif %}
+{% if not target_word_count | default(0) and not _word_count_gate_enabled %}- 字数阀门：关闭；正文长短不参与评分或 passed 判断{% endif %}
+
+{% endif %}
+{% if blueprint | default({}) %}
+## 蓝图参考
+- 梗概：{{ blueprint.synopsis }}
+{% if blueprint.emotional_arc | default('') %}- 情感弧线：{{ blueprint.emotional_arc }}{% endif %}
+{% if blueprint.ending_strategy | default('') %}- 收束策略：{{ blueprint.ending_strategy }}{% endif %}
+{% if blueprint.anchor_elements | default({}) %}
+{% set anchor = blueprint.anchor_elements %}
+{% if anchor.time_frame | default('') %}- 时间框架：{{ anchor.time_frame }}{% endif %}
+{% if anchor.primary_locations | default([]) %}- 核心场景：{{ anchor.primary_locations | join('、') }}{% endif %}
+{% if anchor.core_characters | default([]) %}- 核心人物：{% for c in anchor.core_characters %}{{ c.name }}{% if not loop.last %}、{% endif %}{% endfor %}{% endif %}
+{% if anchor.central_event | default('') %}- 核心事件：{{ anchor.central_event }}{% endif %}
+{% endif %}
+
+{% endif %}
+{% if beats | default([]) %}
+## 节拍参考
+{% for beat in beats %}
+{{ beat.sequence }}. [{{ beat.beat_type | upper }}] {{ beat.summary }}
+{% endfor %}
+{% endif %}
+{% if execution_plan | default({}) %}
+## 本地执行目标
+{% if execution_plan.opening_contract | default('') %}- 开篇执行目标：{{ execution_plan.opening_contract }}{% endif %}
+{% if execution_plan.ending_contract | default('') %}- 结尾执行目标：{{ execution_plan.ending_contract }}{% endif %}
+{% endif %}
+{% if causal_link | default({}) %}
+## 因果链约束（必须验证）
+- 上一章核心事件：{{ causal_link.previous_event | default('') }}
+- 因果机制：{{ causal_link.causal_mechanism | default('') }}
+- 本章需回答的悬念：{{ causal_link.unresolved_question | default('') }}
+请验证正文是否体现了上述因果逻辑！
+{% endif %}
+{% if memory_layered_context | default({}) and memory_layered_context.L1_core_memory | default('') %}
+## 核心记忆校验
+{{ memory_layered_context.L1_core_memory }}
+{% endif %}
+{% if memory_layered_context | default({}) and memory_layered_context.L2_on_demand | default('') %}
+## 近期事件校验
+{{ memory_layered_context.L2_on_demand }}
+{% endif %}
+{% if memory_motif_suggestions | default([]) %}
+## 母题执行检查（评估维度参考）
+以下母题参考来自规划阶段，仅作为风格连续性旁证；不得要求正文为完成母题而新增意象、符号或主题解释：
+{% for item in memory_motif_suggestions %}
+- {{ item.motif_name }}（优先级：{{ item.priority }}）：{{ item.reason }}
+{% endfor %}
+- 若本章**有意体现了**上述母题，最多作为 consistency / style 的正向旁证；
+- 若本章**完全未体现**高优先级母题，不得单独扣分；只有当正文同时违背明确剧情锚点、人物状态或已写出的连续性事实时，才按对应维度评价；
+- 若本章**无意识地重复了**应回避的意象，优先按审美疲劳处理；若该意象承担剧情锚点或有意回环功能，不应扣 continuity。
+{% endif %}
+{% if memory_forbidden_repetition | default([]) %}
+⚠️ **高频表达风险参考**：结合正文证据检查以下表达是否重复同一作用；仅凭频次或有意使用不能判定。保留必要事实、用户明确要求及承担新作用的再次出现 — {{ memory_forbidden_repetition | join('、') }}
+{% endif %}
+
+{% if rewrite_notes | default('') %}
+## 本章重写方向（评估时检查正文是否有明确对应体现）
+{{ rewrite_notes }}
+
+{% endif %}
+## 待评估文本
+{{ draft_text }}
+
+---
+
+## 评估规则（七维度评估体系 v2）
+
+### 评分语义
+- consistency / continuity / plot_progression 主要衡量结构、承接、合同履约与实质推进；高分不代表文学表达已满分。
+- style / engagement / pacing 才承担更多语言质感、可读性、节奏与读者吸引力判断；若表达重复、空泛或审美疲劳，应在这些维度扣分。
+- 允许好章节整体高分，但不得为了“看起来均衡”把多个维度锚定为同一个整数分。
+
+### 维度一：consistency（设定一致性，满分 10）
+检查故事世界的设定是否前后一致：
+- A. 时间线无逻辑错误，或跳跃已在正文中明确说明（2分）
+- B. 地点/空间逻辑正确，人物不会未经移动出现在不同地点（2分）
+- C. 人物能力/等级/身份与已建立设定一致，无越级使用能力（2分）
+- D. 已建立的世界规则未被无因果突破（2分）
+- E. **因果链完整**（重点项，2分）：章末主要情节与开头存在可追溯因果链
+- ⚠️ 若E项未满足，consistency得分不超过6分
+
+### 维度二：continuity（场景连贯性，满分 10）
+检查章节内部及章节间的连贯衔接：
+- A. 场景转换有明确动作/过渡支撑，非硬切换（2分）
+- B. 本章开头状态是上一章结尾的自然延续（2分）
+- C. 情节线承接清晰，无悬而未决突然消失的线索（2分）
+- D. 伏笔/悬念有合理推进或呼应，不遗忘不矛盾（2分）
+- E. 信息流自然，读者不会因缺失上下文而困惑（2分）
+{% if blueprint | default({}) or beats | default([]) %}
+- 若短篇模式，检查开头是否快速建立人物与情境，结尾是否形成完整阶段结果；若未满足不得高于6分
+{% endif %}
+
+### 维度三：plot_progression（实质推进，满分 10）
+检查本章是否避免成为“填充章节”，并产生可追踪的状态变化：
+- A. 主线目标或 chapter_goal 有可见阶段推进，不只是重复既有目标（2分）
+- B. 至少一个人物关系、人物状态、资源、认知或风险格局发生可追踪变化（2分）
+- C. 场景结果会改变后续选择、代价、危险或机会（2分）
+- D. 伏笔/悬念/承诺至少有新增线索、兑现、转向或升级（2分）
+- E. 没有用重复解释、空泛心理、静态铺陈替代事件推进（2分）
+- 若正文基本只复述既有信息且不改变任何状态，plot_progression 不得高于5分。
+- 若 main_plot_points、chapter_goal 或因果链约束基本未落实，plot_progression 不得高于6分。
+
+### 维度四：character（人物一致性，满分 10）
+检查人物是否行为得体、性格一致：
+- A. POV全章稳定，或切换处有明确 ─── 分场标记（2分）；若出现非POV角色的内心描写（"XX心想/暗忖/心中"）且无分隔符 → A项 0分；若POV切换有分隔符但次数>3 → A项 1分
+- B. 人物的知情与不知情状态前后一致，无信息悖论（2分）
+- C. 人物动机逻辑合理，非为剧情服务的突兀行为（2分）
+- D. 性格表现与已建立的人设一致；若有变化则有触发事件铺垫（2分）
+- E. 对话风格符合人物身份和性格特征（2分）
+
+### 维度五：style（文学风格，满分 10）
+- A. 叙述基调与规格中的 tone/genre 一致（1.5分）
+- B. 动词具体有画面感（泛化动词"走/看/说"等占比低于15%）（1.5分）
+- C. 句式多样（无连续3段以上使用相同句式结构）（1.5分）
+- D. 无明显冗词和重复表达（1.5分）
+- E. 无提示词/系统标记泄露（2分）
+- F. 开头100字内不含"精确时间戳+地点"的公式化起笔（2分）
+  若已提供 opening_style / ending_style，请纳入 A、F 的判断。
+**风格专项评分调整**：
+- 对话占比应在 {{ _dlg_min }}-{{ _dlg_max }}% 之间，低于 {{ _dlg_min - 10 }}% 或高于 {{ _dlg_max + 5 }}% 应扣分
+{%- if _emotional_style == 'direct' %}
+- 情绪呈现应直接外放（高张力场景），若过度含蓄克制应适当扣分
+{%- elif _emotional_style == 'subtle' %}
+- 情绪呈现应含蓄克制，通过动作/环境/细节暗示，直接外放应适当扣分
+{%- endif %}
+{%- if _environment_ratio == 'low' %}
+- 环境描写占比不应超过15%，若出现整段纯景物描写应扣分
+{%- elif _environment_ratio == 'high' %}
+- 环境描写占比可达25-35%，且应与角色心理状态呼应
+{%- endif %}
+{%- if _info_density == 'high' %}
+- 每500字应有至少1个新信息投放，信息密度过低应扣分
+{%- endif %}
+{%- if _dialogue_ratio == 'high' %}
+- 章末应有明确悬念或钩子，若平淡收束应扣分
+{%- elif _dialogue_ratio == 'low' %}
+- 章末可留开放性思考或情绪余韵，不必是具体悬念
+{%- endif %}
+
+### 维度六：engagement（读者吸引力，满分 10）
+- A. 有效对话占全文比例 ≥ {{ _dlg_min }}%（对话占比要求：{{ _dlg_min }}-{{ _dlg_max }}%），且推动信息/关系/决策变化（2分）
+- B. 感官描写覆盖至少 3 种（视觉/听觉/触觉/嗅觉/味觉）（2分）
+- C. 每处场景转换有至少一个感官锚点（2分）
+- D. 章末留有明确悬念或情绪余韵（2分）
+- E. 无超过50字的段落高度重复（2分）
+{% if blueprint | default({}) or beats | default([]) %}
+- 若短篇正文停在"待续式悬空位置"、只制造悬念却没有收束落点，D项不得给满分。
+{% endif %}
+
+### 维度七：pacing（节奏感，满分 10）
+- A. 段落节奏有张弛（高张力场景短促；舒缓场景适当加长）（2.5分）
+- B. 叙述/对话/描写/内心独白的比例合理，无某一元素过度集中（2.5分）
+- C. 情绪强度有起伏，非全程平淡或全程高亢（2.5分）
+- D. 信息密度适当（每500字内技术细节不超过3处；无堆砌式技术描写）（2.5分）
+{% if require_intent_compliance | default(false) %}
+
+### 维度八：intent_compliance（用户意图合规，满分 10）
+- 逐项对照系统注入的用户明确意图和不可改写规则，检查人物身份/关系、POV、结局、世界规则、主冲突、题材基调、禁止内容和 locked include/exclude。
+- 10分：所有非空用户字段均被保留；7–9分：实现偏弱但没有改写硬意图。
+- 任一硬意图被改写、反向选择或静默覆盖时必须给 0–2 分，passed 必须为 false，并给出定位明确的 high 优先级修复建议。
+- 外部事实或灵感与用户架空设定冲突时，保留用户设定，不得因“现实性”扣分。
+{% endif %}
+{% if rewrite_notes | default('') %}
+
+### 附加维度：rewrite_compliance（重写方向落地，满分 10）
+对照上方"重写方向"中的每一项要求，检查正文中是否有明确对应内容：
+- 9-10：所有方向在正文中均有具体体现
+- 7-8：大部分方向（≥70%）落地
+- 5-6：部分方向（40-69%）落地
+- 3-4：少量方向（10-39%）落地
+- 0-2：基本未体现（<10%）
+{% endif %}
+
+## 评分约束
+1. 每个维度得分 = 各子项之和（上限10分）。
+2. overall_score = consistency / continuity / plot_progression / character / style / engagement / pacing{% if require_intent_compliance | default(false) %} / intent_compliance{% endif %} 等所有输出维度得分的简单平均值（保留1位小数）。
+3. passed = overall_score >= threshold（threshold = 6.0）。
+4. **因果链是底线**：若 consistency 的 E 项未满足（得分<1），passed 必须为 false。
+5. 不要因风格偏好主观降分；只依据上述清单判断。
+6. 对同一正文多次评估结果应高度一致，不要随机波动超过±0.5分。
+{% if require_intent_compliance | default(false) %}
+7. intent_compliance < 9 表示存在硬意图风险，passed 必须为 false。
+{% endif %}
+{% if not _word_count_gate_enabled %}
+8. 字数阀门关闭：不得因正文长短超出目标影响任何 score、overall_score 或 passed；只评价结构、人物、表达、节奏和追读等文本质量。
+{% endif %}
+
+## 评分结果字段约束
+- `scores`：逐项包含 dimension、score、comment；每个 score 必须依据上方子项逐条计算，允许小数，不得无依据地统一给同一分数。
+- `scores[].dimension` 固定使用：consistency / continuity / plot_progression / character / style / engagement / pacing{% if require_intent_compliance | default(false) %} / intent_compliance{% endif %}{% if rewrite_notes | default('') %} / rewrite_compliance{% endif %}。
+- `overall_score`：所有维度 score 的简单平均值，保留1位小数。
+- `passed`：overall_score >= 6.0 且 consistency.E >= 1 时为 true，否则为 false。
+- `threshold`：固定为 6.0。
+- `summary`：一段不超过100字的中文总结。
+- `repair_suggestions`：任何维度得分 < 7 时，至少提供1条对应维度的修复建议（含 issue、location、suggestion、priority、dimension）。
+
+## 质量校准
+- 工作身份：你是一位严谨的小说质量审校员，擅长用短证据、明确边界和下游可执行建议定位问题。
+- 审校路径：先确认输入证据，再判断问题类型、影响范围和修复边界，最后给下游可执行的定位信息。
+- 字段级质量示例（非输出格式）：平弱=“这里不连贯”；高质量=“指出哪两处证据冲突、风险等级、可验证问题”。
+- 可操作路径：每条判断都要能支持复核或修复，低置信度内容降级为待验证问题。
+
+## 交付前核验
+- P0/P1/P2 优先级是否被保持，且没有让弱参考覆盖硬约束。
+- 是否能把关键判断回指到输入证据、上游契约或已批准计划。
+- 是否避免新增未授权的人物、地点、世界规则、未来 payoff 或格式协议。
+- 是否给出短证据、风险等级、定位信息和下游可验证的问题。

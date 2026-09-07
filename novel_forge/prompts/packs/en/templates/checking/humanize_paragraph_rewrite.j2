@@ -1,0 +1,77 @@
+{# source_template_hash: 259073db230e3f0f5a93f20d21d48c39eab739c74c99a1850ee995120d5e943b #}
+{#
+===============================================================================
+【Remarks】
+===============================================================================
+Prompt: humanize_paragraph_rewrite.j2
+Task Type: HUMANIZE_PARAGRAPH_REWRITE
+Service Step: Humanize Paragraph-Level Directed Rewrite
+Function Summary: Execute directed rewriting on paragraphs containing AI traces
+                  that cannot be precisely replaced. Only remove AI-generated
+                  traces while preserving original narrative content, causal
+                  relationships, and character states.
+Upstream Input:
+  - chapter_number: Chapter number
+  - paragraphs: List of paragraphs to rewrite, each containing index and text
+  - pattern_hits: List of AI traces detected in these paragraphs
+  - style_profile (optional): Project style specification
+Downstream Output:
+  - TEXT: Rewritten paragraph text, separated by blank lines between paragraphs
+  - Downstream Consumer: HumanizeScanStep / run_humanize_layer
+===============================================================================
+#}
+{%- from "_base/_cognitive_constraints.j2" import render_cognitive_constraints -%}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer: AI Trace Targeted Rewrite Instructions
+    --------------------------------------------------------------------------- -#}
+
+Execute **targeted AI trace removal** on the following paragraphs. You may only eliminate the listed AI-generated traces without altering narrative content.
+
+## Rewrite Constraints
+
+- **Rewrite only the AI traces marked in the paragraphs below**. Do not add or remove plot points, and do not alter causal chains.
+- Retain original POV, time markers, character perceptions, and narrative pacing.
+- Dialogue content (text within「」/""/"" quotes) must not be modified.
+- Do not introduce new AI writing patterns (such as rule of three, negative parallelism, significance inflation, etc.).
+- After rewriting, the word count of each paragraph should not deviate more than ±20% from the original.
+- If an AI trace is reasonable in context (such as rhetoric deliberately used by a character, or required by style specifications), retain it unchanged.
+
+{% if humanize_context.cognitive_constraints | default([]) %}
+## Character Cognitive Preservation Boundary (P0)
+- This rewrite may remove only the specified AI trace. Do not turn `unknown/partial` into `full`, or turn suspicion/inner cognition into confirmation or public disclosure.
+{{ render_cognitive_constraints(humanize_context.cognitive_constraints) }}
+{% endif %}
+
+## Paragraphs Requiring Rewrite
+
+{% for para in paragraphs %}
+### Paragraph {{ para.index }}
+{{ para.text }}
+
+{% endfor %}
+
+## AI Traces Detected in These Paragraphs
+
+{% for hit in pattern_hits %}
+- **{{ hit.pattern_name }}** ({{ hit.category }}, {{ hit.severity }}): {{ hit.evidence_quote }}
+{% endfor %}
+
+## Rewrite Instructions for Each Trace
+
+- **Rule of Three (rule_of_three)**: Break the mechanical three-item listing into two items or disperse them into independent short sentences for more natural pacing.
+- **Em Dash Overuse (em_dash_overuse)**: Convert em dash insertions to comma connections, independent sentences, or parenthetical notes. Only retain em dashes for dialogue interruptions.
+- **AI High-Frequency Vocabulary (ai_vocabulary)**: Replace with more natural synonymous expressions for novel narration.
+- **Negative Parallelism (negative_parallelism)**: Convert "not X but Y" structures to direct statements or action descriptions.
+- **Other Patterns**: Handle according to rewrite examples in humanize_scan.
+
+{% if style_profile %}
+## Project Style Reference
+
+Maintain consistency with project style when rewriting:
+{{ style_profile | tojson(indent=2) }}
+{% endif %}
+
+## Output Requirements
+
+Output the rewritten text in paragraph order, with one blank line separating paragraphs. Do not add paragraph numbers, headings, or any explanatory text—output plain text only.

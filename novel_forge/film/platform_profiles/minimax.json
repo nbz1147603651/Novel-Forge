@@ -1,0 +1,60 @@
+{
+  "provider_id": "minimax",
+  "profile_version": "2.0",
+  "display_name": "MiniMax · H3 / Hailuo 视觉生成",
+  "char_budget": {
+    "prompt_zh": 2000,
+    "negative_zh": 150
+  },
+  "structure": {
+    "kind": "h3_timeline",
+    "sections": [
+      "integrated_multimodal_description",
+      "overall_soundscape",
+      "non_diegetic_music"
+    ],
+    "alignment_instructions": {
+      "i2va": "For the target video, at 0.00 seconds into the target video, <Picture 1> (from [Shot 1]) is fully referenced.",
+      "fl2va": "How the reference pictures align with the target video — Picture 1 (from [Shot 1]) aligns with the 0.00-second mark of the target video; Picture 2 (from [Shot 1]) aligns with the {duration:.2f}-second mark of the target video.",
+      "l2va": "How the reference pictures align with the target video — <Picture 1> (from [Shot 1]) aligns with the {duration:.2f}-second mark of the target video."
+    },
+    "dialogue_language_tag": "Chinese",
+    "soundscape_fallback": "Quiet ambient room tone with subtle environmental texture.",
+    "music_na": "N/A",
+    "disable_prompt_optimizer": true,
+    "guidance": "按 MiniMax H3 官方提示词指南（Context-IR 结构）组织：首行为参考图对齐指令（关键帧任务），正文为沿时间线展开的 integrated_multimodal_description，随后是 overall_soundscape 与 non_diegetic_music 两个声场段落。结构标记原样保留，叙事内容保持原文语言。"
+  },
+  "camera_vocabulary": {
+    "slow_push": "the camera pushes in with small amplitude at slow speed",
+    "push_in": "the camera pushes in",
+    "pull_out": "the camera pulls out",
+    "tracking": "the camera holds a tracking shot following the subject",
+    "pan": "the camera pans horizontally",
+    "tilt": "the camera tilts vertically",
+    "crane": "the camera pedestals up",
+    "orbit": "the camera arcs around the subject",
+    "subtle_handheld": "the camera shakes slightly",
+    "static": "the camera holds a static shot",
+    "dolly_zoom": "the camera zooms in while pulling out"
+  },
+  "negative_policy": {
+    "required_terms": ["blurry", "distorted limbs", "extra fingers"],
+    "guidance": "H3 时间线结构提示词不使用独立负面字段；负面项仅在供应商支持独立参数时随请求携带，不并入结构化正文。"
+  },
+  "capability_switches": {
+    "multi_shot": true,
+    "native_audio": true,
+    "multi_image_reference": true,
+    "camera_command": true,
+    "trusted_actor_asset": false
+  },
+  "platform_prompt_guidance": "MiniMax H3 专属：提示词采用 Context-IR 时间线结构；镜头运动写成自然英文动作句（运动类型 + 幅度 + 速度），不堆叠标签；说话人使用 (S1)/(S2) 稳定 ID，对白原文置于 <d>[语言标签] ...</d> 内；多镜头以 [Shot N] At 00:03.500 递增切点标注。",
+  "special_rules": [
+    "关键帧任务（I2VA/FL2VA/L2VA）的对齐指令必须是提示词第一行，其后空一行再进入正文",
+    "对白逐字保留原文与标点，不翻译不改写；画外音须注明 lips remain closed",
+    "overall_soundscape 只写环境声、动作声与非语言人声，不重复对白与配乐",
+    "non_diegetic_music 只写乐器、速度、节奏与力度变化，不用抽象情绪词；无配乐写 N/A",
+    "参考素材上限：图片 ≤ 9 张、视频 ≤ 3 段、音频 ≤ 3 段，合计文件 ≤ 12 个（H3 Ref2VA）",
+    "屏幕内可见文字使用英文双引号原样包裹"
+  ]
+}

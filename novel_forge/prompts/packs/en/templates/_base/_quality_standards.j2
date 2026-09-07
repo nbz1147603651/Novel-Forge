@@ -1,0 +1,215 @@
+{# source_template_hash: 8039a7fc37674ce5e898ac818b9b8e0251ee2c31d37d4dbbcb7eba3e4d4b172c #}
+{#
+================================================================================
+[Notes]
+================================================================================
+Prompt: _base/_quality_standards.j2
+Type: Macro Module (Not rendered directly, only imported by other templates)
+Brief Description: Defines common writing quality standard macros, including
+         forbidden system traces, pronoun consistency, sensory diversity,
+         dialogue format, exposition prohibition, imagery repetition ban, etc.
+         These macros are shared by writing templates and checking templates to ensure unified quality standards.
+Defined Macros:
+  - forbidden_system_markers(...): Forbidden system markers and planning terms in body text
+  - pronoun_consistency(canonical_characters): Mandatory character pronoun consistency
+  - self_reference_context_awareness(...): Character self-reference context awareness
+  - sensory_diversity(weak_senses=[], ...): Sensory diversity requirements
+  - dialogue_density(min_pct, max_pct): Dialogue density control
+  - dialogue_format(): Chinese quotation mark dialogue format specification
+  - anti_exposition_rules(...): Exposition tone (expository tone) prohibition
+  - anti_meta_narrative_rules(...): Chapter-ending meta-narrative prohibition
+  - creative_specificity_rules(...): Creative specificity and anti-mechanical phrasing
+  - webnovel_pacing_rules(...): Web novel pacing constraints
+  - imagery_repetition_ban(...): Imagery repetition prohibition
+  - phrase_blacklist(...): Templated phrase blacklist
+  - paragraph_uniqueness(...): Paragraph uniqueness constraint
+  - emotional_craft_rules(...): Emotional craft (contrast, white space, emotional expression diversity)
+Usage:
+  {%- from "_quality_standards.j2" import forbidden_system_markers, pronoun_consistency -%}
+  Called By: writing/*.j2, checking/*.j2
+================================================================================
+#}
+
+{#- Common quality standards snippet - base module -#}
+{#- This file was migrated from _quality_standards.j2 for backward compatibility -#}
+{#- Forbidden system markers and planning terms -#}
+{% macro forbidden_system_markers(
+    context="body text",
+    include_meta_examples=true,
+    emphasize=true,
+    planning_intro="Strictly forbidden to use any planning layer markers in the body text, including but not limited to",
+    planning_tail="These are planning layer concepts and cannot appear in the novel body text."
+) %}
+{% if include_meta_examples %}
+Forbidden to include any system/prompt traces in the {{ context }}, such as `【...】`, `expected perturbation path`, `system response`, `Option A/Option B`, `Success`, etc. meta-narrative text.
+{% endif %}
+{% if planning_intro %}
+{% if emphasize %}**Special emphasis**:{% endif %}{{ planning_intro }} `opening_contract`, `closing_contract`, `scene_intent`, `bridge_summary`, `time_marker`, `location`, `pov`, `required_outcome`, `exit_target_state`, etc.{% if planning_tail %}{{ planning_tail }}{% endif %}
+{% endif %}
+{% endmacro %}
+
+{#- Time expression strategy and traditional time unit constraints -#}
+{% macro traditional_time_marker_rules(title="### Time Expression Strategy") %}
+{% if title %}{{ title }}{% endif %}
+- `time_marker` is a continuity anchor, not a template for every scene opening; do not mechanically start each scene with "at a certain time/certain place".
+- Only explicitly indicate time when there is a day change, watch change, flashback, parallel line switch, long-distance movement, or when readers might get lost.
+- For normal transitions, prioritize using action relays, light changes, environmental details like copper clepsydra/watch drums/wind sounds, or character fatigue or injuries to imply the passage of time.
+- If Chinese traditional time expressions must be used, each of the twelve earthly branches `zi/chou/yin/mao/chen/si/wu/wei/shen/you/xu/hai` can only be written for one to four quarters.
+- Strictly forbidden to write `five quarters`, `six quarters`, `seven quarters`, `eight quarters` and other out-of-bounds quarter expressions; when needing to express later times, switch to ambiguous time anchors like `late in the hour`, `night deepens`, `approaching watch change`.
+- Do not write the `time_marker` field name into the body text; only transform the sense of time into narrative details.
+{% endmacro %}
+
+{#- Pronoun consistency requirements -#}
+{% macro pronoun_consistency(canonical_characters) %}
+[Character Pronoun Mandatory Specification - Must Strictly Follow]
+{% for name, state in canonical_characters.items() %}
+{% if state.gender == "female" %}- {{ name }}: gender=female, pronoun must use "she", strictly forbidden to use "he"
+{% elif state.gender == "male" %}- {{ name }}: gender=male, pronoun must use "he", strictly forbidden to use "she"
+{% endif %}
+{% endfor %}
+⚠️ Pronoun mixing is a serious error and must be avoided!
+{% endmacro %}
+
+{#- Self-reference context awareness -#}
+{#- Based on project worldview and character identity information, LLM judges self-reference based on the scene -#}
+{% macro self_reference_context_awareness(
+    story_world_context=None,
+    character_context=None,
+    address_rules=None,
+    title="### Self-Reference Context Awareness"
+) %}
+{{ title }}
+Character self-reference must match their identity, scene, and dialogue partner; specific wording is determined by context rather than fixed. The same character should naturally switch self-reference in different scenes.
+
+**Judgment Basis**:
+- Character identity and status → Refer to identity, profession, social hierarchy in character profile
+- Scene formal degree → {{ address_rules or "formal occasions vs. private/daily/alone" }}
+- Dialogue object relationship → superior/peer/subordinate, closeness/distance
+- Worldview setting → Refer to social structure, etiquette norms, values in project worldview
+
+**Core Principle**: Self-reference changes with the scene; LLM should naturally choose appropriate self-reference based on the current scene's power relations, social distance, and formal degree, combined with character identity and worldview setting, to avoid using the same self-reference throughout.
+{% if story_world_context %}
+
+**Current Project Worldview Reference**:
+{{ story_world_context }}
+{% endif %}
+{% if character_context %}
+
+**Current Character Identity Reference**:
+{% for char in character_context %}
+- {{ char.get('name', '') }}: {{ char.get('identity', '') }}{% if char.get('social_status') %} ({{ char.get('social_status') }}){% endif %}
+{% endfor %}
+{% endif %}
+{% endmacro %}
+
+{#- Sensory diversity requirements -#}
+{% macro sensory_diversity(weak_senses=[], title="### Sensory Diversity") %}
+{% if title %}{{ title }}{% endif %}
+- Senses only serve conflict, action, transition, and emotional judgment; do not pad for coverage.
+- Each scene selects 1-2 effective anchors from `sensory_notes`, with no more than 2 dominant senses in the same paragraph.
+- If vision is too dense, prioritize switching to sound, touch, smell, temperature, dialogue pauses, action choices, or staging.
+{% if weak_senses %}
+- Current weak points: {{ weak_senses | join(', ') }}; only add 1 effective description in key scenes.
+{% endif %}
+{% endmacro %}
+
+{#- Dialogue density requirements -#}
+{% macro dialogue_density(min_pct=None, max_pct=None) %}
+{%- set _dlg_min = min_pct -%}
+{%- set _dlg_max = max_pct -%}
+{%- if _dlg_min is none -%}
+{%- set _dlg_min = 30 -%}
+{%- set _dlg_max = 45 -%}
+{%- endif -%}
+### Dialogue Density Requirements
+- Dialogue content should account for {{ _dlg_min }}-{{ _dlg_max }}% of total word count; high-tension scenes can appropriately raise the upper limit.
+- Check dialogue ratio: If dialogue content (direct speech in quotation marks) is less than {{ _dlg_min }}% of the full text, need to add effective dialogue scenes.
+- Check dialogue quality: Ensure at least 2-3 dialogue segments truly promote information, relationship, or decision changes.
+- Avoid more than 3 consecutive "question-and-answer" dialogues; should intersperse with actions, pauses, eye contact, environmental reactions, etc.
+{% endmacro %}
+
+{#- Dialogue format specification -#}
+{% macro dialogue_format() %}
+### Dialogue Format Specification
+- Direct quotes use Chinese double quotation marks, nested quotes use Chinese single quotation marks.
+- Dialogue tags, actions, pauses, and environmental reactions should alternate; high-tension confrontations can briefly have consecutive pure dialogue.
+- Do not repeatedly use the same type of "said/asked/whispered" tag consecutively.
+{% endmacro %}
+
+{#- Exposition tone (Expository Tone) Prohibition -#}
+{% macro anti_exposition_rules(
+    title="### Exposition Prohibition",
+    opening_intro="Forbidden to use exposition openings, such as",
+    planning_label_rule="Do not output any planning labels; do not write scene/contract as-is into the body text.",
+    opening_narrative_rule="The opening must naturally let readers feel 'who is here, what happened, why it continues from the previous chapter', but cannot use expository sentences to replace narrative.",
+    dramatization_rule="purpose, conflict, required_outcome, dramatic_question are behind-the-scenes design intentions. The body text must let readers discover these intentions through the character's action choices, dialogue subtext, sensory discoveries, and environmental resistance—narrators are forbidden from directly telling conclusions. Example: ✗ 'She had already seen through the double trial in the wine' ← narrator tells result; ✓ 'She lifted the cup, her nose slightly wrinkling—more than one strange odor' ← reader infers from action. When revelation_level=seed, only sensory hints and character micro-reactions are allowed; numbered summaries or complete interpretations are forbidden."
+) %}
+{% if title %}{{ title }}{% endif %}
+- Forbidden to use meta-language like "continuing from last chapter", "continuing from last chapter", "POV", "emotion label", "this chapter/last chapter" to replace narrative.
+- {{ planning_label_rule }}
+- {{ opening_narrative_rule }}
+- {{ dramatization_rule }}
+{% endmacro %}
+
+{% macro anti_meta_narrative_rules(title="### Chapter Ending and Suspense Cleanliness") %}
+{% if title %}{{ title }}{% endif %}
+- Present suspense through actions, anomalies, dialogue white space, or new obstacles; do not use author commentary like "clue/foreshadowing".
+- Avoid meta-narrative summaries like "implies/means/unresolved/opens the chapter/will be resolved" in the last 3 paragraphs.
+{% endmacro %}
+
+{% macro creative_specificity_rules(title="### Creative Specificity and Anti-Mechanical Phrasing") %}
+{% if title %}{{ title }}{% endif %}
+- Specificity should fall on character choices, action consequences, dialogue subtext, environmental resistance, or staging.
+- Do not use "not...but..." type definitional negative turns to provedescription quality; unless the character is arguing, fact-correcting, time-correcting, or creating key suspension. This rule forbids narrators from self-annotating fordescription quality (like "not cold, but biting cold" which self-proves advanceddescription), but does not forbid characters making real distinctions, fact corrections, or plot-advancing negative turns in the story.
+- Abstract judgment sentences should only beretained in arguments, fact corrections, time corrections, or key suspensions.
+- When preserving must-happen events or old imagery, only preserve the narrative function; change trigger points, action chains, or observation angles.
+- When isomorphic sentence structures repeatedly serve the same function, only keep the one that truly changes reader perception; others should be changed to reactions, misjudgments, costs, white space, or external changes.
+{% endmacro %}
+
+{% macro webnovel_pacing_rules(title="### Web Novel Pacing Constraints") %}
+{% if title %}{{ title }}{% endif %}
+- Within the first 200-300 characters, must include at least one of: action, dialogue, conflict, or abnormal event—do not report time before laying out the setting.
+- Environment/psychological setup combined should try to be controlled at about 20%-25% of the full text; after two consecutive paragraphs of setup, the next paragraph must advance the plot.
+- Each scene must bring observable advancement: clue increase, decision change, relationship shift, or obstacle escalation.
+{% endmacro %}
+
+{#- Imagery repetition prohibition (cross-chapter) -#}
+{% macro imagery_repetition_ban(forbidden_imagery=[], title="### ⚠️ Imagery Repetition Prohibition (★ Hard Constraint)") %}
+{% if title %}{{ title }}{% endif %}
+{% if forbidden_imagery %}
+The following imagery/metaphors have been used in previous chapters, **all similar expressions are forbidden in this chapter**:
+{% for item in forbidden_imagery %}
+- **{{ item }}**: Forbidden scope includes all semantically equivalent, synonymous replacements, and metonymic expressions.
+{% endfor %}
+{% endif %}
+- Self-check rule: If a certain metaphor/imagery has appeared ≥2 times in this book, even if not on the above list, must proactively switch to entirely new expressions.
+{#- Static cliché blacklist is dynamically managed by PROFILE_STYLE, not repeated here to save prompt tokens -#}
+{% endmacro %}
+
+{#- Templated phrase blacklist -#}
+{% macro phrase_blacklist(banned_phrases=None, title="### ⚠️ Templated Phrase Blacklist") %}
+{%- set _phrases = banned_phrases or ["took a deep breath", "gaze firm", "voice low", "heart shook", "slight start", "slight smile", "frowned slightly"] -%}
+{%- if _phrases %}
+{% if title %}{{ title }}{% endif %}
+- Forbidden to repeat the following templated phrases more than 2 times at emotional turning points:
+{%- for phrase in _phrases %}
+  - "{{ phrase }}"
+{%- endfor %}
+{%- endif -%}
+{% endmacro %}
+
+{#- Paragraph uniqueness constraint -#}
+{% macro paragraph_uniqueness(title="### ⚠️ Paragraph Uniqueness (★ Hard Constraint)", banned_phrases=None) %}
+{% if title %}{{ title }}{% endif %}
+- **Forbidden to use the same/similar core sentence in consecutive paragraphs or after one paragraphgap**.
+- Self-check: If a sentence has appeared ≥2 times in generated content, must delete duplicates.
+{{ phrase_blacklist(banned_phrases=banned_phrases, title="") }}
+{% endmacro %}
+
+{#- Emotional craft: contrast, white space, emotional expression diversity -#}
+{% macro emotional_craft_rules(title="### Emotional Craft") %}
+{% if title %}{{ title }}{% endif %}
+- **Contrast creates emotion**: In high-intensity emotional scenes, use one discordant daily detail, gentle action, or calm observation to amplify emotional impact, rather than stacking same-intensity descriptions. In light scenes, can bury one discordant note to create unease.
+- **White space is expression**: At the character's most painful or shocking moments, allow silence, action interruption, topic shift, or environmental blank description to replace direct depiction. Not all emotions need to be named—the emotions readers infer from the character's behavioral choices are more powerful than being told.
+- **Emotions do not stack with isomorphism**: In the same scene, use only one expression channel for the same emotion (action/dialogue/body/environment/silence); do not repeat the same channel.
+{% endmacro %}

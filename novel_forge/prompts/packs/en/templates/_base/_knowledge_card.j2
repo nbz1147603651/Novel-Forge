@@ -1,0 +1,44 @@
+{# source_template_hash: 31352d142abad991ea612f72530dc0df63d95bae7a06bbfe27ac3ced36169533 #}
+{#
+================================================================================
+【Notes】
+================================================================================
+Prompt: _base/_knowledge_card.j2
+Type: Macro Module (not directly rendered, only imported by other templates)
+Brief Description: Unified rendering of character knowledge boundary sections (knowledge ledger).
+                    draft/edit share the same data rendering, but guide text and titles differ.
+Defined Macros:
+  - render_knowledge_card(knowledge, mode="draft")
+    mode values:
+      "draft" → DRAFT stage, title contains "(P0)", includes global_ops
+      "edit" → EDIT stage, title contains "(must not be damaged during editing)", excludes global_ops
+Usage:
+  {%- from "_base/_knowledge_card.j2" import render_knowledge_card -%}
+  {{ render_knowledge_card(knowledge, mode="draft") }}
+Called by: writing/draft_chapter.j2, writing/edit_chapter.j2
+================================================================================
+#}
+
+{% macro render_knowledge_card(knowledge, mode="draft") -%}
+{% if knowledge.character_cards | default([]) or knowledge.chapter_ops | default([]) %}
+{% if mode == "draft" %}## Character Knowledge Boundary (P0)
+- `StoryKernel.knowledge_ledger` is the sole source of truth for character knowledge; chapter hard facts, world rules, and author contracts do not automatically equal what the character knows.
+- POV inner thoughts, judgments, dialogue, and actions can only be based on information the character knows/suspects/misbelieves/keeps secret, plus new evidence observable in the current scene.
+- If new knowledge needs to be added in this chapter, it must be implemented through dialogue, observation, discovery, deception, or concealment actions in the scene, and serve the scene objectives.
+{% else %}## Character Knowledge Boundary (Must Not Be Damaged During Editing)
+- `StoryKernel.knowledge_ledger` is the sole source of truth for character knowledge; do not write author hard facts, world rules, or contract objectives as things the character naturally knows.
+- Do not add cognitive changes that are not supported by this chapter's dialogue, observation, discovery, deception, or concealment actions.
+{% endif %}
+{% for card in knowledge.character_cards | default([]) %}
+- {{ card.character }}{% if card.is_pov %} (Current/Candidate POV){% endif %}:
+  Known={% if card.known_facts | default([]) %}{{ card.known_facts | join('; ') }}{% else %}No special known facts{% endif %};
+  Suspects={% if card.suspicions | default([]) %}{{ card.suspicions | join('; ') }}{% else %}None{% endif %};
+  Misbelieves={% if card.misbeliefs | default([]) %}{{ card.misbeliefs | join('; ') }}{% else %}None{% endif %};
+  Keeps Secret={% if card.secrets_kept | default([]) %}{{ card.secrets_kept | join('; ') }}{% else %}None{% endif %}
+{% if card.chapter_promised_changes | default([]) %}  Promised Changes This Chapter:{% for op in card.chapter_promised_changes %}{{ op.target_text or op.fact }}{% if op.evidence %} (Evidence Anchor: {{ op.evidence }}){% endif %}{% if not loop.last %}; {% endif %}{% endfor %}{% endif %}
+{% endfor %}
+{% if mode == "draft" and knowledge.global_ops | default([]) %}
+- Character-Unspecified Knowledge Promises:{% for op in knowledge.global_ops %}{{ op.target_text or op.fact }}{% if op.evidence %} (Evidence Anchor: {{ op.evidence }}){% endif %}{% if not loop.last %}; {% endif %}{% endfor %}
+{% endif %}
+{% endif %}
+{%- endmacro %}

@@ -1,0 +1,67 @@
+{# source_template_hash: 193a7387ca7963f46e7e09c4346c988db1d36641fb9d76d6613cdbdbb6e17a80 #}
+{#
+================================================================================
+Notes
+================================================================================
+Prompt: extract_chapter_summary_exit.j2
+Service Step: EXTRACT_CHAPTER_SUMMARY_EXIT (Canon Fragment: Summary and Exit State)
+Brief Description: First extract chapter factual summary and exit state as a common anchor for other Canon fragments.
+Upstream Input: chapter_number/chapter_text/chapter_outline_summary/known_characters
+Downstream Output: JSON: {"chapter_exit_state", "structured_summary"}
+Downstream Consumers: EXTRACT_CANON local merger and subsequent Canon fragments
+Consumption Chain Priority: P0 = only write facts verifiable from main text; P1 = required for next chapter continuation; P2 = control length
+================================================================================
+#}
+{#- Guidance Layer -#}
+Only extract the factual summary of this chapter and the exit state at the end of the chapter. Do not output canon_delta, relationship changes, or plot line changes.
+
+## Factual Source Boundary (P0)
+- Only extract factual summary and end-of-chapter exit state from the final main text / `chapter_text` corresponding to FinalArtifact.
+- Outline goals, known_characters, and authoritative gender are only used for identification and normalization, not as sources of occurred facts.
+- Content that has not occurred in plans, chapter contracts, intermediate drafts, or source projections must not be written to structured_summary or chapter_exit_state.
+- End-of-chapter states, character whereabouts, open questions, or next-chapter continuation points without main text evidence must not be written.
+
+{% if shared_evidence_anchor %}
+## Shared Evidence Anchor
+{{ shared_evidence_anchor | tojson(indent=2) }}
+Use this as the common basis for this fragment; dimension-specific information can only supplement, not overwrite, anchor facts.
+{% endif %}
+
+## Chapter
+- Chapter {{ chapter_number }}
+{% if chapter_outline_summary %}- Outline Goal: {{ chapter_outline_summary }}{% endif %}
+
+## Currently Known Characters
+{% for name in known_characters %}
+- {{ name }}
+{% endfor %}
+
+{% if authoritative_character_genders %}
+## Authoritative Character Genders (Must Not Be Rewritten)
+{% for name, gender in authoritative_character_genders.items() %}
+- {{ name }}: {{ gender }}
+{% endfor %}
+{% endif %}
+
+## Main Text
+{{ chapter_text }}
+
+## Requirements
+- Use 1 paragraph in structured_summary to summarize the facts that have occurred in this chapter.
+- chapter_exit_state only writes the actual state at the end of the chapter and information required for next chapter continuation.
+- chapter_exit_state.must_carry_forward can only write narrative facts, not meta-instructions; each item can be written as a string (default open) or as an object `{"text":"narrative fact","status":"open|abandoned|deferred","abandon_reason":"abandonment reason","deferred_to_chapter":chapter number}`. Only mark as abandoned with a reason when a legacy item is truly not intended to be continued in this arc; mark as deferred with a chapter number when explicitly deferred to a certain chapter; all others default to open — do not abuse abandoned to evade continuation.
+- character_end_states: maximum {{ max_exit_state_characters | default(6) }} characters.
+
+## Quality Calibration
+- Work Identity: You are an evidence-priority narrative fact extractor, adept at extracting traceable, mergeable state information from main text and upstream anchors.
+- Extraction Path: First find explicit facts in the main text, then cross-reference with shared anchors and known states, finally retain only information consumable by downstream mergers.
+- Evidence Calibration: Maintain consistency when upstream fragments have already confirmed the same fact; use conservative field values to express unknown or pending when evidence is insufficient.
+- Actionable Path: Each piece of information serves canon, memory, state, or audit chains — avoid treating tone, metaphor, or speculation as facts.
+
+## Pre-Delivery Validation
+- Whether P0/P1/P2 priority is maintained, and no weak references are allowed to overwrite hard constraints.
+- Whether key judgments can be traced back to input evidence, upstream contracts, or approved plans.
+- Whether unauthorized characters, locations, world rules, future payoffs, or format agreements are avoided.
+- Whether factual boundaries needed for downstream merging/retrieval are preserved, and speculation is not written as established fact.
+
+{#- Format Layer -#}

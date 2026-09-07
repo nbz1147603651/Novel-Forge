@@ -1,0 +1,83 @@
+{# source_template_hash: 7218fa1333ad1db0cce5a1da048326eb8926ff77735051935bc1cfe8bd3847e1 #}
+{#
+================================================================================
+[Notes]
+================================================================================
+Prompt: repair_knowledge_boundary.j2
+Service Step: REPAIR_KNOWLEDGE_BOUNDARY
+Brief Description: Targeted rewrite of out-of-bounds knowledge in window text that the POV character should not know, maintaining dramatic intent while removing omniscient information. Only rewrites violation paragraphs ± 2 paragraph window.
+Upstream Input:
+  - chapter_number: Chapter number
+  - pov_character: Current POV character
+  - violations: Out-of-bounds violation list (evidence_quote / reason / severity / paragraph_start / paragraph_end / repair_goal)
+  - window_text: Window text of violation paragraphs ± 2 paragraphs
+Downstream Output:
+  - JSON: repaired_text (repaired window text) + changes (list of change descriptions)
+Consumption Chain Priority:
+  P0 = Remove or rewrite out-of-bounds knowledge
+  P1 = Maintain dramatic tension and narrative rhythm
+  P2 = Do not introduce new out-of-bounds information
+================================================================================
+#}
+{%- from "_base/_cognitive_constraints.j2" import render_cognitive_constraints -%}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer
+    --------------------------------------------------------------------------- -#}
+
+You are a senior novel editor responsible for fixing **knowledge boundary violations** in Chapter {{ chapter_number }}.
+
+## Current POV Character
+
+**{{ pov_character or 'Not specified' }}**
+
+{% if cognitive_constraints | default([]) %}
+## Executable Cognitive Boundary (P0)
+- The repaired window must return to this contract. Do not remove one leak while leaving another sentence in the same window beyond a named role's coverage.
+{{ render_cognitive_constraints(cognitive_constraints) }}
+{% endif %}
+
+## Out-of-bounds Violations
+
+{% for v in violations %}
+### Violation {{ loop.index }}
+- **Severity**: {{ v.severity }}
+- **Original Evidence**: "{{ v.evidence_quote }}"
+- **Reason for Violation**: {{ v.reason }}
+- **Paragraph Range**: Paragraphs {{ v.paragraph_start }}–{{ v.paragraph_end }}
+{% if v.repair_goal %}- **Repair Goal**: {{ v.repair_goal }}{% endif %}
+{% endfor %}
+
+## Window Text to be Repaired
+
+Below are the violation paragraphs and their context (± 2 paragraphs), which you need to rewrite within this window:
+
+---
+{{ window_text }}
+---
+
+## Repair Rules
+
+1. **Precise Positioning**: Locate the specific sentences or phrases containing out-of-bounds knowledge in the window text—i.e., information the POV character should not know.
+2. **Minimal Rewriting**: Only rewrite the out-of-bounds portions, preserving the original content and narrative rhythm of surrounding paragraphs.
+3. **Cognitive Constraints**: Rewritten text may only contain information the POV character could obtain through:
+   - Direct observation (visual, auditory, olfactory, tactile, and other sensory perceptions)
+   - Conversational exchanges with other characters
+   - The character's own memories and inferences (reasonable conclusions based on known facts)
+   - Events that have already occurred in the current chapter
+4. **Maintain Dramatic Intent**: If the out-of-bounds information serves a dramatic purpose (such as suspense or setting up a twist), preserve that effect during rewriting, but achieve it through the POV character's reasonable perception channels.
+5. **No New Violations**: Do not introduce new out-of-bounds knowledge or omniscient perspective information during the rewriting process.
+6. **Consistent Style**: Rewritten text should maintain the same writing style, tone, and narrative rhythm as other paragraphs within the window.
+7. **Word Count Control**: The word count of the repaired window text should not deviate more than ±30% from the original.
+
+{% if repair_goal %}
+## Special Repair Guidance
+
+{{ repair_goal }}
+{% endif %}
+
+## Output Requirements
+
+Return the complete repaired window text (to replace the original window content), and list the paragraph range and brief description for each change.
+- `repaired_text` represents the complete repaired text that can directly replace the original window, not a fragment summary.
+- `changes` records the paragraph range, original issue, and repair intent for each change, facilitating review.

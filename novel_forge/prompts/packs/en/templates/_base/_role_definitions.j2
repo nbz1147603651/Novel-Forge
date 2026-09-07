@@ -1,0 +1,74 @@
+{# source_template_hash: 8cc398fbdf8428639d8a76f51050d9db87b692eb469cb78b3e7d02d1d7f75e17 #}
+{#- Check Template Responsibility Boundary Definition - base module -#}
+{#- This file was migrated from _role_definitions.j2, maintaining backward compatibility -#}
+
+{#-
+  === Macro Module: Role Responsibility Boundary Definition ===
+  File Type: Macro Module
+  Brief Description: Defines the responsibility boundaries for various checking templates, including intra-chapter checking, continuity evaluation, causal validation, and alignment checking responsibility scope matrix.
+
+  Defined Macros and Parameters:
+  1. check_chapter_role() → Returns intra-chapter check responsibility description
+  2. check_continuity_role() → Returns cross-chapter continuity check responsibility description
+  3. validate_causal_role() → Returns causal chain validation responsibility description
+  4. check_alignment_role() → Returns outline alignment check responsibility description
+  5. responsibility_matrix(current_template: str) → Returns responsibility scope matrix based on template name
+
+  Usage:
+  - Called by templates in the checking/ directory via {% import %} or {% from %}
+  - Used by templates such as check_chapter.j2, continuity_eval.j2, causal_validate.j2, check_alignment.j2
+-#}
+
+{#- check_chapter.j2 Responsibility -#}
+{% macro check_chapter_role() %}
+- Focus on this chapter's internal quality: grammar, expression, factual errors
+- Check for prompt leakage and system traces
+- Check intra-chapter self-consistency (causality, perspective, logic)
+- Check intra-chapter causal chain completeness (event triggers, decision motivations, suspense connections)
+- Do not handle cross-chapter continuity issues
+{% endmacro %}
+
+{#- check_continuity.j2 Responsibility -#}
+{% macro check_continuity_role() %}
+- Focus on cross-chapter continuity: time, location, character states, emotional transitions
+- Check for must_carry_forward item implementation
+- Check for chapter bridging contract fulfillment
+- Do not handle intra-chapter logic issues
+{% endmacro %}
+
+{#- validate_causal.j2 Responsibility -#}
+{% macro validate_causal_role() %}
+- Focus on intra-chapter causal chain completeness
+- Check logical connections between events
+- Verify character decision motivation reasonableness
+- Do not handle cross-chapter continuity or grammar issues
+{% endmacro %}
+
+{#- check_alignment.j2 Responsibility -#}
+{% macro check_alignment_role() %}
+- Focus on chapter alignment with outline
+- Check main storyline progression point coverage
+- Evaluate subplot and main storyline coordination
+- Do not handle grammar or continuity issues
+{% endmacro %}
+
+{#- Responsibility Matrix — Injected at template start to clarify responsibility boundaries -#}
+{% macro responsibility_matrix(current_template) %}
+{% if current_template == "check_chapter" %}
+## This Template's Responsibility Scope
+✅ Responsible for: Prompt leakage, factual errors, expression errors, intra-chapter self-consistency (causality/perspective/logic), intra-chapter causal chain completeness
+❌ Not responsible for: Cross-chapter continuity (→ continuity_eval), outline alignment (→ check_alignment)
+{% elif current_template == "continuity_eval" %}
+## This Template's Responsibility Scope
+✅ Responsible for: Bridging contract fulfillment, character state continuity, relationship evolution support, chapter ending transitions, prohibited elements, unplanned character appearances
+❌ Not responsible for: Causal chain detail verification (→ causal_validate), outline alignment (→ check_alignment), grammar/expression errors (→ check_chapter)
+{% elif current_template == "causal_validate" %}
+## This Template's Responsibility Scope
+✅ Responsible for: Opening causalhandoff, causal transition setup, event causal support, decision motivation, suspense management, name/identity causality
+❌ Not responsible for: Bridging contract structure checking (→ continuity_eval), outline alignment (→ check_alignment), grammar/expression errors (→ check_chapter)
+{% elif current_template == "check_alignment" %}
+## This Template's Responsibility Scope
+✅ Responsible for: Main storyline progression point coverage, subplot coordination, narrative stage compliance, perspective compliance, characteristic density
+❌ Not responsible for: Cross-chapter continuity (→ continuity_eval), causal chain details (→ causal_validate), grammar/expression errors (→ check_chapter)
+{% endif %}
+{% endmacro %}

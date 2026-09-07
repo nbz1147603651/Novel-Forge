@@ -1,0 +1,215 @@
+{#- 连续性评估 — CHECK_CONTINUITY 任务的模板 -#}
+{# ================================================================================
+【备注】
+================================================================================
+提示词：continuity_eval.j2
+服务步骤：CHECK_CONTINUITY（连贯性评估）
+作用简述：评估章节间的跨章连贯性，输出 ContinuityReport（支持全量/点验两种模式）。
+上游输入：
+  - chapter_bridge：来自 BRIDGE_CHAPTER 的桥接契约
+  - chapter_plan：来自 PLAN_CHAPTER 的章节规划
+  - chapter_state_packet：来自上一章 Persist 的状态包
+  - chapter_text / numbered_chapter_text：来自 DRAFT_CHAPTER / EDIT_CHAPTER 的正文
+  - recheck_mode：是否为点验模式（来自 RepairStep 的修复后复检）
+  - prior_issues：上一轮评估的问题列表
+  - local_prescreen_issues：本地预检问题
+下游输出：
+  - JSON：{"continuity_score", "mode", "summary", "issues"}
+  - 下游消费者：ContinuityRepairStep（用于连贯性修复）
+  - issues 必须标注 repair_surface，以便正文修复器、bridge 产物修复器、状态/计划修复器分工。
+消费链优先级：P0（POV 跳变/时间/地点硬跳切）> P1（角色状态断裂/情绪承接断裂）
+              > P2（代词模糊/表达不清晰）
+简要例子：
+  输入：recheck_mode=true, prior_issues=[{"issue_type": "opening_gap", "severity": "medium"}]
+  输出：{"continuity_score": 8.5, "mode": "targeted_recheck", "issues": []}
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    指导层：任务定义 + 上下文消费
+    --------------------------------------------------------------------------- -#}
+{%- from "checking/_continuity_core.j2" import continuity_context, continuity_checks, prescreen_and_prior -%}
+{%- from "_base/_artifact_source_contract.j2" import render_artifact_source_contract -%}
+{% set boundary = boundary_window_policy | default({}) %}
+{% if recheck_mode %}
+请对以下章节的**修复效果进行连贯性点验**（非全面重审）。
+
+{{ continuity_context(chapter_bridge, chapter_plan, chapter_state_packet) }}
+
+{% if stage_cards | default({}) %}
+{{ render_artifact_source_contract(stage_cards.source | default({}), title="## 世界规则与源头契约（P0）", mode="review") }}
+{% endif %}
+
+## 正文（已按非空段落编号；段号从 1 开始）
+{{ numbered_chapter_text | default(chapter_text) }}
+
+{{ prescreen_and_prior([], '', prior_issues) }}
+
+{% if must_resolve_summaries %}
+## 🚨 阻断归档问题·逐条核实（必须已解决）
+以下为本次修复重点，请逐条在正文中核实是否彻底消除：
+{% for summary in must_resolve_summaries %}
+- {{ summary }}
+{% endfor %}
+若任何一条仍然存在，请在 issues 中以原 severity 如实报告，不得降级。
+{% endif %}
+
+{% if repaired_issue_types %}
+## 本次修复涉及的问题类型
+{% for t in repaired_issue_types %}
+- {{ t }}
+{% endfor %}
+请重点验证上述类型的修复效果，其余类型无需主动排查。
+{% endif %}
+
+## 验证任务说明
+{% if patch_only_repair %}
+本轮修复仅使用了**窄窗口补丁**（patch），未进行全文重写。
+请**只检查补丁涉及的段落**是否正确修复，以及补丁边界是否与上下文语义连贯。
+不必重新阅读全文，不必排查补丁未触及的区域。
+{% else %}
+本轮不是全文重新检查，而是**针对上述已修复问题的点验**。请完成：
+{% endif %}
+
+{% if recheck_policy %}
+## 复审边界策略
+- 核心目标：先确认 prior_issues 是否已修复。
+- 扫描范围：{{ recheck_policy.scan_scope }}
+- 已解决规则：{{ recheck_policy.solved_issue_rule }}
+- 未解决规则：{{ recheck_policy.unresolved_issue_rule }}
+- 回归规则：{{ recheck_policy.regression_rule }}
+{% if recheck_policy.allow_new_issue_scan %}
+- 新问题只允许报告：{{ recheck_policy.new_issue_severities | join("/") }} 级别且由本轮修复直接引入的问题。
+{% endif %}
+{% endif %}
+
+1. **逐条核实**：对 prior_issues 和阻断归档问题中的每条，判断正文是否已消除该问题。
+2. **回归检查**：检查修复区域是否引入了直接相关的新连贯性矛盾（如修改开头后与桥接合同产生新冲突）。仅报告 critical 或 high 级别的回归问题。
+3. **不扩大范围**：不对修复未涉及的段落展开全面核查，不主动寻找修复前已存在的其他问题。
+4. **禁止自创新问题**：只输出上述核实结果和回归问题。不要报告与本次修复无关的新发现，即使看起来可疑。非目标问题由后续全量评估负责。
+5. **严重程度一致**：若目标问题仍然存在，以 prior_issues 中的原始 severity 报告，不得升级也不得降级。
+6. **身份保持**：若 prior_issue 仍存在，必须在输出问题里原样填写它的 `issue_id`，并说明未满足的 `postconditions`；若已满足所有验收条件，则不要再次输出该问题。
+
+评分以"修复后该章是否达到可继续创作的质量基线"为标准，而非追求满分。
+
+输出 JSON 中 `"mode"` 字段须填写 `"targeted_recheck"`，以便下游区分本次为点验而非全量评分。
+
+{% else %}
+请检查以下章节的跨章连贯性，输出 `ContinuityReport`。
+
+{% if stage_cards | default({}) %}
+{{ render_artifact_source_contract(stage_cards.source | default({}), title="## 世界规则与源头契约（P0）", mode="review") }}
+{% endif %}
+
+{{ continuity_context(chapter_bridge, chapter_plan, chapter_state_packet) }}
+
+{% if has_previous_chapter is defined and not has_previous_chapter %}
+## 无上一章承接模式
+- 本章没有可审查的上一章尾声；不要因为缺少 previous_tail、opening_carry 或 must_carry_forward 而扣分。
+- 仍必须审查本章内部的场景连贯、POV/时序/地点切换、开场/结尾合同和场景里程碑是否自洽。
+- `opening_gap` / `carry_forward_missing` / `location_jump` 只能在存在明确上一章锚点时报告；首章若出现章内硬切，请使用章内时序/场景切换相关问题描述。
+{% endif %}
+
+## 正文（已按非空段落编号；段号从 1 开始）
+{{ numbered_chapter_text | default(chapter_text) }}
+
+{{ prescreen_and_prior(local_prescreen_issues, local_check_note, prior_issues) }}
+
+{{ continuity_checks() }}
+
+{% if boundary %}
+## 边界窗口设置
+- 上一章只读上下文：{{ boundary.previous_tail_label }}
+- 本章开场检查窗口：{{ boundary.opening_window_label }}
+{% endif %}
+
+## 诊断分工要求
+请先判断问题属于哪个修复面，而不是默认让正文承担所有修复：
+- `chapter_text`：正文缺少承接、开头/结尾桥接不足、角色状态未落地。
+- `bridge_artifact`：chapter_bridge JSON 的 from_chapter/opening_pov/transition_mode/action_handoff 等字段错误、缺失或与大纲/上一章出口不一致。
+- `chapter_plan`：章节计划契约本身矛盾或缺失。
+- `state_packet`：上一章出口状态或状态包与已归档正文不一致。
+- `local_rule`：本地规则误判或需要降级的情况，例如已声明 POV 切换却被当作同一人物地点跳跃。
+- `replan`：正文与计划无法通过局部补丁协调，需要重新规划。
+
+对 `opening_gap` / `carry_forward_missing` / `location_jump` 等正文问题，请在 `missing_anchors`
+中列出必须被语义回扣的上章/bridge 锚点，并在 `postconditions` 中写明修复后如何验收。
+对 `opening_gap` / `bridge_contract_not_followed` 这类开场衔接问题，还必须给出
+`repair_directive`：明确目标开头窗口、需要读取的上一章结尾与本章开头上下文、必须落地的
+动作接力/时空/情绪锚点，并写出一段可供修复模块参考的正文式开头改写草稿。
+若该开场修复与同窗口其他事实/因果/人物修复重叠，`repair_directive.conflict_policy`
+应要求先合并其他修复，再最后统一改写开场衔接。
+若发现正文正确但 bridge 元数据错误，请将 `repair_surface` 标为 `bridge_artifact`，不要要求正文重写。
+
+{% endif %}
+
+## 报告一致性要求
+- 如果 `summary` 中提到仍有 critical / high / blocking / 阻断 / 未解决问题，则 `issues` 中必须列出对应问题，不得输出空数组。
+- 如果 `issues` 为空，`summary` 只能说明“未发现仍需修复的跨章连贯性问题”，不得暗示仍有高优先级回归。
+- 若正文违反 chapter_state_packet.chapter_contract.forbidden_changes、opening_contract、closing_contract 或 bridge.action_handoff，必须记录具体 issue，并给出正文证据或插入位置。
+- 开场未落地 bridge 的时间、地点、POV、情绪承接和 action_handoff 时，优先使用 `opening_gap` 或 `bridge_contract_not_followed`，severity 至少为 high；若造成跳场或禁出角色回归，severity 为 critical。
+
+## 连贯性问题字段规则
+`repair_directive.repair_strategy`：窗口级改写开头，而不是只补关键词；把上一章结尾余波、bridge 动作接力和本章第一场行动写成连续正文。
+
+`repair_directive.recommended_rewrite`：用正文语气写出的 1 段开头改写草稿，可直接供修复模块参考。
+
+`repair_directive.required_context`：至少包含上一章结尾窗口、本章开头窗口、chapter_bridge.action_handoff / emotional_carryover、chapter_plan.opening_contract。
+
+`repair_directive.required_anchors`：至少覆盖开场时间、开场地点、开场 POV、动作接力、情绪余波。
+
+`repair_directive.validation_focus`：说明修后如何确认开头读起来像上一章动作的自然后果，且没有承接上章/POV/情绪标签等元语言。
+
+`repair_directive.conflict_policy`：若与同一开头窗口内的其他修复重叠，先合并事实/因果修复，再最后统一改写开场衔接。
+
+`validator_id`：开场衔接问题使用 `opening_transition_validator`；其他问题使用可追踪的领域验证器 id。
+
+`severity`：critical / high / medium / low
+
+`repair_surface`：chapter_text / bridge_artifact / chapter_plan / state_packet / local_rule / replan / manual。
+只有正文需要修改时才填 `chapter_text`；bridge JSON 错误必须填 `bridge_artifact`。
+
+`status`：open / resolved / suppressed / artifact_fixed / deferred。普通新问题填 open。
+
+`missing_anchors`：需要被修复或复核语义回扣的锚点，内容来自上一章出口、chapter_bridge 或 state_packet，禁止凭空编造。
+
+`postconditions`：修复后逐条验收条件，必须能被复核模型或本地程序消费。
+
+`rewrite_scope`：opening / middle / closing / chapter / paragraph
+
+`location` 必须以段落号开头，格式为 `第N段` 或 `第N-M段`（1-based），可在括号中补充语义位置。
+
+`paragraph_start` / `paragraph_end` 必须与 `location` 中的段落号一致；无法定位时填 0，但只有确实属于整章结构问题时才允许 0。
+
+`anchor_type`：explicit_para / evidence_exact / evidence_fuzzy / location_parsed / inferred_scope
+
+`fix_mode`：replace / insert / window / fulltext。缺失内容使用 insert；原文错误或重复使用 replace；多段过渡使用 window；只有无法定位的整章结构问题才用 fulltext。
+
+`insert_before_para`：当 fix_mode 为 insert 时，插入点**之前**的段落号（1-based）。表示在该段落之后插入新内容。若不适用则填 0。
+
+`insert_after_para`：当 fix_mode 为 insert 时，插入点**之后**的段落号（1-based）。表示在该段落之前插入新内容。若不适用则填 0。
+
+`evidence` 必须包含**至少 20 字的正文连续原文引用**，用于修复时精确定位问题位置。
+
+`evidence_quote` 应填写不带段号标记的正文精确原文子串；如果问题是"缺失内容"没有可引用原文，可留空，但必须提供段落号和 insert/window 修复模式。
+
+`confidence`：问题判定的置信度，取值 0.0-1.0。判定标准：
+- **0.9-1.0**：问题有明确正文证据（≥20字原文引用）且与契约/bridge/state_packet 直接冲突
+- **0.7-0.89**：问题有正文证据但需要语义推断（如时间/地点错位但无显式矛盾）
+- **0.5-0.69**：问题基于上下文推断，无直接证据但逻辑上高度可能
+- **<0.5**：问题不确定，可能是误判或需要人工复核
+
+禁止将所有问题的 confidence 设为 0.0——这会导致下游修复模块无法排序优先级。
+{# mode 取值：full_check=全量审查；targeted_recheck=点验修复效果（分数不可与 full_check 直接比较） #}
+
+## 质量校准
+- 工作身份：你是一位严谨的小说质量审校员，擅长用短证据、明确边界和下游可执行建议定位问题。
+- 审校路径：先确认输入证据，再判断问题类型、影响范围和修复边界，最后给下游可执行的定位信息。
+- 字段级质量示例（非输出格式）：平弱=“这里不连贯”；高质量=“指出哪两处证据冲突、风险等级、可验证问题”。
+- 可操作路径：每条判断都要能支持复核或修复，低置信度内容降级为待验证问题。
+
+## 交付前核验
+- P0/P1/P2 优先级是否被保持，且没有让弱参考覆盖硬约束。
+- 是否能把关键判断回指到输入证据、上游契约或已批准计划。
+- 是否避免新增未授权的人物、地点、世界规则、未来 payoff 或格式协议。
+- 是否给出短证据、风险等级、定位信息和下游可验证的问题。

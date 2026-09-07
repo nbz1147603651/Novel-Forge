@@ -1,0 +1,152 @@
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：extract_canon_delta.j2
+服务步骤：EXTRACT_CANON（Canon 增量提取）
+作用简述：从章节正文提取结构化 Canon 增量，供 canon/state/memory 持久化使用
+上游输入：
+  - chapter_number: 章节号
+  - chapter_outline_summary: 大纲目标（可选）
+  - prior_violations: 历史风险提醒（可选）
+  - known_characters: 当前已知角色列表
+  - existing_thread_ids: 已有情节线索 ID（用于复用）
+  - prior_relationships/prior_character_snapshots/prior_plot_threads: 前态基线（可选）
+  - chapter_text: 章节正文
+下游输出：
+  - JSON：canon_delta, creative_report, chapter_exit_state, character_state_deltas, relationship_deltas, plot_thread_deltas, structured_summary（7个顶层字段）
+  - 下游消费者：CanonStore / Memory 系统 / 下一章 Bridge
+消费链优先级：
+  P0 = 7个顶层字段必须完整 / character_state_deltas 角色 gender 必填
+  P1 = relationship_deltas trust/tension 数值合理性 / plot_thread_deltas ID 复用
+  P2 = creative_report 创作亮点记录
+简要例子：
+  输入：chapter_number=5, chapter_text="林远站在城门口..."
+  输出：{"canon_delta":{...}, "creative_report":{...}, "chapter_exit_state":{...}, ...}
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    指导层：任务定义与输入消费
+    --------------------------------------------------------------------------- -#}
+
+请从本章正文提取结构化结果，供 canon/state/memory 持久化。
+
+{% set max_character_state_deltas = max_character_state_deltas | default(8, true) %}
+{% set max_relationship_deltas = max_relationship_deltas | default(8, true) %}
+{% set max_plot_thread_deltas = max_plot_thread_deltas | default(8, true) %}
+{% set max_exit_state_characters = max_exit_state_characters | default(6, true) %}
+{% set chapter_outline_summary = chapter_outline_summary | default("", true) %}
+{% set prior_violations = prior_violations | default([], true) %}
+{% set known_characters = known_characters | default([], true) %}
+{% set authoritative_character_genders = authoritative_character_genders | default({}, true) %}
+{% set existing_thread_ids = existing_thread_ids | default([], true) %}
+{% set prior_relationships = prior_relationships | default([], true) %}
+{% set prior_character_snapshots = prior_character_snapshots | default([], true) %}
+{% set prior_plot_threads = prior_plot_threads | default([], true) %}
+
+## 事实来源边界（P0）
+- 只从 FinalArtifact 对应的最终正文 / `chapter_text` 写入 canon、state 和 memory。
+- 大纲目标、章节契约、计划、source 投影、创作报告和中间稿不是已发生事实；只能作为抽取方向或 ID 复用参考。
+- 没有正文证据的事件、人物状态、关系变化、情节线推进、世界规则和母题不得写入。
+
+本次输出请收束在以下上限内（宁缺毋滥，不要为凑数量补条目）：
+- `character_state_deltas` 最多 {{ max_character_state_deltas }} 条
+- `relationship_deltas` 最多 {{ max_relationship_deltas }} 条
+- `plot_thread_deltas` 最多 {{ max_plot_thread_deltas }} 条
+- `chapter_exit_state.character_end_states` 最多 {{ max_exit_state_characters }} 人
+
+## 章节
+- 第 {{ chapter_number }} 章
+{% if chapter_outline_summary %}
+- 大纲目标：{{ chapter_outline_summary }}
+{% endif %}
+
+{% if prior_violations %}
+## 历史风险提醒（提取时避免）
+{% for v in prior_violations %}
+- {{ v }}
+{% endfor %}
+{% endif %}
+
+## 当前已知角色
+{% for name in known_characters %}
+- {{ name }}
+{% endfor %}
+
+{% if authoritative_character_genders %}
+## 角色权威性别（最高优先级，不得改写）
+以下角色性别来自 CharacterBible / 本地权威设定，是不可漂移的身份字段。
+若正文出现伪装、误认、旁人误称或模型自身推断冲突，输出时仍必须以这里为准。
+{% for name, gender in authoritative_character_genders.items() %}
+- {{ name }}：{{ gender }}
+{% endfor %}
+{% endif %}
+
+{% if existing_thread_ids %}
+## 当前已有情节线索 ID（务必复用）
+以下是 canon 中已有的 thread_id，`plot_thread_deltas` 必须优先匹配已有 ID，不要新建同义/近义 ID。
+如果某条线索在本章已被解决或不再推进，请将其 status 标记为 `resolved` 或 `dormant`。
+{% for tid in existing_thread_ids %}
+- {{ tid }}
+{% endfor %}
+{% endif %}
+
+{% if prior_relationships or prior_character_snapshots or prior_plot_threads %}
+## 前态基线（用于判断 delta — 只输出本章确有变化的项）
+{% if prior_relationships %}
+### 已有人物关系
+{% for rel in prior_relationships %}
+- {{ rel.pair_id }}：{{ rel.public_status }}（信任={{ rel.trust }}，张力={{ rel.tension }}）
+{% endfor %}
+{% endif %}
+{% if prior_character_snapshots %}
+### 已有角色状态
+{% for cs in prior_character_snapshots %}
+- {{ cs.name }}：位置={{ cs.location }}，情绪={{ cs.emotional_state }}{% if cs.social_status %}，身份={{ cs.social_status }}{% endif %}
+
+{% endfor %}
+{% endif %}
+{% if prior_plot_threads %}
+### 已有活跃线索
+{% for pt in prior_plot_threads %}
+- {{ pt.thread_id }}（{{ pt.title }}）：状态={{ pt.status }}{% if pt.summary %}，摘要={{ pt.summary }}{% endif %}
+
+{% endfor %}
+{% endif %}
+{% endif %}
+
+## 正文
+{{ chapter_text }}
+
+## 提取规则（简版）
+
+1. 只提取正文可证实的信息；不确定就返回空数组、空对象或空字符串，不要编造事件。
+2. 顶层只保留这 7 个字段并平铺输出，不要互相嵌套；不要在字符串里再嵌裸 ASCII 双引号，必要时改用中文引号。
+3. `canon_delta` 只写本章新增或更新的事实；`character_state_deltas`、`relationship_deltas`、`plot_thread_deltas` 只保留变化最明确、对下一章最有用的项。
+4. `chapter_exit_state` 只保留下一章承接必需信息：`time_marker`、`location`、`pov`、`active_goals`、`open_questions`、`must_carry_forward`、`character_end_states`；`must_carry_forward` 只能写叙事事实，不要写元指令。`must_carry_forward` 每项可写为字符串（默认 open）或对象 `{"text":"叙事事实","status":"open|abandoned|deferred","abandon_reason":"放弃理由","deferred_to_chapter":章节号}`：仅当某条遗留确实不打算在本弧线承接时才标 `abandoned` 并填理由；明确推迟到某章承接时标 `deferred` 并填章节号；其余一律 `open`。不要滥用 abandoned 逃避承接。
+5. `plot_thread_deltas` 必须优先复用已有 `thread_id`；没有合适 ID 时不要新建同义/近义 ID，可留空。`thread.status` 只允许：`active`、`resolved`、`dormant`、`escalated`、`advancing`、`planted`、`revealed`。
+6. `relationship_deltas[].relationship.characters` 必须是数组；`trust` 和 `tension` 必须是 0.0–1.0 的浮点数。出现在 `canon_delta.character_updates` 或 `character_state_deltas` 的角色必须带 `gender`；角色身份/头衔变化时再填写 `social_status`。
+7. 如果提供了 `角色权威性别`，这些角色的 `gender` 必须原样复用，取值限定为 `男` 或 `女`，不得改成 `male/female`，也不得因正文误写、误称或模型推断而改写。
+8. `creative_report.new_characters` 是自动建档的上游裁决入口，只写正文中首次出现且值得后续追踪的人物：
+   - 已在“当前已知角色”中的人不要写入；已有角色的括号处境、阶段状态、伪装称呼、误认称呼写 `matched_existing_name`，并把 `should_add_to_bible` 设为 false。
+   - 职业/群体/组织/道具/知识/事件标签不要建档，`should_add_to_bible` 必须为 false。
+   - 官职/职能称谓若没有可追踪规范姓名，只能视为局部场面事实，`should_add_to_bible` 必须为 false；不要为了建档临时编姓名。
+   - `importance` 只能是 major / supporting / minor / incidental；只有 major/supporting/minor 且确需角色档案时才设 `should_add_to_bible=true`。
+   - `canonical_name` 写最终应进入 CharacterBible 的规范名；没有更规范姓名时可与 `name` 相同。
+
+## 质量校准
+- 工作身份：你是一位证据优先的叙事事实抽取员，擅长从正文和上游锚点中提取可追溯、可合并的状态信息。
+- 抽取路径：先找正文中的明确事实，再对照共享锚点与已知状态，最后只保留能被后续合并器消费的信息。
+- 证据校准：同一事实已有上游分片确认时保持一致；证据不足时用保守字段值表达未知或待确认。
+- 可操作路径：每条信息都服务于 canon、memory、state 或审计链路，避免把语气、比喻、猜测当作事实。
+
+## 交付前核验
+- P0/P1/P2 优先级是否被保持，且没有让弱参考覆盖硬约束。
+- 是否能把关键判断回指到输入证据、上游契约或已批准计划。
+- 是否避免新增未授权的人物、地点、世界规则、未来 payoff 或格式协议。
+- 是否保留后续合并/检索需要的事实边界，且没有把推测写成既定事实。
+
+{#- ---------------------------------------------------------------------------
+    格式层：输出格式与 Schema
+    --------------------------------------------------------------------------- -#}

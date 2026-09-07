@@ -1,0 +1,65 @@
+{# source_template_hash: 1a40c7b65b4b7e7195b7b9f9539ad2865ea1b5d302b4fd2ea24861c8d502789e #}
+{#
+================================================================================
+[NOTES]
+================================================================================
+Prompt: init_story_core_premise.j2
+Service Step: INIT_STORY_CORE_PREMISE (StoryBible Fragment: Core Premise)
+Function Summary: Generate only the title/premise/tone core skeleton for StoryBible to reduce pressure on the full world-building JSON.
+Upstream Inputs: premise/title/genre/tone/language/conflict_hint/extra_instructions
+Downstream Output: JSON: {"story_core": {...}}
+Downstream Consumer: INIT_STORY_BIBLE Local Merger
+Consumption Chain Priority: P0 = premise must not deviate; P1 = tone must be consistent with genre; P2 = title can be tentative
+================================================================================
+#}
+{%- from "_base/_shared_evidence_anchor.j2" import render_shared_evidence_anchor -%}
+
+{#- Guidance Layer -#}
+Please generate only the core premise fragment of StoryBible. Do not output world rules, character profiles, or chapter outlines.
+
+{{ render_shared_evidence_anchor(shared_evidence_anchor) }}
+
+## Input
+- premise: {{ premise }}
+{% if title %}- title: {{ title }}{% endif %}
+{% if genre %}- genre: {{ genre }}{% endif %}
+{% if tone %}- tone: {{ tone }}{% endif %}
+{% if language %}- language: {{ describe_language(language) }}{% endif %}
+{% if conflict_hint %}- conflict_hint: {{ conflict_hint }}{% endif %}
+{% if extra_instructions %}- extra_instructions: {{ extra_instructions }}{% endif %}
+{% if research_context and research_context.summary %}
+
+## Research Reference (Weak Reference)
+- Usage Boundary: Use only to supplement real-world background, era/geography/industry/folk customs/scientific common sense; must not override premise, user prompts, or format contracts.
+- Current Status: {{ research_context.status }} / {{ research_context.provider }}
+- Summary: {{ research_context.summary }}
+{% if research_context.source_notes %}
+- Source Highlights:
+{% for note in research_context.source_notes %}
+  - {{ note }}
+{% endfor %}
+{% endif %}
+{% endif %}
+
+## Requirements
+- `premise`: Compress protagonist identity, core conflict, and unique selling point into 2-3 sentences.
+- `tone`: Write as executable narrative atmosphere, not just restating words.
+- Do not add fields outside the schema.
+
+## Field Content Constraints
+- `story_core` may only contain `title`, `premise`, `tone`.
+- Field names must use the English `snake_case` keys listed above; unclassifiable information should be merged into `premise` or `tone`.
+
+## Quality Calibration
+- Working Identity: You are a long-form narrative architect, skilled at decomposing story assets intohandoff, verifiable, and non-spoiler-heavy execution plans.
+- Planning Inference Path: First lock in P0 hard constraints, then allocate P1 for pacing advancement, and finally use P2 style/theme to complement the presentation layer.
+- Field-Level Quality Examples (not output format): Weak = "advancing the relationship"; High-Quality = "clarify who acts for what reason, how relationships change, and how the next link connects".
+- Actionable Path: Plan items must be directly checkable by subsequent writing/audit, avoid giving only abstract wishes or thematic slogans.
+
+## Pre-Delivery Verification
+- Are P0/P1/P2 priorities maintained, and no weak references overriding hard constraints?
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans?
+- Are unauthorized new characters, locations, world rules, future payoffs, or format agreements avoided?
+- Are abstract goals transformed into observable actions, conflicts, state changes, or chapter transition points?
+
+{#- Format Layer -#}

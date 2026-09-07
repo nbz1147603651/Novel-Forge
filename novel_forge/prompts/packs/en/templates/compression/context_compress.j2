@@ -1,0 +1,77 @@
+{# source_template_hash: 26fb428ca68c5e239b4c216575a9bd1e4ff0c314e378cc1896f66155007ff4e5 #}
+{#
+================================================================================
+【Notes】
+================================================================================
+Prompt: context_compress.j2
+Service Step: CONTEXT_COMPRESS (Context Compression)
+Brief Description: Compress writing context blocks without changing plot direction or factual constraints
+Upstream Input:
+  - blocks: Context block list (including id, max_chars, text)
+Downstream Output:
+  - JSON: items list (including id, compressed)
+  - Downstream Consumer: Memory System / Context Injection
+Consumption Chain Priority:
+  P0 = Keep main plot progression information (goals/conflict/causation/action outcomes)
+  P1 = Keep hard facts (character relationships/location/time/events occurred/foreshadowing status)
+  P2 = Remove repetitive modifiers/redundant descriptions
+Brief Example:
+  Input: blocks=[{"id":"b1","max_chars":100,"text":"Lin Yuan stood at the city gate..."}]
+  Output: {"items":[{"id":"b1","compressed":"Lin Yuan arrived at the city gate..."}]}
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer: Task Definition and Input Consumption
+    --------------------------------------------------------------------------- -#}
+
+You will receive a set of "writing context blocks", please compress them without changing story direction or factual constraints.
+
+## Objectives
+
+### Must Preserve (P0, cannot lose)
+- Main plot progression: who did what, why, and what resulted (causation chain must not be broken)
+- Hard facts: character presence/departure/death status, location transitions, time passage, key item ownership
+- Emotional turning points: moments when a character's emotion changes from A to B (critical for bridging)
+- Foreshadowing introduction/fulfillment: newly planted foreshadowing and already-fulfilled foreshadowing
+
+### Prioritize Preservation (P1, preserve when space allows)
+- Key information exchange in dialogue (what new facts were stated, not small talk)
+- Character relationship changes (specific manifestations of trust/hostility/alienation)
+- Environmental constraints on plot (e.g., "storm blocks the road" — this is an action constraint, not atmosphere description)
+
+### Compressible (P2, prioritize compression when space is insufficient)
+- Pure atmosphere description (light, temperature, sound — unless it's foreshadowing)
+- Repetitive character physical descriptions (keep for first appearance, only preserve changes afterward)
+- Pure transitional actions ("He stood up and walked to the window" — compress to "He walked to the window")
+- Repeated internal deliberation in inner monologue (keep conclusions, compress repetitive internal struggle)
+
+## Input Blocks
+{% for b in blocks %}
+- id: {{ b.id }}
+  max_chars: {{ b.max_chars }}
+  text:
+  {{ b.text }}
+{% endfor %}
+
+## Compression Rules
+1. Each `id` in `items` must come from the input.
+2. Do not introduce new facts not present in input, do not change event sequence or causation.
+3. `compressed` must be natural language short text, not a keyword list.
+4. Try to approach respective `max_chars`; when space is insufficient, preserve P0, delete P2.
+
+## Quality Calibration
+- Working identity: You are a context compression editor, skilled at preserving factual chains, state boundaries, and retrieval anchors most needed for subsequent writing.
+- Compression path: First preserve timeline, state changes, and hard facts, then compress descriptions and repetitive explanations, finally check anchors needed for subsequenthandoff.
+- Evidence calibration: Preserve traceable sources for characters, locations, items, commitments, foreshadowing; do not elevate compressed summaries to new facts.
+- Actionnable path: Compression results should help downstream quickly recover plot context, suspense margin, and boundaries that prohibit premature consumption.
+
+## Pre-Delivery Verification
+- Whether P0/P1/P2 priorities are maintained, and no weak references override hard constraints.
+- Whether key judgments can be traced back to input evidence, upstream contracts, or approved plans.
+- Whether new unauthorized characters, locations, world rules, future payoffs, or format agreements are avoided.
+- Whether factual boundaries needed for subsequent merging/retrieval are preserved, and no speculation is written as established fact.
+
+{#- ---------------------------------------------------------------------------
+    Format Layer: Output Format and Schema
+    --------------------------------------------------------------------------- -#}

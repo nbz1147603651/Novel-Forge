@@ -1,0 +1,198 @@
+{# ================================================================================
+【备注】
+================================================================================
+提示词：guardrail_repair.j2
+服务步骤：REPAIR_GUARDRAIL（护栏修复）
+作用简述：根据护栏违规报告进行定向修复，严格保护主线推进点和大纲对齐关系。
+上游输入：
+  - chapter_number：章节编号
+  - chapter_text：待修复的章节正文
+  - guardrail_report：来自 GuardrailEvalStep 的护栏违规报告
+  - stage_cards.source：ChapterSourceSlice，含禁揭示边界（如调用方提供）
+  - chapter_plan：来自 PLAN_CHAPTER 的章节规划（含主线推进点保护锚）
+  - alignment_report：来自 AlignmentStep 的对齐评分报告
+  - alignment_score_current：当前对齐分数
+  - style_profile：来自 PROFILE_STYLE 的风格规范
+  - repair_plan：来自决策引擎的修复计划
+  - word_count_min / word_count_max：字数约束
+下游输出：
+  - TEXT：修复后的完整章节正文（无 JSON、无说明）
+  - 下游消费者：CheckStep / GuardrailEvalStep（用于复检）
+消费链优先级：P0（主线推进点保护）> P1（对齐分保持/提升）
+              > P2（护栏违规修复）> P3（风格规范）
+简要例子：
+  输入：guardrail_report={"violations": [{"type": "pacing", "severity": "high"}]}
+        chapter_plan={"main_plot_points": ["主角发现真相", "与反派首次交锋"]}
+        alignment_score_current=7.5
+  输出：[修复后的完整正文，主线点完整保留，大纲对齐关系不被削弱]
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    指导层：任务定义 + 上下文消费
+    --------------------------------------------------------------------------- -#}
+{%- from "_styles/_render_style_profile.j2" import render_style_profile_for_stage -%}
+{%- from "_quality_standards.j2" import creative_specificity_rules -%}
+{%- from "_base/_artifact_source_contract.j2" import render_artifact_source_contract -%}
+{%- from "_base/_repair_attempt_guidance.j2" import render_repair_attempt_guidance -%}
+{%- from "_base/_repair_quality_calibration.j2" import render_repair_quality_calibration, render_repair_pre_delivery_checklist -%}
+{% set cards = stage_cards | default({}) %}
+{% set source = cards.source | default({}) %}
+{{ render_style_profile_for_stage(style_profile | default(None), stage="edit", include_banned_phrases=true) }}
+
+请根据以下护栏违规报告，对章节进行**定向修复**。
+
+{{ render_artifact_source_contract(source, title="## Source Artifact 边界（P0）", mode="repair") }}
+
+## ticket/window 规则
+- 先看 guardrail_report 的 violation type、location、description 和修复建议。
+- chapter_plan / alignment_report 只用于保护既有主线推进点和验收，不用于新增剧情或重排章节。
+- 只修 ticket/window 覆盖的违规文本，不自由重写整章。
+
+{% if _retry_warning %}
+## ⚠️ 重试警告
+{{ _retry_warning }}
+{% endif %}
+
+{{ render_repair_attempt_guidance(repair_attempt_guidance | default(none)) }}
+
+## 第 {{ chapter_number }} 章
+
+{#- ═══════════════════════════════════════════════════ -#}
+{#- 核心约束 1: 主线推进点保护（不可触碰）               -#}
+{#- ═══════════════════════════════════════════════════ -#}
+{% if chapter_plan and chapter_plan.main_plot_points %}
+## 🔒 主线推进点保护（绝对不可修改）
+
+以下主线推进点是本章的叙事核心，**修复过程中不得修改、删除或弱化**包含这些内容的段落：
+
+{% for point in chapter_plan.main_plot_points %}
+- **主线点 {{ loop.index }}**：{{ point }}
+{% endfor %}
+
+### 保护规则
+1. **定位**：在正文中找到实现上述主线推进点的段落
+2. **冻结**：这些段落的内容不得被修改、重写或删除
+3. **绕行**：修复操作必须绕过这些段落，仅修改非主线推进区域
+4. **验证**：修复后必须确认所有主线推进点仍然完整存在
+{% endif %}
+
+{#- ═══════════════════════════════════════════════════ -#}
+{#- 核心约束 2: 大纲对齐关系保护                         -#}
+{#- ═══════════════════════════════════════════════════ -#}
+{% if alignment_score_current is defined %}
+## 📊 大纲对齐关系保护
+
+当前对齐分数（仅作参考，实际分数由下游 AlignmentStep 复检）：**{{ alignment_score_current }} / 10.0**
+
+### 对齐保护规则
+1. 修复后必须保持所有主线推进点完整存在，不得删除、弱化或改写其叙事结果。
+2. 不得削弱已建立的大纲对齐关系；若 alignment_report 中有正面副线点，应保留其支持主线的功能。
+3. 若当前对齐分已经偏低，这不是继续降低对齐质量的许可；修复只能围绕护栏违规做最小必要调整。
+4. 不要在正文中输出对齐分、自评、复检说明或任何非正文标记。
+5. 下游对齐分计算基于：
+   - 主线推进点完整度（每个缺失扣 2.0 分）
+   - 副线推进质量（弱副线过多扣 0.4 分）
+   - 正面副线支持（每个加 0.2 分）
+
+{% if alignment_report %}
+### 当前对齐报告摘要
+{% if alignment_report.missing_main_points %}
+- **缺失主线点**：
+{% for mp in alignment_report.missing_main_points %}
+  - {{ mp }}
+{% endfor %}
+{% endif %}
+{% if alignment_report.supportive_subplot_points %}
+- **正面副线点**：
+{% for sp in alignment_report.supportive_subplot_points %}
+  - {{ sp }}
+{% endfor %}
+{% endif %}
+{% if alignment_report.weak_subplot_points %}
+- **弱副线点**：
+{% for wp in alignment_report.weak_subplot_points %}
+  - {{ wp }}
+{% endfor %}
+{% endif %}
+{% if alignment_report.summary %}
+- **摘要**：{{ alignment_report.summary }}
+{% endif %}
+{% endif %}
+{% endif %}
+
+{#- ═══════════════════════════════════════════════════ -#}
+{#- 核心约束 3: 修复范围限制                            -#}
+{#- ═══════════════════════════════════════════════════ -#}
+{% if guardrail_report %}
+## 🎯 护栏违规报告
+
+### 违规详情
+{% if guardrail_report.violations is defined %}
+{% for violation in guardrail_report.violations %}
+- **违规 {{ loop.index }}**：
+  - 类型：{{ violation.type or violation.violation_type or '未知' }}
+  - 严重程度：{{ violation.severity or 'medium' }}
+  - 位置：{{ violation.location or '全文' }}
+  - 描述：{{ violation.description or violation.detail or '无' }}
+{% if violation.suggestion or violation.repair_hint %}
+  - 修复建议：{{ violation.suggestion or violation.repair_hint }}
+{% endif %}
+{% endfor %}
+{% else %}
+{{ guardrail_report }}
+{% endif %}
+{% endif %}
+
+## 修复范围限制
+
+### 允许修改的区域
+1. 不包含主线推进点的段落
+2. 过渡性描写、环境描写、心理描写
+3. 副线推进相关的段落（在不影响主线的前提下）
+4. 开头/结尾的衔接段落（如果不包含主线点）
+
+### 禁止修改的区域
+1. **包含主线推进点的段落**（绝对禁止）
+2. 已经通过护栏检查的段落
+3. 与当前违规无关的角色对话
+4. 已建立的场景设定（除非违规直接相关）
+
+### 修复策略
+1. **最小干预原则**：仅修改与违规直接相关的部分
+2. **局部重写**：优先局部修改，避免全文重写
+3. **保持连贯**：修复后必须保持叙事连贯性
+4. **字数合规**：修复后字数必须在 {{ word_count_min | default('无限制') }} - {{ word_count_max | default('无限制') }} 之间
+5. **不制造新违规**：不得为修复某个护栏问题新增计划外 POV、正面出场角色、组织、关键道具或重大事件；不得改变 opening_contract / closing_contract / 已完成主线结果。
+6. **禁出/禁揭示优先**：若违规涉及禁止角色出场、禁止主动联系或禁止提前揭示，只能删除、改写或转为可观察间接痕迹，不能换成同一主体的近义表述继续出现。
+7. **字数防膨胀**：若需要补一句修复，必须同时压缩同区域低信息旁白，避免修复后章节结构性超长。
+
+{#- ---------------------------------------------------------------------------
+    执行层：待修复正文
+    --------------------------------------------------------------------------- -#}
+
+## 待修复正文
+
+{{ chapter_text }}
+
+{{ render_repair_quality_calibration("repair") }}
+
+{{ render_repair_pre_delivery_checklist("repair") }}
+
+{#- ---------------------------------------------------------------------------
+    格式层：输出格式
+    --------------------------------------------------------------------------- -#}
+
+## 修复成稿语义约束
+
+1. **修复成稿必须是完整正文**，不包含说明、注释或结构化数据
+2. **保持原有段落结构**，仅修改需要修复的部分
+3. **主线推进点必须原样保留**，不得有任何改动
+4. **修复后自检**：
+   - 所有主线推进点是否完整存在？
+   - 主线推进点和大纲对齐关系是否未被削弱？
+   - 护栏违规是否已修复？
+   - 是否没有新增计划外 POV、禁出角色、重大事件或后续揭秘？
+   - 字数是否在约束范围内？
+   - 是否没有密集使用定义式否定转折来自证描写品质？
+{{ creative_specificity_rules(title="") }}

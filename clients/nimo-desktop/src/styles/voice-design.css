@@ -1,0 +1,222 @@
+.voice-design-dialog {
+  display: grid;
+  grid-template-rows: auto auto auto auto auto minmax(0, 1fr) auto;
+  width: min(760px, calc(100vw - 48px));
+  height: min(650px, calc(100vh - 48px));
+  padding: 24px 26px 22px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-soft) 46%, transparent);
+  border-radius: 17px;
+  color: var(--nf-text-body);
+  background: var(--nf-bg-dialog);
+  box-shadow: 0 25px 65px color-mix(in srgb, var(--nf-shadow) 31%, transparent);
+  animation: dialog-rise-in 180ms cubic-bezier(.22, .61, .36, 1);
+}
+
+.voice-design-dialog > header h2,
+.voice-design-run h2,
+.voice-design-result h2 {
+  margin: 0;
+  color: var(--nf-text-heading);
+  font-family: Georgia, "Songti SC", serif;
+  font-size: var(--nf-font-page-lg);
+}
+
+.voice-design-dialog.is-running,
+.voice-design-dialog.is-completed,
+.voice-design-dialog.is-failed {
+  display: block;
+}
+
+.voice-design-run p,
+.voice-design-result p {
+  margin: 9px 0 0;
+  color: var(--nf-text-secondary);
+  font-size: var(--nf-font-label);
+  line-height: 1.65;
+}
+
+.voice-design-context {
+  margin: 13px 0 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  color: var(--nf-text-secondary);
+  background: color-mix(in srgb, var(--nf-bg-control) 42%, var(--nf-bg-surface));
+  font-size: var(--nf-font-label);
+}
+
+.voice-design-description {
+  margin: 10px 0 0;
+  color: var(--nf-text-heading);
+  font-size: var(--nf-font-label);
+  font-weight: 700;
+  line-height: 1.48;
+}
+
+.voice-design-evidence {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.voice-design-evidence article {
+  display: grid;
+  align-content: start;
+  gap: 3px;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 18%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--nf-bg-control) 34%, var(--nf-bg-surface));
+}
+
+.voice-design-evidence span,
+.voice-design-evidence small {
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-caption);
+}
+
+.voice-design-evidence strong {
+  overflow: hidden;
+  color: var(--nf-text-heading);
+  font-size: var(--nf-font-body);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.voice-design-evidence p {
+  overflow: hidden;
+  display: -webkit-box;
+  margin: 0;
+  color: var(--nf-text-secondary);
+  font-size: var(--nf-font-caption);
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.voice-design-brief {
+  display: grid;
+  min-height: 0;
+  margin-top: 12px;
+}
+
+.voice-design-brief textarea {
+  box-sizing: border-box;
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+  padding: 10px;
+  resize: vertical;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 26%, transparent);
+  border-radius: 8px;
+  color: var(--nf-text-body);
+  background: var(--nf-bg-input-soft);
+  font: 13px/1.65 inherit;
+}
+
+.voice-design-help {
+  margin: 8px 0 0;
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-body);
+}
+
+.voice-design-dialog footer,
+.voice-design-result footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.voice-design-dialog footer > span,
+.voice-design-result footer > span {
+  flex: 1;
+}
+
+.voice-design-dialog footer small {
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-body);
+}
+
+.voice-design-run,
+.voice-design-result {
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  min-height: 472px;
+  padding: 12px;
+}
+
+.voice-design-run > i {
+  display: block;
+  width: 27px;
+  height: 27px;
+  margin-bottom: 15px;
+  border: 3px solid color-mix(in srgb, var(--nf-accent-primary) 22%, transparent);
+  border-top-color: var(--nf-accent-primary);
+  border-radius: 50%;
+  animation: voice-design-spin 800ms linear infinite;
+}
+
+.voice-design-run > div {
+  display: grid;
+  gap: 9px;
+  width: 100%;
+  margin-top: 24px;
+  padding: 14px;
+  border-radius: 10px;
+  color: var(--nf-text-muted);
+  background: color-mix(in srgb, var(--nf-bg-control) 38%, var(--nf-bg-surface));
+  font-size: var(--nf-font-body);
+}
+
+.voice-design-run > div .is-active {
+  color: var(--nf-accent-primary-pressed);
+  font-weight: 700;
+}
+
+.voice-design-result strong {
+  margin-top: 15px;
+  color: var(--nf-accent-primary-pressed);
+  font-size: var(--nf-font-section-sm);
+}
+
+.voice-design-result.is-failed .section-kicker,
+.voice-design-result.is-failed h2 {
+  color: var(--nf-danger, var(--nf-accent-primary-pressed));
+}
+
+@keyframes voice-design-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 640px) {
+  .voice-design-dialog {
+    width: min(100%, calc(100vw - 24px));
+    height: calc(100vh - 24px);
+    padding: 20px;
+  }
+
+  .voice-design-dialog footer,
+  .voice-design-result footer {
+    flex-wrap: wrap;
+  }
+
+  .voice-design-evidence {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Honor reduced motion (design-tokens has global guard, this is explicit
+ * for local animations that should not run when the user prefers reduced
+ * motion). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,5 @@
+/* DashboardPage._request_rebuild_vectors_for_selected confirmation content. */
+.vector-rebuild-notice, .vector-rebuild-result { display: grid; gap: 10px; padding: 14px; border-left: 3px solid var(--nf-accent-primary); border-radius: 10px; background: color-mix(in srgb, var(--nf-bg-control) 42%, var(--nf-bg-surface)); }
+.vector-rebuild-notice strong, .vector-rebuild-result strong { color: var(--nf-text-heading); font-size: var(--nf-font-subsection); }
+.vector-rebuild-notice p, .vector-rebuild-result p { margin: 0; color: var(--nf-text-secondary); font-size: var(--nf-font-label); line-height: 1.6; }
+.vector-rebuild-result > span { width: fit-content; padding: 4px 8px; border-radius: 999px; color: var(--nf-accent-primary-pressed); background: color-mix(in srgb, var(--nf-accent-primary) 10%, var(--nf-bg-surface)); font-size: var(--nf-font-body); }

@@ -1,0 +1,57 @@
+# 通用最小集 — 禁用元素种子模板
+# 当 genre 不匹配任何专用模板时的 fallback
+
+rhetorical_imagery_hints:
+  - 月光
+  - 光芒
+  - 灯光
+  - 夜色
+  - 暮色
+  - 风声
+  - 雾气
+  - 阴影
+  - 寒意
+  - 凉意
+  - 暖意
+  - 香气
+  - 呼吸
+  - 心跳
+  - 冷汗
+  - 颤抖
+  - 屏息
+  - 刺痛
+  - 发麻
+
+kinship_and_address_terms:
+  - 父亲
+  - 母亲
+  - 哥哥
+  - 姐姐
+  - 弟弟
+  - 妹妹
+  - 先生
+  - 女士
+  - 老板
+  - 老师
+
+abstract_emotion_keywords:
+  - 紧张
+  - 焦虑
+  - 愤怒
+  - 悲伤
+  - 恐惧
+  - 绝望
+  - 平静
+  - 冷静
+  - 镇定
+  - 犹豫
+  - 不安
+  - 愧疚
+  - 压抑
+
+metadata:
+  version: 1
+  genre: universal_minimal
+  description: "通用最小集，适用于任何 genre 的 fallback"
+  generated_from: template
+  auto_derived: false

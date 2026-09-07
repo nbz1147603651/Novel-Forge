@@ -1,0 +1,23 @@
+.workflow-cancel-dialog {
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  align-content: start;
+  gap: 12px;
+  width: min(420px, calc(100vw - 48px));
+  height: 288px;
+  box-sizing: border-box;
+  padding: 24px 28px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 16%, transparent);
+  border-radius: 10px;
+  color: var(--nf-text-body);
+  background: var(--nf-bg-surface);
+  box-shadow: 0 22px 60px color-mix(in srgb, var(--nf-shadow) 29%, transparent);
+  animation: dialog-rise-in 180ms cubic-bezier(.22, .61, .36, 1);
+}
+
+.workflow-cancel-dialog h2 { margin: 0 0 10px; color: var(--nf-text-heading); font-family: Georgia, "Songti SC", serif; font-size: var(--nf-font-page); font-weight: 600; }
+.workflow-cancel-dialog p { min-height: 38px; margin: 0; color: var(--nf-text-secondary); font: 16px/1.55 "PingFang SC", "Hiragino Sans GB", sans-serif; }
+.workflow-cancel-dialog small { margin-top: 2px; color: var(--nf-text-muted-soft); font: 16px/1.55 "PingFang SC", "Hiragino Sans GB", sans-serif; }
+.workflow-cancel-dialog footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: auto; padding-top: 12px; }
+.workflow-cancel-dialog footer .button { min-height: 40px; padding-inline: 17px; font-size: var(--nf-font-section); }
+.workflow-cancel-dialog footer .button-danger { margin-left: 0; }

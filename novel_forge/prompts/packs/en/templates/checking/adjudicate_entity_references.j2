@@ -1,0 +1,43 @@
+{# source_template_hash: 01f395e9e94681c3cb4640af6d7f0ffdac7038974c0e0bdb253111a025d8c5da #}
+{# LLM entity-reference adjudication over bounded Zvec evidence. #}
+
+## Task
+
+You adjudicate narrative entity references. Decide identity from the raw mention, its supplied context, and retrieved evidence cards. Vector retrieval supplies candidates only; it is never a verdict.
+
+Return exactly one decision for each mention with one of these verdicts:
+
+- `resolved`: evidence supports one existing candidate `entity_id`.
+- `ambiguous`: multiple candidates remain plausible or cannot be distinguished.
+- `new_entity`: evidence supports none of the candidates.
+- `insufficient_evidence`: current evidence cannot support an identity judgement.
+
+Hard constraints:
+
+- Never choose a candidate merely because it is first or semantically similar.
+- For `resolved`, `selected_entity_id` must be one of that mention's `candidate_entity_ids`, and `selected_canonical_name` must be the canonical name in its evidence card.
+- For every non-`resolved` verdict, both selected fields must be empty strings.
+- Echo the supplied `candidate_entity_ids` exactly. Do not invent IDs.
+- Cite only supplied evidence-card `source_ref` values in `evidence_refs`, with a short rationale.
+- Set `requires_independent_review=true` for identity changes, irreversible state, close candidates, or relationship-sensitive references.
+- P0 constraints cannot be overridden by supporting evidence. Return `ambiguous` or `insufficient_evidence` when they conflict.
+
+Return JSON only. Do not include reasoning, Markdown, or code fences.
+
+## Input
+
+```json
+{
+  "purpose": {{ purpose | tojson }},
+  "mentions": {{ mentions | tojson }},
+  "evidence_pack": {{ evidence_pack | tojson }}
+}
+```
+
+{% if adjudication_validation_error | default('') %}
+## Previous Output Rejected by the Local Contract
+- Reason: {{ adjudication_validation_error }}
+- Return exactly one decision for every input mention and echo each mention's candidate_entity_ids verbatim.
+{% endif %}
+
+{#- The system format contract is injected by PromptBuilder. -#}

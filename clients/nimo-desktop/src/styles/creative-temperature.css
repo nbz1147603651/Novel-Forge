@@ -1,0 +1,29 @@
+/* PySide6 settings/parameters/temperature.py — inline, collapsible form.
+   Source SettingRow geometry is 90px with the containing QVBoxLayout's 10px cadence. */
+.creative-temperature-section { --creative-temperature-row-height: 90px; --creative-temperature-row-gap: 10px; overflow: hidden; scroll-margin-top: 15px; border: 1px solid color-mix(in srgb, var(--nf-border-default) 14%, var(--nf-bg-surface)); border-radius: 12px; background: var(--nf-bg-surface); }
+.creative-temperature-toggle { display: flex; align-items: center; gap: 8px; width: 100%; border: 0; color: var(--nf-text-heading); background: transparent; text-align: left; transition: background 150ms ease; }
+.creative-temperature-toggle:hover { background: color-mix(in srgb, var(--nf-bg-hover-secondary) 64%, transparent); }
+.creative-temperature-toggle > span { color: var(--nf-accent-primary); }
+.creative-temperature-body { display: grid; gap: 0; padding: 0 18px 16px; border-top: 1px solid color-mix(in srgb, var(--nf-separator) 66%, var(--nf-bg-surface)); }
+.creative-temperature-description { margin: 13px 0 27px; color: var(--nf-text-secondary); font-size: var(--nf-font-subsection); line-height: 1.55; }
+.creative-temperature-body > header, .creative-temperature-custom > header { margin-bottom: 10px; }
+.creative-temperature-body h3, .creative-temperature-custom h3 { margin: 0; color: var(--nf-text-heading); font-size: var(--nf-font-section-sm); }
+.creative-temperature-body header p, .creative-temperature-custom header p { margin: 5px 0 0; color: var(--nf-text-muted-soft); font-size: var(--nf-font-label); line-height: 1.45; }
+.creative-temperature-field { display: grid; grid-template-columns: 245px 200px; align-items: center; justify-content: start; gap: 20px; min-height: var(--creative-temperature-row-height); padding: 8px; }
+.creative-temperature-field + .creative-temperature-field { margin-top: var(--creative-temperature-row-gap); }
+.creative-temperature-field > span { display: grid; gap: 4px; min-width: 0; }
+.creative-temperature-field strong { color: var(--nf-text-heading); font-size: var(--nf-font-subsection); }
+.creative-temperature-field small { max-width: 230px; color: var(--nf-text-muted-soft); font-size: var(--nf-font-body); line-height: 1.42; }
+.creative-temperature-field em { color: var(--nf-accent-primary-pressed); font-size: var(--nf-font-ui); font-style: normal; }
+.creative-temperature-field select, .creative-temperature-field input { width: 100%; height: 39px; padding: 0 34px 0 12px; border: 1px solid color-mix(in srgb, var(--nf-border-default) 25%, transparent); border-radius: 9px; outline: 0; color: var(--nf-text-body); background: var(--nf-bg-input); font-size: var(--nf-font-subsection); }
+.creative-temperature-field input { padding-right: 10px; }
+.creative-temperature-field select:focus, .creative-temperature-field input:focus { border-color: var(--nf-accent-primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--nf-accent-primary) 11%, transparent); }
+.creative-temperature-field.has-error select, .creative-temperature-field.has-error input { border-color: var(--nf-accent-primary-pressed); background: color-mix(in srgb, var(--nf-status-warning-bg) 44%, var(--nf-bg-input)); }
+.creative-temperature-custom { margin-top: 12px; padding: 14px; border: 1px solid color-mix(in srgb, var(--nf-border-default) 17%, transparent); border-radius: 10px; background: color-mix(in srgb, var(--nf-bg-control) 28%, var(--nf-bg-surface)); }
+.creative-temperature-task-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 12px; }
+.creative-temperature-task-grid label { display: flex; align-items: center; gap: 6px; min-height: 29px; color: var(--nf-text-secondary); font-size: var(--nf-font-body); }
+.creative-temperature-task-grid input { accent-color: var(--nf-accent-primary); }
+.creative-temperature-task-grid .is-protected { color: var(--nf-text-muted); }
+.creative-temperature-task-group + .creative-temperature-task-group { margin-top: 14px; padding-top: 12px; border-top: 1px solid color-mix(in srgb, var(--nf-separator) 52%, transparent); }
+.creative-temperature-task-group h4 { margin: 0 0 8px; color: var(--nf-text-heading); font-size: var(--nf-font-label); font-weight: 600; }
+@media (max-width: 880px) { .creative-temperature-field { grid-template-columns: 1fr; gap: 9px; }.creative-temperature-field small { max-width: none; }.creative-temperature-task-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

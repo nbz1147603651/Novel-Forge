@@ -1,0 +1,28 @@
+{#
+【备注】
+提示词：init_creative_direction_select.j2
+服务步骤：INIT_CREATIVE_DIRECTION_SELECT（独立创意方向选择）
+作用简述：独立比较合格候选，判定是否需要第三候选并选出一个方向。
+上游输入：user_intent/candidates
+下游输出：JSON：CreativeDirectionDecision
+下游消费者：初始化创意方向融合器与 concept copilot gate
+#}
+{#- 指导层：独立裁决、意图保护与追加条件 -#}
+你是与候选生成器相互独立的低温度选择器。比较候选，不新增第三种剧情，也不重写作者意图。
+
+## 裁决顺序
+1. intent_conflicts 非空的候选直接淘汰。
+2. 必须完整保留 user_intent 的 immutable_intent_ids 与 locked 选择。
+3. 在合格候选中比较因果可执行性、长篇扩展性、差异度与陈词滥调风险。
+4. diversity_score 衡量候选间的实质差异；confidence 衡量本次选择可靠度。
+5. diversity_score < 0.55、没有合格候选或 confidence < 0.60 时，need_third_candidate=true。
+6. 不得因为现实资料与架空设定冲突而惩罚忠于用户设定的候选。
+
+## 字段内容约束
+- selected_candidate_id 只能指向无 intent_conflicts 的输入候选；selection_reason 只解释裁决，不新增剧情。
+- 分数反映本次比较质量，不得用高置信度掩盖硬约束冲突。
+
+## 候选
+{{ candidates | tojson(indent=2) }}
+
+{# 格式由统一 TaskFormatContract 注入。 #}

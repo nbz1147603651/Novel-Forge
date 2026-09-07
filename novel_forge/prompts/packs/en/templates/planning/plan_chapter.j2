@@ -1,0 +1,585 @@
+{# source_template_hash: d9caac0b6e3644616b313615a3e53856c93fe50d68faca03fd8e620e43913972 #}
+{#
+================================================================================
+[NOTES]
+================================================================================
+Prompt: plan_chapter.j2
+Service Step: PLAN_CHAPTER (Chapter Planning)
+Function Description: Routes this chapter's outline, bridge contract, and chapter execution contract into scene_intents.
+                      This stage only does structural planning, does not write body text, does not do rhetorical expansion.
+Upstream Input:
+  - stage_cards.source: ChapterSourceSlice, containing this chapter's chapter_contract, entity references, and reveal/forbid boundaries
+  - stage_cards.chapter: Chapter goals, POV, beats, target word count
+  - stage_cards.contract: Contract derivation cards, only to supplement local gaps in source
+  - stage_cards.bridge: opening anchors / action_handoff / causal_link
+  - stage_cards.characters: Key characters in this chapter - name / role / dynamic identity
+  - stage_cards.memory, stage_cards.element, stage_cards.quality: Minimal auxiliary fragments
+Downstream Output:
+  - ChapterPlan JSON
+Consumption Chain Priority:
+  P0 = contract.required_events / forbidden_changes / bridge.action_handoff
+  P1 = scene_intents complete fields / word count allocation / exit_state_targets
+  P2 = element focus / memory / reading power / style capsule
+================================================================================
+#}
+
+{%- from "_base/_artifact_source_contract.j2" import render_artifact_source_contract -%}
+{%- from "_base/_cognitive_constraints.j2" import render_cognitive_constraints -%}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer
+    --------------------------------------------------------------------------- -#}
+
+{% set cards = stage_cards | default({}) %}
+{% set source = cards.source | default({}) %}
+{% set source_contract = source.chapter_contract | default({}, true) %}
+{% set chapter = cards.chapter | default({}) %}
+{% set position = chapter.chapter_position | default(chapter_position | default({})) %}
+{% set contract = source_contract if source_contract else (cards.contract | default({})) %}
+{% set bridge = cards.bridge | default({}) %}
+{% set memory = cards.memory | default({}) %}
+{% set element = cards.element | default({}) %}
+{% set quality = cards.quality | default({}) %}
+{% set style = cards.style | default({}) %}
+{% set editorial = cards.editorial | default({}) %}
+{% set characters = cards.characters | default([]) %}
+{% set knowledge = cards.knowledge | default({}) %}
+{% set narration = cards.narration | default({}) %}
+{% set time = cards.time | default({}) %}
+{% set strand = cards.strand | default({}) %}
+{% set subplot_weave = cards.subplot_weave | default({}) %}
+{% set bridge_boundary = bridge.boundary_window_policy | default({}) %}
+{% set cognitive_constraints = contract.cognitive_constraints | default([]) %}
+{% set literary_contract = source.literary_contract | default({}, true) %}
+{% set literary_retry = literary_contract_retry_guidance | default({}) %}
+
+## Task
+Generate executable `ChapterPlan` for Chapter {{ chapter.chapter_number }}.
+
+The sole core output of this stage is scene-based planning: dropping all bridges, required events, forbidden changes, and exit targets into existing fields.
+This is an execution plan, not prose. State each fact once in its owning field; keep summary, purpose, and conflict descriptions concise, and do not repeat the same contract wording across fields. Completeness comes from coverage, not repetition.
+{% if position %}
+- Chapter Position: Chapter {{ position.chapter_number | default(chapter.chapter_number) }} / {{ position.total_chapters }}; is_last_chapter={{ position.is_last_chapter | default(false) }}.
+{% if position.is_last_chapter | default(false) %}
+- This chapter is the final chapter of the current outline; book-level closing can be executed.
+{% else %}
+- This chapter is NOT the final chapter: closing_contract must leave room for subsequent reception, must not be written as a book ending or final settlement.
+{% endif %}
+{% if position.is_previously_final_chapter | default(false) %}
+- This chapter was once the old final chapter but has been extended: plan as transition/reopening chapter, do not expose as final chapter.
+{% endif %}
+{% endif %}
+
+{{ render_artifact_source_contract(source, title="## Source Artifact Contract (P0)", mode="plan") }}
+
+## Artifact Consumption Rules
+- This stage only consumes `source.chapter_contract`, BridgeArtifact, and chapter outline fragments to generate scene intents.
+- Book-level creative bundles are only allowed to generate source artifacts during initialization; this stage must not infer new plots or advance payoffs based on them.
+- `key_revelations` can only list reveals explicitly permitted by this chapter's contract; do not write future_leak_risks as confirmed facts.
+
+## World Rule Landing (P0)
+- For every hard rule in `source.world_rule_card`, emit one `world_rule_applications` item. Applied rules must use `rule_id`, `scene_id`, `usage`, `expected_evidence`, and `forbidden_boundary`.
+- If a rule is genuinely irrelevant to this chapter, emit `applicability="not_applicable"` and `not_applicable_reason`. The reason must be specific; do not use `reason` or another substitute key.
+- `scene_id` must be a real `scene_XX` in this response. Even chapter-wide rules must bind their earliest or strongest evidence scene; never write `whole chapter`.
+- `world_rule_applications` is the sole semantic source for rule application. Do not manually maintain the four derived world-rule fields in scene_intent; runtime projects them deterministically by real scene_id to prevent duplicate contracts from drifting.
+
+{% if literary_contract %}
+## Six Elements Literary Contract Card (P0)
+This card comes from `source.literary_contract`. You must translate it into existing `scene_intents` fields; do not add new top-level fields, do not stuff extra-chapter goals into this chapter.
+{% set lc_character = literary_contract.character | default({}) %}
+{% set lc_plot = literary_contract.plot | default({}) %}
+{% set lc_setting = literary_contract.setting | default({}) %}
+{% set lc_pov = literary_contract.pov | default({}) %}
+{% set lc_theme = literary_contract.theme | default({}) %}
+{% set lc_style = literary_contract.style | default({}) %}
+- Character: POV={{ lc_character.pov_character | default(lc_pov.pov_character | default('')) }}; required={{ lc_character.required_characters | default([]) | join(', ') }}; support={{ lc_character.support_characters | default([]) | join(', ') }}
+{% if lc_character.emotional_plan | default({}) %}  - Emotional Plan: {{ lc_character.emotional_plan }}{% endif %}
+{% if lc_character.arc_milestones | default([]) %}
+  - Character Arc Milestones:
+{% for item in lc_character.arc_milestones %}
+    - {{ item.character | default('') }}: {{ item.milestone_description | default(item.arc_summary | default('')) }}
+{% endfor %}
+{% endif %}
+{% if lc_character.relationship_duties | default([]) %}  - Relationship Change Duties: {{ lc_character.relationship_duties | join('; ') }}{% endif %}
+- Plot: Required Events={{ lc_plot.required_events | default([]) | join('; ') }}; Required Progressions={{ lc_plot.required_progressions | default([]) | join('; ') }}
+{% if lc_plot.promise_refs | default([]) %}  - Promise/Foreshadow References: {{ lc_plot.promise_refs }}{% endif %}
+{% if lc_plot.forbidden_progressions | default([]) %}  - Forbidden Early Advancement: {{ lc_plot.forbidden_progressions | join('; ') }}{% endif %}
+{% if lc_plot.completion_criteria | default([]) %}  - Completion Criteria: {{ lc_plot.completion_criteria | join('; ') }}{% endif %}
+{% if lc_plot.exit_state_targets | default([]) %}  - Exit Targets: {{ lc_plot.exit_state_targets | join('; ') }}{% endif %}
+- Setting: Location={{ lc_setting.primary_location | default('') }}; Design Goals={{ lc_setting.scene_design_goals | default([]) | join('; ') }}
+{% if lc_setting.world_rules | default([]) %}  - World/Society Rules: {{ lc_setting.world_rules | join('; ') }}{% endif %}
+{% if lc_setting.available_resources | default([]) %}  - Available Resources/Tools: {{ lc_setting.available_resources | join('; ') }}{% endif %}
+{% if lc_setting.constraints | default([]) %}  - Constraints: {{ lc_setting.constraints | join('; ') }}{% endif %}
+- POV: POV={{ lc_pov.pov_character | default('') }}; scope={{ lc_pov.pov_scope | default('limited') }}
+{% if lc_pov.cognitive_constraints | default([]) %}  - Cognitive Boundaries: Follow contract.cognitive_constraints, do not write suspicion as confirmation.{% endif %}
+{% if lc_pov.forbidden_reveal_boundaries | default([]) %}  - Forbidden Reveal Boundaries: Can only serve as boundaries for forbidden_elements / key_revelations, cannot be cashed out early.{% endif %}
+- Theme: Primary Theme={{ lc_theme.primary_theme | default('') }}; Theme Duties={{ lc_theme.theme_duties | default([]) | join('; ') }}
+{% if lc_theme.phase_context | default({}) %}  - Current Narrative Phase: {{ lc_theme.phase_context.phase_name | default('') }} {{ lc_theme.phase_context.description | default('') }}{% endif %}
+{% if lc_theme.arc_milestones | default([]) %}
+  - This Chapter's Arc Duties:
+{% for item in lc_theme.arc_milestones %}
+    - {{ item.character | default('') }}: {{ item.milestone_description | default(item.arc_summary | default('')) }}
+{% endfor %}
+{% endif %}
+- Style: Narrative Voice={{ lc_style.narrative_voice | default('') }}; POV Distance={{ lc_style.pov_distance | default('') }}; Dialogue Goal={{ lc_style.dialogue_ratio | default('') }}
+{% if lc_style.forbidden_phrases | default([]) %}  - Forbidden Phrases: {{ lc_style.forbidden_phrases | join('; ') }}{% endif %}
+{% if lc_style.style_rules | default([]) %}  - Style Rules: {{ lc_style.style_rules | join('; ') }}{% endif %}
+{% if lc_style.character_voices | default([]) %}  - Character voices must fall into `dialogue_voice_targets`, must not become setting explanations.{% endif %}
+
+### Six Elements Field Mapping Rules
+- Characters must map to `character_motivations`, `emotional_beats`, `relationship_dynamic`, `required_outcome`.
+- Plot must map to `conflict`, `choice_pressure`, `scene_resistance`, `required_outcome`, `exit_target_state`, `required_state_transitions`.
+- Setting must map to `location`, `time_marker`, `scene_resistance`, `sensory_anchors`, action design with available resources and constraints.
+- World rules must map once to top-level `world_rule_applications`; runtime deterministically projects the four derived scene_intent world-rule fields.
+- POV must map to each key scene's `pov_character`, `pov_distance`, `pov_knowledge_boundary`.
+- Theme/Arc can only appear as actions, choices, consequences, and symbolic object strategies, mapping to `symbol_usage_policy`, `emotional_beats`, `required_outcome`.
+- Style must map to `dialogue_voice_targets`, syntax/narrative distance, and forbidden phrase avoidance; must not be written as meta-instructions.
+{% endif %}
+
+{% if literary_retry.critical_missing | default([]) or literary_retry.warning_missing | default([]) %}
+## Six Elements Coverage Retry Instructions (P0)
+The previous version of the plan did not fully cover the literary contract. Only correct `scene_intents` and necessary top-level reception fields, do not add new output fields.
+{% if literary_retry.critical_missing | default([]) %}- Must supplement: {{ literary_retry.critical_missing | join('; ') }}{% endif %}
+{% if literary_retry.warning_missing | default([]) %}- Need strengthening: {{ literary_retry.warning_missing | join('; ') }}{% endif %}
+{% if literary_retry.missing_plot_duties | default([]) %}- Plot duties without sufficient evidence (each must enter `owned_events` / `required_outcome` / `required_state_transitions`):
+{% for duty in literary_retry.missing_plot_duties %}
+  - {{ duty }}
+{% endfor %}
+{% endif %}
+- Supplements for character motivations, conflict advancement, POV, and theme duties must enter specific scenes, not just be written in summary.
+{% endif %}
+
+{% if scene_plan_validation_issues | default([]) %}
+## Local Structural Audit Repair Instructions (P0)
+The previous plan has the following verifiable scene-structure issues. Repair them only within the existing fields; do not remove bridge anchors, required events, forbidden changes, or exit targets.
+{% for issue in scene_plan_validation_issues %}
+- {{ issue.message | default(issue.code | default('scene-structure issue')) }}
+{% endfor %}
+- Every parallel hard result in `required_outcome` must be claimed separately in `owned_events`; every scene needs an observable exit state.
+- When repairing dependencies or ownership, keep the event causal order and chapter goal; do not replace executable fields with a vague summary.
+{% endif %}
+
+{% if semantic_consistency_issues | default([]) %}
+## Bounded Semantic-Consistency Replan (P0)
+The previous Plan could not coexist with the compiled authoritative sources. Repair only the Plan using the model adjudication reasons below. Do not rewrite sources, expand chapter scope, or remove author constraints:
+{% for issue in semantic_consistency_issues %}
+- {{ issue }}
+{% endfor %}
+{% endif %}
+
+{% if replan_context | default(none) %}
+## Previous Plan Failure Reasons (Attempt {{ replan_context.attempt_number }} Replanning)
+- Failed Stage: {{ replan_context.failed_stage | default('Not specified') }}
+- Failure Type: {{ replan_context.failure_kind | default('Not specified') }}
+{% if replan_context.failure_details %}
+- Specific Issues:
+{% for detail in replan_context.failure_details %}
+  - {{ detail }}
+{% endfor %}
+{% endif %}
+{% if replan_context.previous_plan_summary %}
+- Previous Plan Summary:
+{{ replan_context.previous_plan_summary }}
+{% endif %}
+{% if replan_context.attempted_fixes %}
+- Already Attempted Fixes (please change direction):
+{% for fix in replan_context.attempted_fixes %}
+  - {{ fix }}
+{% endfor %}
+{% endif %}
+{% if replan_context.actionable_guidance %}
+- This Attempt's Suggestions:
+{% for guidance in replan_context.actionable_guidance %}
+  - {{ guidance }}
+{% endfor %}
+{% endif %}
+{% endif %}
+
+## Top-Level Field Requirements
+Only output the following 15 English `snake_case` top-level fields; do not add non-contract fields, explanatory fields, or alternative fields:
+- `scene_intents`: Scene execution plan array, each item uses scene fields below.
+- `world_rule_applications`: World-rule application records. Applied rules use `rule_id`, `scene_id`, `usage`, `expected_evidence`, and `forbidden_boundary`; inapplicable rules use `applicability="not_applicable"` and `not_applicable_reason`, never `reason`.
+- `opening_contract`: How this chapter's beginning receives the bridge, time, location, POV, action handoff, and opening acceptance criteria.
+- `closing_contract`: Exit state this chapter's end must achieve, chapter hook, and receivable points for next chapter.
+- `required_state_transitions`: Array of state changes this chapter must complete, covering required events, exit targets, and causal chains.
+- `chapter_type`: This chapter's functional type, use short enum or short tags such as crisis / discovery / emotional / transition.
+- `emotional_arc`: This chapter's emotional trajectory string.
+- `relationship_evolution`: This chapter's relationship change array.
+- `forbidden_elements`: Hard banned rhetorical images/patterns array.
+- `forbidden_elements_soft`: Soft avoidance hint array.
+- `forbidden_elements_quota`: Elements allowed for limited loops or limited reuse array.
+- `intentional_callbacks`: Intentional callback images/motifs array.
+- `foreshadowing_plan`: This chapter's foreshadowing and setup array.
+- `key_revelations`: This chapter's allowed key information reveal array.
+- `cross_scene_intent`: Cross-scene reference and rhythm curve constraints, must include `cross_scene_references` and `pacing_curve` (see "Cross-Scene Constraint Output" section below for details).
+
+## Chapter Card
+{% set chapter_pov_character_id = chapter.pov_character_id | default('', true) %}
+{% set chapter_involved_character_ids = chapter.involved_character_ids | default([], true) %}
+{% set chapter_required_character_ids = chapter.required_character_ids | default([], true) %}
+{% set chapter_support_character_ids = chapter.support_character_ids | default([], true) %}
+{% set chapter_cast_plan = chapter.cast_plan | default({}, true) %}
+{% set chapter_emotional_plan = chapter.emotional_plan | default({}, true) %}
+{% set chapter_scene_design_goals = chapter.scene_design_goals | default([], true) %}
+- Title: {{ chapter.title }}
+- Goal: {{ chapter.goal }}
+{% if chapter.notes %}- Supplementary Notes: {{ chapter.notes }}{% endif %}
+- POV: {{ chapter.pov_character }}{% if chapter_pov_character_id %} (entity_id={{ chapter_pov_character_id }}){% endif %}
+- Setting: {{ chapter.setting }}
+- Target Word Count: {{ chapter.target_word_count }}
+{% if chapter_involved_character_ids %}- This Chapter's Active Cast IDs: {{ chapter_involved_character_ids | join('; ') }}{% endif %}
+{% if chapter_required_character_ids %}- Required Character IDs to Drive Plot: {{ chapter_required_character_ids | join('; ') }}{% endif %}
+{% if chapter_support_character_ids %}- Support Appearance Character IDs: {{ chapter_support_character_ids | join('; ') }}{% endif %}
+{% if chapter_cast_plan %}
+- Cast Plan (P0): {{ chapter_cast_plan }}
+{% endif %}
+{% if chapter_emotional_plan %}
+- Emotional Plan (P0): {{ chapter_emotional_plan }}
+{% endif %}
+{% if chapter_scene_design_goals %}
+- Scene Design Goals:
+{% for item in chapter_scene_design_goals %}
+  {{ loop.index }}. {{ item }}
+{% endfor %}
+{% endif %}
+{% if chapter.main_plot_points %}- Main Plot: {{ chapter.main_plot_points | join('; ') }}{% endif %}
+{% if chapter.subplot_points %}- Subplot: {{ chapter.subplot_points | join('; ') }}{% endif %}
+{% if chapter.beats_summary %}
+- Beats:
+{% for beat in chapter.beats_summary %}
+  {{ loop.index }}. {{ beat }}
+{% endfor %}
+{% endif %}
+
+{% if subplot_weave.active_subplot_names or subplot_weave.weave_hints or subplot_weave.dependency_warnings %}
+## Subplot Weave Card (P1)
+{% if subplot_weave.active_subplot_names %}- Active Subplots in This Chapter: {{ subplot_weave.active_subplot_names | join('; ') }}{% endif %}
+{% if subplot_weave.weave_hints %}
+- Weave/Close Hints:
+{% for item in subplot_weave.weave_hints %}
+  - {{ item }}
+{% endfor %}
+{% endif %}
+{% if subplot_weave.dependency_warnings %}
+- Dependency Warnings:
+{% for item in subplot_weave.dependency_warnings %}
+  - {{ item }}
+{% endfor %}
+{% endif %}
+- Planning Requirement: Implement above hints into scene's summary / purpose / required_outcome / exit_target_state; nodes with unsatisfied dependencies cannot be cashed out early.
+{% endif %}
+
+{% if contract %}
+## Contract Card (P0)
+{% set contract_pov_character_id = contract.pov_character_id | default('', true) %}
+{% set contract_required_character_ids = contract.required_character_ids | default([], true) %}
+{% set contract_support_character_ids = contract.support_character_ids | default([], true) %}
+{% set contract_emotional_plan = contract.emotional_plan | default({}, true) %}
+{% set contract_scene_design_goals = contract.scene_design_goals | default([], true) %}
+{% set contract_entry_state_requirements = contract.entry_state_requirements | default([], true) %}
+{% set contract_required_events = contract.required_events | default([], true) %}
+{% set contract_required_progressions = contract.required_progressions | default([], true) %}
+{% set contract_allowed_progressions = contract.allowed_progressions | default([], true) %}
+{% set contract_forbidden_changes = contract.forbidden_changes | default([], true) %}
+{% set contract_forbidden_progressions = contract.forbidden_progressions | default([], true) %}
+{% set contract_future_leak_risks = contract.future_leak_risks | default([], true) %}
+{% set contract_completion_criteria = contract.completion_criteria | default([], true) %}
+{% set contract_exit_state_targets = contract.exit_state_targets | default([], true) %}
+{% set contract_guard_constraints = contract.guard_constraints | default([], true) %}
+{% set contract_hard_facts = contract.hard_facts | default([], true) %}
+{% set contract_milestone_window = contract.milestone_window | default({}, true) %}
+{% if contract_entry_state_requirements %}- Entry State: {{ contract_entry_state_requirements | join('; ') }}{% endif %}
+{% if contract_required_events %}- Required Events: {{ contract_required_events | join('; ') }}{% endif %}
+{% if contract_required_progressions %}- Required Progressions: {{ contract_required_progressions | join('; ') }}{% endif %}
+{% if contract_pov_character_id %}- Contract POV Entity ID: {{ contract_pov_character_id }}{% endif %}
+{% if contract_required_character_ids %}- Contract Required Cast IDs: {{ contract_required_character_ids | join('; ') }}{% endif %}
+{% if contract_support_character_ids %}- Contract Support Cast IDs: {{ contract_support_character_ids | join('; ') }}{% endif %}
+{% if contract_emotional_plan %}- Contract Emotional Execution Intent: {{ contract_emotional_plan }}{% endif %}
+{% if contract_scene_design_goals %}- Contract Scene Goals: {{ contract_scene_design_goals | join('; ') }}{% endif %}
+{% if contract_allowed_progressions %}- Allowed Setups: {{ contract_allowed_progressions | join('; ') }}{% endif %}
+{% if contract_forbidden_changes %}- Forbidden Changes: {{ contract_forbidden_changes | join('; ') }}{% endif %}
+{% if contract_forbidden_progressions %}- Forbidden Early Advancement: {{ contract_forbidden_progressions | join('; ') }}{% endif %}
+{% if contract_future_leak_risks %}- Future Leak Risks: {{ contract_future_leak_risks | join('; ') }}{% endif %}
+{% if contract_completion_criteria %}- Completion Criteria: {{ contract_completion_criteria | join('; ') }}{% endif %}
+{% if contract_exit_state_targets %}- Exit Targets: {{ contract_exit_state_targets | join('; ') }}{% endif %}
+{% if contract_guard_constraints %}- Guardrails: {{ contract_guard_constraints | join('; ') }}{% endif %}
+{% if contract_hard_facts %}- Hard Facts: {{ contract_hard_facts | join('; ') }}{% endif %}
+{% if cognitive_constraints %}
+## Cognitive Constraints Card (P0)
+- The following constraints come from initialization Claim, must not rewrite cognitive subject, cognitive object, cognitive level, or published chapter.
+- `cognitive_level` is the overall claim state; each named character must independently obey `character_knowledge_coverage`. Reader or one character knowledge never grants knowledge to another character.
+- If `action_level=internal`, scene can only use inner thoughts, observation, probing, misdirection, must not write as dialogue recognition, public revelation, or mutual confirmation.
+{{ render_cognitive_constraints(cognitive_constraints) }}
+{% endif %}
+
+{% if contract_milestone_window %}
+{% set milestone_current = contract_milestone_window.current | default([], true) %}
+{% set milestone_future_guardrails = contract_milestone_window.future_guardrails | default([], true) %}
+- Milestone Window: Current {{ milestone_current | length }} items; future guardrails {{ milestone_future_guardrails | length }} items; withheld future {{ contract_milestone_window.withheld_future_count | default(0) }} items.
+{% endif %}
+{% endif %}
+
+## Cast / Emotion Execution Rules (P0)
+- Scene's `pov_character`, `required_characters`, `character_motivations` must use character names corresponding to the active cast above; must not introduce unapproved active characters from cast plan to undertake key actions.
+- `emotional_arc` must compress Emotional Plan's "entry state -> pressure source -> relationship/action choice -> emotional turn -> exit aftertaste".
+- Each key scene must fall into at least one `scene_design_goals` or `emotional_plan` goal; emotional expression must be shown through actions, dialogue, body signals, object details, or silence, must not only write abstract feelings.
+- `emotional_arc` quality calibration:
+  - X "From tension to relief" (too vague, cannot guide writing)
+  - X "Character experiences a series of emotional changes" (no specific content)
+  - Check "Entry: restrained curiosity (maintaining dignity in the ritual) -> Pressure: suppressed fear after discovering anomaly -> Choice: using probing actions instead of direct questioning -> Turn: from fear to calm judgment -> Aftertaste: alertness under apparent obedience"
+  - Key: Each phase must be bound to specific actions/choices/senses, not abstract feeling words.
+
+{% if bridge %}
+## Bridge Card (scene_01 Must Bind)
+- Time/Location/POV: {{ bridge.opening_time or bridge.previous_exit.time_marker }} / {{ bridge.opening_location or bridge.previous_exit.location }} / {{ bridge.opening_pov or chapter.pov_character }}
+{% if bridge.action_handoff %}- Action Handoff: {{ bridge.action_handoff }}{% endif %}
+{% if bridge.emotional_carryover %}- Emotional Carryover: {{ bridge.emotional_carryover }}{% endif %}
+{% if bridge_boundary.opening_paragraphs %}- Opening Acceptance Window: First {{ bridge_boundary.opening_paragraphs }} paragraphs{% endif %}
+{% if bridge.opening_acceptance_criteria %}- Opening Acceptance Criteria: {{ bridge.opening_acceptance_criteria | join('; ') }}{% endif %}
+{% if bridge.causal_link %}
+- Causal Chain (must be transcribed into scene_01 and required_state_transitions): {{ bridge.causal_link.previous_event }} -> {{ bridge.causal_link.causal_mechanism }}
+{% if bridge.causal_link.unresolved_question %}- Unresolved Suspense to Advance: {{ bridge.causal_link.unresolved_question }}{% endif %}
+{% if bridge.causal_link.open_threads %}- Open Threads: {{ bridge.causal_link.open_threads | join('; ') }}{% endif %}
+{% endif %}
+{% if bridge.pending_questions %}- Pending Questions: {{ bridge.pending_questions | join('; ') }}{% endif %}
+{% endif %}
+
+{% if characters %}
+## Character Identity Card (P1)
+Only used for planning `required_characters` and `character_motivations`, do not expand character bios.
+{% for char in characters %}
+- {{ char.get('name', '') }}{% if char.get('role') %} ({{ char.get('role') }}){% endif %}{% if char.get('identity') %}: {{ char.get('identity') }}{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if knowledge.character_cards or knowledge.chapter_ops %}
+## Character Knowledge Boundary (P0)
+- `StoryKernel.knowledge_ledger` is the sole source of truth for character knowledge; hard facts, contract goals, and author perspective information cannot automatically become character known facts.
+- Scene's motivations, judgments, dialogue, and `key_revelations` must obey the following character knowledge; if this chapter needs to change cognition, map the change into scene's visible actions/dialogue/observation, and correspond to `knowledge_ops`.
+{% for kb in knowledge.character_cards %}
+- {{ kb.character }}{% if kb.is_pov %} (Current POV){% endif %}:
+{% set changes = kb.chapter_promised_changes | default([]) %}
+  Known={{ kb.known_facts | default([]) | join('; ') or 'No special known facts' }}; Suspicions={{ kb.suspicions | default([]) | join('; ') or 'None' }}; Misbeliefs={{ kb.misbeliefs | default([]) | join('; ') or 'None' }}{% if changes %}; This Chapter's Cognition Changes={{ changes | map(attribute='target_text') | list | join('; ') }}{% endif %}
+{% endfor %}
+{% if knowledge.global_ops %}- Unbound Character Knowledge Operations: {{ knowledge.global_ops | map(attribute='target_text') | list | join('; ') }}{% endif %}
+{% endif %}
+
+{% if narration.rule %}
+## Narrative Person Card
+- {{ narration.rule }}
+{% endif %}
+
+{% if time.prev_time_anchor or time.current_time_anchor or time.time_gap_from_prev or time.current_time_span or time.countdown_state or time.is_flashback %}
+## Time Continuity Card (P0)
+{% if time.prev_time_anchor or time.current_time_anchor %}- Time Anchor: Previous Chapter {{ time.prev_time_anchor or "Not marked" }} -> This Chapter {{ time.current_time_anchor or "Not marked" }}{% endif %}
+{% if time.time_gap_from_prev %}- Gap: {{ time.time_gap_from_prev }}{% endif %}
+{% if time.current_time_span %}- This Chapter's Span: {{ time.current_time_span }}{% endif %}
+{% if time.countdown_state %}- Countdown State: {{ time.countdown_state }}{% endif %}
+{% if time.is_flashback %}- This Chapter is a Flashback: scene must mark time boundaries, must not contaminate current timeline state.{% endif %}
+{% endif %}
+
+{% set memory_outline_context = memory.outline_context | default('') %}
+{% if memory.previous_chapter_events or memory.relevant_history or memory.summary_context | default('') or memory_outline_context or memory.active_motifs or memory.forward_motif_guidance or memory.foreshadow_due | default([]) %}
+## Memory Fragments (Only for Fact/Motif Reference)
+{% if memory.summary_context | default('') %}
+- Recent Chapter/Volume Summary (macro continuity):
+{{ memory.summary_context }}
+{% endif %}
+{% if memory_outline_context %}
+- Initialization Outline Context (planning reference, not occurred history):
+{{ memory_outline_context }}
+{% endif %}
+{% if memory.previous_chapter_events %}
+- Previous Chapter Events:
+{% for item in memory.previous_chapter_events %}
+  - Chapter {{ item.chapter_number }}: {{ item.event_summary }}
+{% endfor %}
+{% endif %}
+{% if memory.relevant_history %}
+- Relevant History:
+{% for item in memory.relevant_history %}
+  - Chapter {{ item.chapter_number }}: {{ item.event_summary }}
+{% endfor %}
+{% endif %}
+{% if memory.active_motifs %}- Active Motifs (only for continuity identification, not required to actively use): {{ memory.active_motifs | join('; ') }}{% endif %}
+{% if memory.forward_motif_guidance %}
+- Long-line Motif Reference (soft constraint; only lightly touch when this chapter's contract naturally requires, must not add new images, symbols, or theme explanations just for echo):
+{% for item in memory.forward_motif_guidance %}
+  - {{ item }}
+{% endfor %}
+{% endif %}
+{% if memory.foreshadow_due | default([]) %}
+- Foreshadowing to Collect (arrange collection or strengthening only when this chapter's contract allows, must not forcibly explain early):
+{% for item in memory.foreshadow_due | default([]) %}
+  - Chapter {{ item.planted_chapter }}: {{ item.description }}
+{% endfor %}
+{% endif %}
+{% endif %}
+
+{% if bridge.forbidden_repetition or bridge.previous_forbidden_repetition or memory.motif_repetition_risks %}
+## Motif Avoidance Repetition Hints (Soft Constraint)
+These items are only used to reduce rhetorical channel repetition; when planning, prioritize preserving characters, locations, key props, and plot anchors, only replace expression methods.
+{% if bridge.forbidden_repetition %}- This Chapter Bridge Forbidden Channels: {{ bridge.forbidden_repetition | join('; ') }}{% endif %}
+{% if bridge.previous_forbidden_repetition %}- Cross-chapter High-frequency Channels: {{ bridge.previous_forbidden_repetition | join('; ') }}{% endif %}
+{% if memory.motif_repetition_risks %}- Memory System Hints: {{ memory.motif_repetition_risks | join('; ') }}{% endif %}
+{% endif %}
+
+{% if memory.expression_channel_records %}
+## Expression Channel Cooldown (Soft Constraint)
+The following items record recent high-frequency expression mechanisms; this chapter should switch emotional carrying methods, avoid synonym substitution.
+{% for item in memory.expression_channel_records %}
+{% set recent_hits = item.recent_semantic_hits | default([]) %}
+- {{ item.channel }} / {{ item.channel_id }}: {{ item.text }}{% if item.reason %} ({{ item.reason }}){% endif %}{% if item.replacement_axes %}; Replacement Direction: {{ item.replacement_axes | join(', ') }}{% endif %}{% if item.allowed_when %}; Retention Boundary: {{ item.allowed_when }}{% endif %}{% if recent_hits %}; Recent Example: Chapter {{ recent_hits[0].chapter }} "{{ recent_hits[0].quote }}"{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if cards.arc_liveness and cards.arc_liveness.dormant_arcs %}
+## Sub-arc Liveness
+The following arcs have stagnation risk, only need light touch, must not force-insert entire sub-arc sections.
+{% for arc in cards.arc_liveness.dormant_arcs %}
+- {{ arc.get('name', '') }}: Last advanced in Chapter {{ arc.last_progress_chapter }}; suggestion {{ arc.planning_hint }}
+{% endfor %}
+{% endif %}
+
+{% if element.required_elements or element.focused_extension_elements or element.focus_constraints %}
+## Element Fragments
+{% if element.focus_ids %}- This Chapter's Focus: {{ element.focus_ids | join('; ') }}{% endif %}
+{% for item in element.required_elements %}- Required Element: {{ item.element_id }} {{ item.get('name', '') }} {{ item.prompt_hint or item.function }}{% endfor %}
+{% for item in element.focused_extension_elements %}- This Chapter's Focused Extension: {{ item.element_id }} {{ item.get('name', '') }} {{ item.prompt_hint or item.function }}{% endfor %}
+{% if element.focus_constraints %}- Execution Constraints: {{ element.focus_constraints | join('; ') }}{% endif %}
+{% endif %}
+
+{% if element.progress_summary or element.recommended_focus_ids or element.recent_missed or element.recent_weak %}
+## Element Execution Backfill (P2)
+{% if element.progress_summary %}- {{ element.progress_summary }}{% endif %}
+{% if element.recommended_focus_ids %}- Recommended Priority Focus: {{ element.recommended_focus_ids | join('; ') }}{% endif %}
+{% for item in element.recent_missed %}- Recent Miss: {{ item.element_id }} (Chapter {{ item.last_chapter }}; {{ item.latest_reason }}){% endfor %}
+{% for item in element.recent_weak %}- Recent Weak Hit: {{ item.element_id }} (Chapter {{ item.last_chapter }}; {{ item.latest_reason }}){% endfor %}
+{% endif %}
+
+{% if quality.chapter_hook or quality.in_chapter_payoffs or quality.force_resolve_suspense or quality.tension_target or quality.recommended_hook_type %}
+## Readership Hook Fragments
+{% if quality.tension_target %}- [P2. Tension Target] Expected Tension={{ quality.tension_target }}{% endif %}
+{% if quality.recommended_hook_type or quality.hook_type_constraint %}- [P1. Hook Type Suggestion] This chapter's ending priority use: {{ quality.hook_type_constraint or quality.recommended_hook_type }}{% endif %}
+{% if quality.in_chapter_payoffs %}- This Chapter's Micro-payoffs: {{ quality.in_chapter_payoffs | join('; ') }}{% endif %}
+{% if quality.force_resolve_suspense %}- Must Resolve Suspense: {{ quality.force_resolve_suspense | join('; ') }}{% endif %}
+{% if quality.chapter_hook %}- Chapter Hook Direction: {{ quality.chapter_hook }}{% endif %}
+{% endif %}
+
+{% if style.cool_point_patterns or style.pace_mode %}
+## Style/Rhythm Fragments (P2)
+{% if style.pace_mode %}- Rhythm: {{ style.pace_mode }}{% endif %}
+{% if style.cool_point_patterns %}- Highlight Patterns: {{ style.cool_point_patterns | join('; ') }}{% endif %}
+{% endif %}
+
+{% if editorial %}
+## Editorial Contract Card (P1)
+{% if editorial.over_denouement_budget %}- This chapter has exceeded main climax expected aftermath: must advance new actions, new conflicts, or new information, must not repeat already resolved emotional confirmations.{% endif %}
+{% if editorial.climax_distance is defined and editorial.climax_distance > 0 %}- Distance from Main Climax: {{ editorial.climax_distance }} chapters; Aftermath Budget: {{ editorial.main_climax.expected_aftermath_chapters }} chapters.{% endif %}
+{% set editorial_risk = editorial.risk_guidance | default({}) %}
+{% set editorial_risk_items = editorial_risk.get('items', []) if editorial_risk else [] %}
+{% set denouement_risk = editorial_risk.get('denouement', {}) if editorial_risk else {} %}
+{% if editorial_risk_items or denouement_risk.guidance | default('') %}
+- Editorial admission risks must be translated into this chapter's scene functions, must not stay at report suggestions.
+{% if denouement_risk.guidance | default('') %}  - Aftermath/Conclusion: {{ denouement_risk.guidance }}; confirmation scene upper limit {{ denouement_risk.recommended_confirmation_limit | default(2) }} times.{% endif %}
+{% for item in editorial_risk_items %}
+  - [{{ item.severity }}] {{ item.summary }}; planning action={{ item.action }}
+{% endfor %}
+{% endif %}
+{% if editorial.theme_policies %}- Theme Presentation: {{ editorial.theme_policies | join('; ') }}{% endif %}
+{% if editorial.symbol_policies %}
+- Symbol Strategy:
+{% for item in editorial.symbol_policies %}
+  - {{ item.symbol }}: {{ item.narrative_function }}; explanation policy={{ item.explanation_policy }}; {{ item.escalation_rule }}
+{% endfor %}
+{% endif %}
+{% if editorial.scene_resistance_rules %}
+- Scene Resistance Candidates:
+{% for item in editorial.scene_resistance_rules %}
+  - {{ item.scene_type }}: {{ item.required_resistance }} ({{ item.examples | join(', ') }})
+{% endfor %}
+{% endif %}
+{% if editorial.character_voices %}
+- Character Voice Targets:
+{% for item in editorial.character_voices %}
+  - {{ item.character }}: {{ item.sentence_profile }}; explanation bias={{ item.explanation_bias }}; emotion syntax={{ item.emotion_syntax }}
+{% endfor %}
+{% endif %}
+{% if editorial.revelation_ladder %}
+- Revelation Ladder:
+{% for item in editorial.revelation_ladder %}
+  - {{ item.thread }} / {{ item.stage_order }}.{{ item.stage }} (target Chapter {{ item.target_chapter }}): {{ item.allowed_disclosure }}; consequence={{ item.required_action_consequence }}
+{% endfor %}
+{% endif %}
+{% if editorial.editorial_element_directives %}
+- Narrative Element Editorial Directives:
+{% for item in editorial.editorial_element_directives %}
+  - {{ item.element_id }} {{ item.element_name }}: {{ item.target_window }} | {{ item.requirement }} | Completion Standard: {{ item.success_criteria }}
+{% endfor %}
+{% endif %}
+{% if editorial.time_bridge_policies %}- Time Bridge Rules: {{ editorial.time_bridge_policies | join('; ') }}{% endif %}
+{% endif %}
+
+{% if strand.strand_distribution or strand.strand_alerts %}
+## Plotline Rhythm Card (P2)
+{% if strand.strand_distribution %}- Near-window Distribution: {% for name, pct in strand.strand_distribution.items() %}{{ name }}={{ pct }}{% if not loop.last %}; {% endif %}{% endfor %}{% endif %}
+{% for alert in strand.strand_alerts %}- {{ alert.strand }}: {{ alert.message }}; {{ alert.suggestion }}{% endfor %}
+{% endif %}
+
+## Planning Rules
+1. Each scene must fill: scene_id, summary, purpose, conflict, required_characters, character_motivations, entry_state_refs, required_outcome, owned_events, owned_revelations, owned_state_changes, dramatic_question, exit_target_state, location, time_marker, target_words, pov_character, pov_scope, pov_switch_allowed, pov_switch_marker_required, choice_pressure, scene_resistance, dialogue_voice_targets, revelation_level, symbol_usage_policy, body_signal_budget, emotional_beat, sensory_notes, sensory_focus, dialogue_subtext.
+1a. `world_rule_applications` must cover every hard rule in the current `world_rule_card`. Applied rules bind a real `scene_XX` from this plan (chapter-wide rules use the earliest or strongest evidence scene, never `whole chapter`) and provide executable usage and prose evidence. Only definitely untriggered rules may use `applicability="not_applicable"`, with the specific reason in `not_applicable_reason`, not `reason`.
+2. `scene_01` must bind bridge.action_handoff or causal_link; `opening_contract` writes clearly how the opening window implements the bridge.
+3. Each required event maps to one scene's `owned_events`; every hard result joined by a semicolon or coordination in `required_outcome` must be split into its own array item. Each item may own only one observable event and must state necessary trigger/action/result evidence; do not put a whole summary, multiple events, or an abstract label in one item. Each exit target falls into the last scene or closing_contract.
+4. `forbidden_changes` / `forbidden_progressions` / `future_leak_risks` are plot boundaries, can only be set up, cannot be cashed out or arrange positive state changes.
+5. `forbidden_elements` only contains rhetorical images/patterns, not characters, locations, props, plot anchors.
+6. `time_marker` is a continuity anchor, can write vague expressions like "later that night / late at night / near the watch change / next morning"; do not force each scene to use exact time. If using traditional time marks, each mark can only have one to four quarters, strictly no more than four.
+7. Scene must not repeatedly undertake the same function; if handling the same event, must distinguish trigger, confrontation, consequence, or turn.
+8. Sum of `target_words` is close to target word count, and each scene is greater than 0.
+9. `sensory_notes` outputs 2-4 candidate sensory anchors, sorted by relevance; body text only takes first 1-2 to implement.
+10. `sensory_focus` specifies this scene's focused sensory channel (e.g., "smell + touch", "hearing + vision"), adjacent scenes should rotate channels, avoid using only vision throughout.
+11. `dialogue_subtext` writes the true intent characters do not explicitly state in this scene's dialogue—presented through tone, pauses, avoidance, action hints, not explained by narrator. Scenes without dialogue can write empty string.
+12. summary / required_outcome / dramatic_question must be executable action, dialogue, resistance, or character choice process descriptions, not result statements or abstract rhetorical substitutes for scene functions.
+13. summary, purpose, required_outcome describe the process through which characters will advance the plot (actions, dialogue, choices, discoveries), not the results or conclusions of the process. Readers should discover results from the body text, not be told results from the plan. dramatic_question must be in interrogative form, expressing the suspense readers should generate, not the answer.
+14. Each scene's `owned_events` has a maximum of 3 items; if exceeding 3, split into multiple scenes to avoid packing multiple threads through enumerative parallelism in the draft stage. `owned_revelations` and `owned_state_changes` record only content exclusively owned by this scene and must not be claimed repeatedly.
+
+## Quality Calibration
+- Work Identity: You are a long-form narrative architect, good at splitting story assets into executable, verifiable, not overly spoiled plans.
+- Planning Inference Path: First lock P0 hard constraints, then allocate P1 advancement rhythm, finally use P2 style/theme to complement presentation layer.
+- Field-level Quality Examples (not output format): Weak="Advance relationship"; High-quality="Write clear who acts for what, how relationships change, how the next link receives".
+- Field-level Comparison Examples (not output format):
+  - summary: X "Qingyi cleverly handled the double probe" -> Check "Qingyi found abnormal smell and foreign object in the marriage wine, must judge the nature of the threat and respond"
+  - purpose: X "Display Qingyi's wisdom" -> Check "Through Qingyi's sensory observation and response choices, let readers gradually realize the existence of the probe"
+  - required_outcome: X "Qingyi successfully resolved the probe" -> Check "Qingyi changed the situation through specific action choices, readers infer from the action consequences that she has seen through it"
+  - owned_events: X ["Finds the foreign object; refuses the wine; redirects the probe"] -> Check ["Qingyi smells an abnormality at the rim and stops her hand", "Qingyi swaps the cup under the pretext of refilling wine", "Her opponent changes the probe because she did not drink"]
+  - dramatic_question: X "Qingyi saw through the double probe" -> Check "Can Qingyi resolve this probe without exposing that she already knows?"
+  - key_revelations: X "Qingyi confirmed the wine contains double probe" -> Check "Qingyi gradually discovered the wine contains more than one foreign object through smell and visual clues"
+- Actionable Path: Plan items must be directly checkable by subsequent writing/audit, avoid only giving abstract wishes or theme slogans.
+
+## Pre-delivery Verification
+- Are P0/P1/P2 priorities maintained, and no weak references overriding hard constraints.
+- Can key judgments reference back to input evidence, upstream contract, or approved plan.
+- Are new unauthorized characters, locations, world rules, future payoffs, or format agreements avoided.
+- Are abstract goals transformed into observable actions, conflicts, state changes, or chapter reception points.
+
+{#- ---------------------------------------------------------------------------
+    Cross-Scene Constraint Output (WAVE Required Reading)
+    --------------------------------------------------------------------------- -#}
+
+## Cross-Scene Constraint Output (cross_scene_intent, 2 Fields Required)
+This section is input for WAVE step. `cross_scene_intent` must appear in the outermost JSON object, parallel to `scene_intents`, cannot be nested in scenes.
+
+### Field Description
+- `cross_scene_references` (list): Cross-scene reference list, each item contains:
+  - `from_scene` (str): Source scene_id
+  - `to_scene` (str): Target scene_id
+  - `ref_type` (str): One of callback / foreshadow / parallel / contrast / echo
+  - `requirement`: use only source, scope, satisfaction (invariant/narrative/literal/optional), status, evidence, and source_text_hash. Keep status pending and evidence/source_text_hash empty during planning. Never add requirement_id, text, or any other field.
+  - `description` (str): How the reference should be implemented in body text (one sentence, not abstract slogan)
+- `pacing_curve` (list[int]): One intensity level 1-5 per scene, length must equal `len(scene_intents)`.
+  1=still/interior, 2=dialogue-led, 3=light conflict, 4=confrontation/revelation, 5=climax/turn.
+
+### Writing Requirements
+- `cross_scene_references` may be empty, maximum 6. Rhetorical callbacks default to optional; only necessary causal/event handoffs are narrative. Literal anchors must originate in required_literals. Do not add symbolism to fill the list.
+- `description` must be locatable to specific actions, lines, objects, or sensory anchors, must not just write "echo theme".
+- `pacing_curve` aligns with `scene_intents` order; between two scenes with adjacent difference >= 2, there must be observable decompression/compression actions (fulfilled by WAVE).

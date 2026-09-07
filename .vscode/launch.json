@@ -1,0 +1,75 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "FastAPI 后端 (uvicorn)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": ["novel_forge.api.app:app", "--reload", "--port", "8000"],
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/bin/python",
+      "env": { "NOVEL_FORGE_API_LOCAL_ONLY": "true" },
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "NIMO 桌面（默认 React/Tauri）",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "${workspaceFolder}/.venv/bin/python -m novel_forge.desktop.tauri_launcher --dev",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "PySide6 后备（nimo-p）",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "novel_forge.desktop.main",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/bin/python",
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "CLI (novel-forge)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "novel_forge.cli.main",
+      "args": ["system", "status"],
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/bin/python",
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "pytest 当前文件",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "args": ["${file}", "-v", "--timeout=60", "--no-header"],
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/bin/python",
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "pytest 单元测试 (并行)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "args": ["tests/unit/", "-n", "auto", "-q", "--timeout=60"],
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/bin/python",
+      "console": "integratedTerminal",
+      "justMyCode": false
+    }
+  ],
+  "compounds": [
+    {
+      "name": "全栈联调 (FastAPI + 提示启动前端)",
+      "configurations": ["FastAPI 后端 (uvicorn)"],
+      "preLaunchTask": "提示: 前端启动命令",
+      "stopAll": true
+    }
+  ]
+}

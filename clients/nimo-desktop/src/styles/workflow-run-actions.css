@@ -1,0 +1,302 @@
+/* Workflow Run Card Action Bar
+ *
+ * Buttons use the shared `.button` + variant classes (design-tokens.css) to
+ * match the PySide6 ActionButton variants wired in
+ * `JobCard._build_action_bar` (secondary: 停止/人工修复; primary:
+ * 恢复/AI修复/断点续写), all with the `compact` property → `.is-compact`.
+ */
+
+/* Container for the action buttons in workflow-run-footer */
+.workflow-run-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* Run state badge variants (mirrors task_flow_status_spec tones) */
+.workflow-run-state.is-failed {
+  color: var(--nf-status-warning-bg, #fff3e0);
+  background: color-mix(in srgb, var(--nf-accent-primary-pressed, #a34a2a) 85%, transparent);
+}
+
+/* Cancelled jobs render with tone "muted" in task_flow_status_spec. */
+.workflow-run-state.is-cancelled {
+  color: var(--nf-text-secondary, #66574b);
+  background: color-mix(in srgb, var(--nf-bg-control, #f1e7d8) 72%, transparent);
+}
+
+.workflow-run-state.is-paused {
+  color: var(--nf-text-secondary, #66574b);
+  background: var(--nf-bg-control, #f1e7d8);
+}
+
+.workflow-run-state.is-completed {
+  color: var(--nf-status-success, #2e7d32);
+  background: var(--nf-status-success-bg, #e8f5e9);
+}
+/* Workflow Run Card Action Buttons */
+
+/* Container for the action buttons in workflow-run-footer */
+.workflow-run-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* Base style for action buttons */
+.workflow-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  font-size: var(--nf-font-label);
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 150ms cubic-bezier(.22, .61, .36, 1),
+              background 150ms ease,
+              border-color 150ms ease,
+              box-shadow 150ms ease,
+              color 150ms ease;
+}
+
+.workflow-action-btn:hover {
+  transform: scale(1.02);
+}
+
+.workflow-action-btn:active {
+  transform: scale(0.98);
+}
+
+/* Stop button - secondary variant */
+.workflow-action-btn.is-stop {
+  color: var(--nf-text-body, #4f4337);
+  border-color: color-mix(in srgb, var(--nf-border-default, #8d6b4c) 24%, transparent);
+  background: color-mix(in srgb, var(--nf-bg-input, #ffffff) 46%, transparent);
+}
+
+.workflow-action-btn.is-stop:hover {
+  background: var(--nf-bg-surface, #fffaf3);
+  border-color: color-mix(in srgb, var(--nf-border-default, #8d6b4c) 40%, transparent);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--nf-shadow, #45291d) 10%, transparent);
+}
+
+/* Resume button - primary variant */
+.workflow-action-btn.is-resume {
+  color: var(--nf-brand-logo-frame, #fffaf3);
+  border-color: var(--nf-accent-primary, #b65634);
+  background: var(--nf-accent-primary, #b65634);
+  box-shadow: 0 3px 10px color-mix(in srgb, var(--nf-accent-primary, #b65634) 28%, transparent);
+}
+
+.workflow-action-btn.is-resume:hover {
+  background: var(--nf-accent-primary-hover, #c76442);
+  box-shadow: 0 5px 14px color-mix(in srgb, var(--nf-accent-primary, #b65634) 38%, transparent);
+}
+
+/* Checkpoint resume button - primary variant */
+.workflow-action-btn.is-checkpoint {
+  color: var(--nf-brand-logo-frame, #fffaf3);
+  border-color: var(--nf-accent-primary, #b65634);
+  background: var(--nf-accent-primary, #b65634);
+  box-shadow: 0 3px 10px color-mix(in srgb, var(--nf-accent-primary, #b65634) 28%, transparent);
+}
+
+.workflow-action-btn.is-checkpoint:hover {
+  background: var(--nf-accent-primary-hover, #c76442);
+  box-shadow: 0 5px 14px color-mix(in srgb, var(--nf-accent-primary, #b65634) 38%, transparent);
+}
+
+/* Retry button - secondary variant */
+.workflow-action-btn.is-retry {
+  color: var(--nf-text-body, #4f4337);
+  border-color: color-mix(in srgb, var(--nf-border-default, #8d6b4c) 24%, transparent);
+  background: color-mix(in srgb, var(--nf-bg-input, #ffffff) 46%, transparent);
+}
+
+.workflow-action-btn.is-retry:hover {
+  background: var(--nf-bg-surface, #fffaf3);
+  border-color: color-mix(in srgb, var(--nf-border-default, #8d6b4c) 40%, transparent);
+}
+
+/* View artifacts button - secondary variant */
+.workflow-action-btn.is-view {
+  color: var(--nf-text-body, #4f4337);
+  border-color: color-mix(in srgb, var(--nf-border-default, #8d6b4c) 24%, transparent);
+  background: color-mix(in srgb, var(--nf-bg-input, #ffffff) 46%, transparent);
+}
+
+.workflow-action-btn.is-view:hover {
+  background: var(--nf-bg-surface, #fffaf3);
+  border-color: color-mix(in srgb, var(--nf-border-default, #8d6b4c) 40%, transparent);
+}
+
+/* Run state badge variants */
+.workflow-run-state.is-failed {
+  color: var(--nf-status-warning-bg, #fff3e0);
+  background: color-mix(in srgb, var(--nf-accent-primary-pressed, #a34a2a) 85%, transparent);
+}
+
+.workflow-run-state.is-paused {
+  color: var(--nf-text-secondary, #66574b);
+  background: var(--nf-bg-control, #f1e7d8);
+}
+
+.workflow-run-state.is-completed {
+  color: var(--nf-status-success, #2e7d32);
+  background: var(--nf-status-success-bg, #e8f5e9);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workflow-action-btn {
+    transition: none;
+  }
+  .workflow-action-btn:hover {
+    transform: none;
+  }
+  .workflow-action-btn:active {
+    transform: none;
+  }
+}
+
+/* ── Phase B: Badges ──────────────────────────────────────────────── */
+
+.workflow-run-badges {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.workflow-badge {
+  padding: 3px 8px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.workflow-badge.is-default {
+  background: color-mix(in srgb, var(--nf-text-muted) 14%, transparent);
+  color: var(--nf-text-secondary);
+}
+
+.workflow-badge.is-muted {
+  background: color-mix(in srgb, var(--nf-text-muted) 10%, transparent);
+  color: var(--nf-text-muted);
+}
+
+.workflow-badge.is-success {
+  background: color-mix(in srgb, var(--nf-status-success) 16%, transparent);
+  color: var(--nf-status-success);
+}
+
+.workflow-badge.is-warning {
+  background: color-mix(in srgb, var(--nf-status-warning) 16%, transparent);
+  color: var(--nf-status-warning);
+}
+
+.workflow-badge.is-danger {
+  background: color-mix(in srgb, var(--nf-status-danger) 16%, transparent);
+  color: var(--nf-status-danger);
+}
+
+/* ── Phase B: Detail lines ────────────────────────────────────────── */
+
+.workflow-run-details {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.workflow-detail-line {
+  margin: 0;
+  font-size: var(--nf-font-small);
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.workflow-detail-line.is-default {
+  color: var(--nf-text-primary);
+}
+
+.workflow-detail-line.is-muted {
+  color: var(--nf-text-muted);
+}
+
+.workflow-detail-line.is-hint {
+  color: var(--nf-text-secondary);
+  font-style: italic;
+}
+
+.workflow-detail-line.is-success {
+  color: var(--nf-status-success);
+}
+
+.workflow-detail-line.is-warning {
+  color: var(--nf-status-warning);
+}
+
+.workflow-detail-line.is-danger {
+  color: var(--nf-status-danger);
+}
+
+.workflow-detail-line.is-score {
+  color: var(--nf-status-success);
+  font-weight: 500;
+}
+
+.workflow-detail-line.is-scoreFail {
+  color: var(--nf-status-danger);
+  font-weight: 500;
+}
+
+/* ── Phase B: Historical compact mode ─────────────────────────────── */
+
+.workflow-run-card.is-historical {
+  padding: 8px 14px;
+  min-height: 132px;
+}
+
+/* The PySide6 JobCard reserves a stable 212px viewport for a live run.
+   That prevents the stream from jumping while step details arrive.  Historical
+   cards remain compact above. */
+.workflow-run-card:not(.is-historical) {
+  min-height: 212px;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 212px;
+}
+
+.workflow-run-card.is-historical .workflow-run-heading h3 {
+  font-size: var(--nf-font-small);
+}
+
+.workflow-run-card.is-cancelled {
+  opacity: .82;
+}
+
+/* ── Phase B3: Jobs panel scroll area ─────────────────────────────── */
+
+.workflow-run-list {
+  display: grid;
+  gap: 10px;
+  max-height: 640px;
+  overflow-y: auto;
+  padding: 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--nf-bg-inset) 30%, transparent);
+}
+
+.workflow-run-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.workflow-run-list::-webkit-scrollbar-thumb {
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--nf-border-default) 40%, transparent);
+}

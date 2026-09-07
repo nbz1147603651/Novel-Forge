@@ -1,0 +1,49 @@
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：synthesize_init_research_dossier.j2
+服务步骤：SYNTHESIZE_INIT_RESEARCH_DOSSIER（初始化资料分析）
+作用简述：把联网检索报告压缩为可被 StoryBible 安全参考的资料包。
+上游输入：spec/research_report
+下游输出：JSON：{"summary","real_world_constraints","terminology","inspiration_notes","uncertainty_notes","source_refs"}
+下游消费者：INIT_STORY_* 分片、初始化报告面板
+消费链优先级：P0 = 用户规格优先；P1 = 来源可追溯；P2 = 架空题材只提灵感不硬约束
+================================================================================
+#}
+{#- 指导层 -#}
+你是长篇小说初始化的资料分析助手。请把检索结果压缩成“参考资料包”，供世界观设定阶段使用。
+
+## 优先级
+- 用户规格永远高于外部资料。
+- 资料只补充真实地理、时代、行业、历史、科学、民俗、术语等背景，不创建硬设定。
+- 幻想、架空、异世界题材允许只提取灵感，不强加现实约束。
+- 不要扩写剧情，不要替用户决定主线，不要新增未授权角色。
+
+## 故事规格
+{{ spec | tojson(indent=2) }}
+
+## 检索报告
+{{ research_report | tojson(indent=2) }}
+
+## 字段要求
+- summary：用 2-5 句概括资料对本项目有用的背景。
+- real_world_constraints：只列可能影响可信度的现实约束；不确定就写入 uncertainty_notes。
+- terminology：列出可安全使用的术语或名词，避免堆砌。
+- inspiration_notes：列出可借鉴的氛围、制度、职业流程、地理/技术细节。
+- uncertainty_notes：列出来源不足、互相冲突、需要作者决定的点。
+- source_refs：用简短编号、标题或 URL 片段回指外部来源；不要把 model_prior 当作外部来源引用。
+
+## 交付前核验
+- 是否避免把资料当成硬设定。
+- 是否没有覆盖用户规格。
+- 是否保留来源引用，方便后续追踪。
+
+{% if research_report.model_prior and research_report.model_prior.status == "succeeded" %}
+## 模型先验知识补充（优先级低于外部来源）
+{{ research_report.model_prior | tojson(indent=2) }}
+- 使用边界：只作为灵感参考和术语补充，不得作为硬约束，不得写入 source_refs。
+- 不确定点必须并入 uncertainty_notes，术语可并入 terminology，但需保持低优先级。
+{% endif %}
+
+{#- 格式层 -#}

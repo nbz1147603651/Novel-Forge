@@ -1,0 +1,169 @@
+{# source_template_hash: dcc71e61159a9347b379ae7fcbb9a4779ee1a4a2d20abcbd7f493a79c4f1142d #}
+{#
+================================================================================
+[Notes]
+================================================================================
+Prompt: bridge_chapter.j2
+Service Step: BRIDGE_CHAPTER (Chapter Bridging)
+Function Summary: Generate only the bridge contract for "Previous Chapter Exit → This Chapter Opening", determining time, location, POV, action handoff, emotional carryover, and causal chain. Does not handle complete planning or body writing.
+Upstream Input:
+  - stage_cards.source: ChapterSourceSlice, containing the unique initialization authority projection for this chapter
+  - stage_cards.bridge: Previous chapter exit, previous chapter ending, bridging summary, existing bridge information
+  - stage_cards.contract: This chapter's hard contract derived card, only supplementing local gaps in source
+  - stage_cards.chapter: This chapter's outline slice
+Downstream Output:
+  - ChapterBridge JSON
+Consumption Chain Priority:
+  P0 = Previous chapter real exit / action_handoff / forbidden changes
+  P1 = causal_link / pending_questions / opening anchors
+  P2 = emotional carryover / rhetorical avoidance of repetition
+================================================================================
+#}
+
+{%- from "_base/_artifact_source_contract.j2" import render_artifact_source_contract -%}
+{%- from "_base/_cognitive_constraints.j2" import render_cognitive_constraints -%}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer
+    --------------------------------------------------------------------------- -#}
+
+{% set cards = stage_cards | default({}) %}
+{% set source = cards.source | default({}) %}
+{% set source_contract = source.chapter_contract | default({}, true) %}
+{% set chapter = cards.chapter | default({}) %}
+{% set bridge = cards.bridge | default({}) %}
+{% set contract = source_contract if source_contract else (cards.contract | default({})) %}
+{% set memory = cards.memory | default({}) %}
+{% set quality = cards.quality | default({}) %}
+{% set style = cards.style | default({}) %}
+{% set opening_evidence = cards.opening_evidence | default({}) %}
+{% set boundary = bridge.boundary_window_policy | default({}) %}
+
+## Task
+Generate a bridge contract for Chapter {{ chapter.chapter_number }}.
+
+The bridge answers only one question: Why does the final state of the previous chapter naturally lead to the time, location, POV, action, and emotion of this chapter's first act?
+
+{{ render_artifact_source_contract(source, title="## Source Artifact Contract (P0)", mode="bridge") }}
+
+## Top-Level Field Requirements
+Output only the following 10 English `snake_case` top-level fields; do not add non-contract fields, explanatory fields, or alternative fields:
+- `opening_time`: This chapter's opening time.
+- `opening_location`: This chapter's opening location.
+- `opening_pov`: This chapter's opening POV.
+- `transition_mode`: Transition mode, using only direct_continue / action_handoff / time_skip / pov_switch / synthetic or equivalent short labels.
+- `emotional_carryover`: How the previous chapter's emotion carries into this chapter's opening; output empty string when no clear carryover.
+- `action_handoff`: Action or state handoff that can be directly written into the body opening.
+- `causal_link`: Object containing `previous_event`, `causal_mechanism`, `unresolved_question`, `open_threads`.
+- `pending_questions`: Array of suspense that must be carried into this chapter's opening; output [] if none.
+- `forbidden_repetition`: Array of rhetorical images/sentence patterns to avoid in this chapter's bridging phase; output [] if none.
+- `opening_acceptance_criteria`: Array of acceptance criteria for the opening window, for use by Plan/Draft/Edit/Review.
+
+## Chapter Slice
+- Title: {{ chapter.title | default('') }}
+- Goal: {{ chapter.goal | default('') }}
+- Supplementary Notes: {{ chapter.notes | default('') }}
+- POV: {{ chapter.pov_character | default('') }}
+- Setting: {{ chapter.setting | default('') }}
+
+{% if contract.entry_state_requirements | default([]) or contract.must_carry_forward | default([]) or contract.forbidden_changes | default([]) or contract.guard_constraints | default([]) or contract.hard_facts | default([]) or contract.world_rules | default([]) %}
+## Hard Contract
+{% if contract.entry_state_requirements | default([]) %}- Entry State: {{ contract.entry_state_requirements | join('; ') }}{% endif %}
+{% if contract.must_carry_forward | default([]) %}- Must Carry Forward: {{ contract.must_carry_forward | join('; ') }}{% endif %}
+{% if contract.forbidden_changes | default([]) %}- Forbidden Changes: {{ contract.forbidden_changes | join('; ') }}{% endif %}
+{% if contract.guard_constraints | default([]) %}- Guardrail Constraints: {{ contract.guard_constraints | join('; ') }}{% endif %}
+{% if contract.hard_facts | default([]) %}- Related Hard Facts: {{ contract.hard_facts | join('; ') }}{% endif %}
+{% if contract.world_rules | default([]) %}- World Rules: {{ contract.world_rules | join('; ') }}{% endif %}
+{% endif %}
+
+{% if contract.cognitive_constraints | default([]) %}
+## Opening Cognitive Boundary (P0)
+- The bridge may carry forward only what each role already knows. Previous-chapter exit state or reader awareness must not automatically upgrade a role from `unknown|partial` to `full`.
+{{ render_cognitive_constraints(contract.cognitive_constraints) }}
+{% endif %}
+
+## Previous Chapter Exit
+{% if bridge.previous_exit | default(none) %}
+- Time: {{ bridge.previous_exit.time_marker }} | Location: {{ bridge.previous_exit.location }} | POV: {{ bridge.previous_exit.pov }}
+{% if bridge.previous_exit.open_questions %}- Open Questions: {{ bridge.previous_exit.open_questions | join('; ') }}{% endif %}
+{% if bridge.previous_exit.must_carry_forward %}- Exit Carryover: {{ bridge.previous_exit.must_carry_forward | join('; ') }}{% endif %}
+{% else %}
+- First chapter or no previous chapter exit: Generate synthetic bridge, but must still serve this chapter's goals.
+{% endif %}
+
+{% if bridge.previous_chapter_ending | default('') %}
+## Previous Chapter Ending Text
+{% if boundary.previous_tail_paragraphs | default(0) %} (Take last {{ boundary.previous_tail_paragraphs }} paragraphs per settings) {% endif %}
+{{ bridge.previous_chapter_ending }}
+{% endif %}
+
+{% if bridge.bridge_context_brief | default('') %}
+## Bridging Summary
+{{ bridge.bridge_context_brief }}
+{% endif %}
+
+{% if opening_evidence.relationship_shifts | default([]) or opening_evidence.pov_knowledge | default([]) or opening_evidence.due_promises | default([]) %}
+## Opening Decision Evidence (P0, minimum necessary set)
+Use this only to decide what the opening POV can do and know. It does not authorize new events, explanations, or early revelations.
+{% if opening_evidence.relationship_shifts | default([]) %}- Relationships relevant to the current POV:
+{% for item in opening_evidence.relationship_shifts %}
+  - With {{ item.with_character | default('related character') }}: {{ item.label | default('relationship') }}{% if item.status | default('') %}, status={{ item.status }}{% endif %}{% if item.shift_summary | default('') %}; latest shift={{ item.shift_summary }}{% endif %}
+{% endfor %}
+{% endif %}
+{% if opening_evidence.pov_knowledge | default([]) %}- Current POV knowledge boundary:
+{% for item in opening_evidence.pov_knowledge %}
+  - {{ item.type | default('known') }}: {{ item.fact | default('') }}
+{% endfor %}
+{% endif %}
+{% if opening_evidence.due_promises | default([]) %}- Threads scheduled for this chapter that may naturally carry into the opening:
+{% for item in opening_evidence.due_promises %}
+  - {{ item.description | default('') }}
+{% endfor %}
+{% endif %}
+{% endif %}
+
+{% if quality.hook_type_constraint | default('') or quality.force_resolve_suspense | default([]) %}
+## Bridging Boundary
+{% if quality.hook_type_constraint | default('') %}- Opening Bridging Constraint: {{ quality.hook_type_constraint }}{% endif %}
+{% if quality.force_resolve_suspense | default([]) %}- Suspense That Must Be Carried Into Opening: {{ quality.force_resolve_suspense | join('; ') }}{% endif %}
+{% endif %}
+
+{% if style.summary | default('') or style.modules | default([]) %}
+## Style Slice
+{% if style.summary | default('') %}- {{ style.summary }}{% endif %}
+{% for module in style.modules | default([]) %}- {{ module.name | default('Unnamed Module') }}: {{ module.rules | default([]) | join('; ') }}
+{% endfor %}
+{% endif %}
+
+{% if bridge.previous_forbidden_repetition | default([]) or memory.motif_repetition_risks | default([]) %}
+## Cross-Chapter High-Frequency Rhetoric Hints (Soft Constraints)
+The following is only for reminding the bridging phase to identify high-frequency rhetoric channels; ensuring coherence between the previous chapter's exit and this chapter's opening must take priority, and action handoffs or plot anchors must not be lost due to avoiding repetition.
+{% if bridge.previous_forbidden_repetition | default([]) %}- Previous Bridge Forbidden Channels: {{ bridge.previous_forbidden_repetition | join('; ') }}{% endif %}
+{% if memory.motif_repetition_risks | default([]) %}- Motif Repetition Avoidance: {{ memory.motif_repetition_risks | join('; ') }}{% endif %}
+{% endif %}
+
+## Generation Requirements
+1. `action_handoff` must be a concrete action/state handoff that can be written into the body opening; do not write explanatory phrases like "continues from previous chapter" or "sustains atmosphere".
+2. `opening_time / opening_location / opening_pov` must be derivable from the previous chapter's exit; `transition_mode` must summarize the bridging method. If the same POV has a location jump, `action_handoff` or `causal_link.causal_mechanism` must clarify the movement path, time jump, or arrival method; if switching POV/storyline, `transition_mode` must be set to `pov_switch` and `causal_link.causal_mechanism` must explain why the narrative focus shifts to the new POV rather than fabricating a movement process for the previous POV.
+3. `causal_link.previous_event` records the specific event that last occurred at the end of the previous chapter; `causal_mechanism` records the A causes B therefore C chain.
+4. `pending_questions` lists only suspense that must be carried into this chapter's opening, maximum 5 items.
+5. `forbidden_repetition` lists only rhetorical images and sentence patterns, not character names, locations, key props, or plot anchors.
+6. `opening_acceptance_criteria` writes 2-5 conditions that the opening window can accept for verification, for use by Plan/Draft/Edit and review.
+{% if boundary.opening_paragraphs | default(0) %}7. These acceptance criteria default to requiring natural landing within the first {{ boundary.opening_paragraphs }} paragraphs of this chapter.{% endif %}
+8. Do not generate body text, do not write planning explanations.
+
+## Quality Calibration
+- Working Identity: You are a long-form narrative architect, skilled at decomposing story assets into executable plans that can be carried forward, verified, and avoid excessive spoilers.
+- Planning Inference Path: First lock in P0 hard constraints, then assign P1 to advance pacing, finally use P2 style/theme to supplement the presentation layer.
+- Field-Level Quality Examples (not output format): Weak = "advances relationship"; High-Quality = "specifies who acts for what reason, how relationships change, and how the next link carries forward".
+- Actionable Path: Plan items must be directly checkable by subsequent writing/audit, avoiding abstract wishes or thematic slogans only.
+
+## Pre-Delivery Verification
+- Are P0/P1/P2 priorities maintained, and no weak references overwriting hard constraints.
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans.
+- Are unauthorized new characters, locations, world rules, future payoffs, or format agreements avoided.
+- Are abstract goals transformed into observable actions, conflicts, state changes, or chapter carryover points.
+
+{#- ---------------------------------------------------------------------------
+    Format Layer
+    --------------------------------------------------------------------------- -#}

@@ -1,0 +1,144 @@
+{# source_template_hash: ddd165f0f97b99f31edbcb220b27b9af8e80edfd6f20e6bd214fc9903d4a0e66 #}
+{#- Global Style Profile Rendering Macro — base module -#}
+{#- Extract access patterns for style_profile.global_style, compatible with both dict/object data shapes -#}
+
+{#-
+  === Macro Module: Global Style Profile Rendering ===
+  File type: macro module
+  Summary: Safely extract and access style_profile.global_style, compatible with both dict/object data shapes, render global style constraint paragraphs.
+
+  Defined macros and parameters:
+  1. extract_global_style(style_profile) → global_style sub-object or none
+     - Safely extract global_style, compatible with dict/object
+  2. gs_field(global_style, field_name: str, default=None) → field value
+     - Safely access a field on global_style
+  3. global_style_value(style_profile, field_name: str, default="")
+     - Safely read global_style field directly from complete style_profile
+  4. dialogue_ratio_min/max(style_profile)
+     - Derive dialogue ratio numeric bounds from dialogue_ratio
+  5. render_style_profile_global(style_profile, include_dialogue_ratio=True)
+     - Render global style constraint paragraph for body generation, including pace_mode, environment_ratio, emotional_style, info_density, dialogue_ratio and project-level banned phrases
+
+  Usage:
+  - Currently invoked by writing/draft_chapter.j2 for actual body generation stage; planning/bridging layer uses _styles/_render_style_profile.j2's default coarse-grained rendering
+-#}
+
+{#-
+  Safely extract style_profile.global_style, compatible with dict-shaped and object-shaped data.
+
+  Parameters:
+    - style_profile: style profile object or dictionary
+
+  Returns: global_style sub-object/sub-dictionary, or none if not exists
+-#}
+{% macro extract_global_style(style_profile) %}
+{%- set _sp_gs = none -%}
+{%- if style_profile is defined -%}
+{%- if style_profile is mapping and style_profile.get('global_style') -%}
+{%- set _sp_gs = style_profile.get('global_style') -%}
+{%- elif style_profile is not mapping and style_profile.global_style is defined -%}
+{%- set _sp_gs = style_profile.global_style -%}
+{%- endif -%}
+{%- endif -%}
+{{ _sp_gs }}
+{% endmacro %}
+
+{#-
+  Safely access a field on global_style, compatible with both dict/object shapes.
+
+  Parameters:
+    - global_style: global_style object or dictionary
+    - field_name: field name (e.g., 'pace_mode', 'dialogue_ratio')
+    - default: default value (default None)
+
+  Returns: field value or default value
+-#}
+{% macro gs_field(global_style, field_name, default=None) %}
+{%- if global_style is mapping -%}
+{{ global_style.get(field_name, default) }}
+{%- else -%}
+{{ global_style[field_name] if global_style[field_name] is defined else default }}
+{%- endif -%}
+{% endmacro %}
+
+{#-
+  Safely access global_style field directly from complete style_profile.
+
+  Parameters:
+    - style_profile: style profile object or dictionary
+    - field_name: field name (e.g., 'dialogue_ratio', 'emotional_style')
+    - default: default value (default empty string)
+
+  Returns: field value or default value
+-#}
+{% macro global_style_value(style_profile, field_name, default="") %}
+{%- set _sp_gs = none -%}
+{%- if style_profile is defined and style_profile -%}
+{%- if style_profile is mapping and style_profile.get('global_style') -%}
+{%- set _sp_gs = style_profile.get('global_style') -%}
+{%- elif style_profile is not mapping and style_profile.global_style is defined -%}
+{%- set _sp_gs = style_profile.global_style -%}
+{%- endif -%}
+{%- endif -%}
+{%- if _sp_gs is mapping -%}
+{{ _sp_gs.get(field_name, default) }}
+{%- elif _sp_gs and _sp_gs[field_name] is defined -%}
+{{ _sp_gs[field_name] }}
+{%- else -%}
+{{ default }}
+{%- endif -%}
+{% endmacro %}
+
+{#- dialogue_ratio → dialogue ratio lower bound. Returns numeric text, caller can use `| trim | int`. -#}
+{% macro dialogue_ratio_min(style_profile) %}
+{%- set _ratio = global_style_value(style_profile, 'dialogue_ratio', 'medium') | trim -%}
+{%- if _ratio == 'high' -%}50
+{%- elif _ratio == 'low' -%}20
+{%- else -%}30
+{%- endif -%}
+{% endmacro %}
+
+{#- dialogue_ratio → dialogue ratio upper bound. Returns numeric text, caller can use `| trim | int`. -#}
+{% macro dialogue_ratio_max(style_profile) %}
+{%- set _ratio = global_style_value(style_profile, 'dialogue_ratio', 'medium') | trim -%}
+{%- if _ratio == 'high' -%}70
+{%- elif _ratio == 'low' -%}35
+{%- else -%}45
+{%- endif -%}
+{% endmacro %}
+
+{#-
+  Render global style constraint paragraph.
+
+  Parameters:
+    - style_profile: style profile object or dictionary
+    - include_dialogue_ratio: whether to include dialogue ratio constraint (default True)
+
+  Rendered fields: pace_mode, environment_ratio, emotional_style, info_density, banned_phrases, dialogue_ratio
+-#}
+{% macro render_style_profile_global(style_profile, include_dialogue_ratio=True) %}
+{%- set _sp_gs = none -%}
+{%- if style_profile is defined -%}
+{%- if style_profile is mapping and style_profile.get('global_style') -%}
+{%- set _sp_gs = style_profile.get('global_style') -%}
+{%- elif style_profile is not mapping and style_profile.global_style is defined -%}
+{%- set _sp_gs = style_profile.global_style -%}
+{%- endif -%}
+{%- endif -%}
+{%- if _sp_gs -%}
+## Pacing and Style Constraints
+- Pacing Mode: {{ _sp_gs.pace_mode if _sp_gs is not mapping else _sp_gs.get('pace_mode') }} (fast=rapid progression/moderate=balanced/slow=detailed buildup)
+- Environment Description Ratio: {{ _sp_gs.environment_ratio if _sp_gs is not mapping else _sp_gs.get('environment_ratio') }}
+- Emotional Style: {{ _sp_gs.emotional_style if _sp_gs is not mapping else _sp_gs.get('emotional_style') }} (direct=direct/balanced=balanced/subtle=subtle)
+- Information Density: {{ _sp_gs.info_density if _sp_gs is not mapping else _sp_gs.get('info_density') }}
+{%- set _banned_phrases = _sp_gs.get('banned_phrases', []) if _sp_gs is mapping else (_sp_gs.banned_phrases if _sp_gs.banned_phrases is defined else []) -%}
+{%- if _banned_phrases %}
+- Project-level Banned Phrases: {{ _banned_phrases | join(', ') }} (avoid verbatim or near-verbatim reuse)
+{%- endif %}
+{%- if include_dialogue_ratio %}
+{%- if (_sp_gs is mapping and _sp_gs.get('dialogue_ratio')) or (_sp_gs.dialogue_ratio is defined and _sp_gs.dialogue_ratio) %}
+- Dialogue Ratio: Adhere to style specification: {{ _sp_gs.dialogue_ratio if _sp_gs is not mapping else _sp_gs.get('dialogue_ratio') }}
+{%- endif %}
+{%- endif %}
+{%- endif %}
+{% endmacro %}

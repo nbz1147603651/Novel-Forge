@@ -1,0 +1,87 @@
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：init_story_world_rules.j2
+服务步骤：INIT_STORY_WORLD_RULES（故事圣经分片：世界规则）
+作用简述：生成 StoryBible 的时代、地理、文化、技术/超自然体系与硬规则。
+上游输入：premise/world_hint/conflict_hint/genre/tone/expected_total_words
+下游输出：JSON：{"world_rules": {"world_rule_book": {"version": "1", "rules": [...]}, ...}}
+下游消费者：INIT_STORY_BIBLE 本地合并器、PLAN_OUTLINE、DRAFT_CHAPTER
+消费链优先级：P0 = rules 具体且有代价；P1 = 舞台能支撑冲突；P2 = 控制长度防截断
+================================================================================
+#}
+{%- from "_base/_shared_evidence_anchor.j2" import render_shared_evidence_anchor -%}
+{%- set wrg = world_rule_governance | default({}) -%}
+
+{#- 指导层 -#}
+请只生成 StoryBible 的世界规则分片，不要输出人物档案、主题象征或完整 StoryBible。
+
+{{ render_shared_evidence_anchor(shared_evidence_anchor) }}
+
+## 输入
+- premise: {{ premise }}
+{% if story_core %}
+## 共享核心锚点（不可改写）
+{{ story_core | tojson(indent=2) }}
+{% endif %}
+{% if genre %}- genre: {{ genre }}{% endif %}
+{% if tone %}- tone: {{ tone }}{% endif %}
+{% if expected_total_words %}- expected_total_words: {{ expected_total_words }}{% endif %}
+{% if world_hint %}- world_hint: {{ world_hint }}{% endif %}
+{% if conflict_hint %}- conflict_hint: {{ conflict_hint }}{% endif %}
+{% if extra_instructions %}- extra_instructions: {{ extra_instructions }}{% endif %}
+{% if research_context and research_context.summary %}
+
+## 资料检索参考（弱参考）
+- 使用边界：只用于补充真实背景、时代/地理/行业/民俗/科学常识；不得覆盖 premise、world_hint、conflict_hint 或格式契约。
+- 架空/幻想题材可把资料转化为灵感，不要强行现实化。
+- 当前状态：{{ research_context.status }} / {{ research_context.provider }}
+- 摘要：{{ research_context.summary }}
+{% if research_context.source_notes %}
+- 来源要点：
+{% for note in research_context.source_notes %}
+  - {{ note }}
+{% endfor %}
+{% endif %}
+{% if research_context.real_world_constraints %}
+- 现实约束参考（融入 era/geography/culture/rules，不照搬）：
+{% for c in research_context.real_world_constraints %}
+  - {{ c }}
+{% endfor %}
+{% endif %}
+{% if research_context.terminology %}
+- 可用术语（自然融入世界观描述）：{{ research_context.terminology | join('、') }}
+{% endif %}
+{% endif %}
+
+## 要求
+- `era`、`geography`、`culture`、`magic_or_tech` 各 80-220 汉字。
+- `world_rule_book.rules` 必须有 **{{ wrg.rule_count_min | default(10) }}-{{ wrg.rule_count_max | default(14) }}** 条结构化规则；`rules` 仅保留其中硬规则的简短展示摘要。
+- `world_rule_book.rules` 的每个对象必须包含：`rule_id`、`content`、`category`、`severity`、`always_on`、`applicability_tags`、`trigger_conditions`、`allowed_behavior`、`forbidden_behavior`、`cost_or_consequence`、`exceptions`。
+- `severity` 只可取 `hard` 或 `soft`：`hard` = 不可违反的硬约束（必须有可验证的禁止行为或代价/后果）；`soft` = 倾向性约束或风格规则。禁止使用 `medium`、`critical`、`high`、`low` 等其他取值。
+- category 只可使用：`time_space`、`social_language`、`resource_material`、`information`、`ability_tech`、`general`。至少覆盖 **{{ wrg.category_min | default(4) }}** 类；若存在魔法、异能或科技体系，必须覆盖 `ability_tech`。
+- 每条 hard 规则必须具有可验证的禁止行为或代价/后果；必须标记为 `always_on=true` 或给出至少一个 `applicability_tags`。至少一条 hard 规则必须始终生效。
+- `always_on=true` 的 hard 规则不超过 **{{ wrg.always_on_hard_cap | default(4) }}** 条（避免分散章节模型注意力）；其余 hard 规则用 `applicability_tags` 标注触发场景，不要设为始终生效。
+- `rules` 是字符串数组，只摘录 hard 规则的 canonical content；不得替代 world_rule_book。
+- 现实题材的 `magic_or_tech` 写现实约束，不写空泛的 none。
+
+## 字段内容约束
+- `world_rules` 只能包含 `era`、`geography`、`culture`、`magic_or_tech`、`rules`、`world_rule_book`。
+- 字段名只使用上方列出的英文 `snake_case` key；补充信息并入上述字符串或 `rules`。
+- `world_rule_book.rules` 是对象数组，不是字符串数组。
+- 每个规则的全部字段只能位于 `rules` 的数组元素内；不得平铺在 `world_rule_book` 或 `world_rules` 顶层。
+
+## 质量校准
+- 工作身份：你是一位长篇叙事架构师，擅长把故事资产拆成可承接、可验证、不过度剧透的执行计划。
+- 规划推断路径：先锁定 P0 硬约束，再分配 P1 推进节奏，最后用 P2 风格/主题补足表现层。
+- 字段级质量示例（非输出格式）：平弱=“推进关系”；高质量=“写清谁因何行动、关系如何变化、下一环如何承接”。
+- 可操作路径：计划项要能被后续写作/审计直接检查，避免只给抽象愿望或主题口号。
+
+## 交付前核验
+- P0/P1/P2 优先级是否被保持，且没有让弱参考覆盖硬约束。
+- 是否能把关键判断回指到输入证据、上游契约或已批准计划。
+- 是否避免新增未授权的人物、地点、世界规则、未来 payoff 或格式协议。
+- 是否把抽象目标转化为可观察的行动、冲突、状态变化或章节承接点。
+
+{#- 格式层 -#}

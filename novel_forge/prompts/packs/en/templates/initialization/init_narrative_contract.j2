@@ -1,0 +1,66 @@
+{# source_template_hash: c1e43bccd86b5a22c4e780095e01263b4244b0efcbecc61524c16f028255ac5a #}
+{#
+================================================================================
+[NOTES]
+================================================================================
+Prompt: init_narrative_contract.j2
+Service Step: INIT_NARRATIVE_CONTRACT (Narrative Contract Initialization)
+Summary: Generates the adjudicable narrative contract for the entire book, providing hard constraints for subsequent chapter planning, adjudication, and repair.
+Upstream Inputs:
+  - spec: Story specification
+  - story_bible: World-building settings
+  - character_bible: Character profiles
+  - entity_registry: Entity registry
+Downstream Outputs:
+  - JSON: world_rules, character_arcs, plot_threads, promise_plan, notes
+  - Downstream Consumers: PLAN_CHAPTER_CONTRACTS / ADJUDICATE_CONTRACT_COHERENCE
+Consumption Chain Priority: P0 (world_rules/character_arcs/plot_threads) > P1 (promise_plan) > P2 (notes)
+================================================================================
+#}
+
+{#- Guidance Layer -#}
+## Task
+Generate the adjudicable narrative contract for the entire book. The contract is for subsequent chapter adjudication, not for the main text.
+
+## Source Artifact Generation Boundary
+- This template can read the full initialization input since it is responsible for generating the source content of `NarrativeContractArtifact`.
+- All characters, locations, objects, organizations, and concepts must reference or align with the canonical entity / alias in `entity_registry`; do not freely invent names.
+- Boundary revelation, promise fulfillment sequence, cognitive boundaries, and continuity agreements should remain auditable in the contract; do not stuff complete payoff scenes for distant payoffs into early chapter descriptions.
+- The narrative contract only records boundaries for "when it is allowed to know/reveal/fulfill", and should not replicate character profiles or world-building profiles for chapter contracts.
+
+## Structure Requirements
+- `plot_threads` must be an array of objects; each plot thread must provide a stable `thread_id`, readable `thread_name`, `priority`, `chapters`, `key_scenes`, and `resolution`.
+- `chapters` should be written as compact chapter ranges or chapter lists, e.g., `"1-8"`, `"3, 7, 12"`; if only start and end can be determined, the range must still be filled, not left blank.
+- `key_scenes` must list at least 2 key nodes, each containing `chapter`, `title`, and `description`.
+- If chapter ranges come from setups/hooks rather than continuous subplots, `start_chapter` / `end_chapter` can be used to supplement, but `chapters` must still be filled.
+
+## Inputs
+Story Specification:
+{{ spec }}
+
+World-building:
+{{ story_bible }}
+
+Character Profiles:
+{{ character_bible }}
+
+Entity Registry:
+{{ entity_registry }}
+
+## Field Content Constraints
+- `world_rules`, `character_arcs`, and `plot_threads` must exist; `promise_plan` can be an empty array, `notes` can be an empty string.
+- Only output 5 English `snake_case` top-level fields: `world_rules`, `character_arcs`, `plot_threads`, `promise_plan`, `notes`; necessary explanations should be compressed into the text fields of corresponding objects or `notes`.
+
+## Quality Calibration
+- Working Identity: You are a long-form narrative architect, skilled at breaking down story assets intohandoffable, verifiable, non-spoiler-heavy execution plans.
+- Planning Inference Path: First lock in P0 hard constraints, then allocate P1 to advance pacing, finally use P2 style/theme to supplement the presentation layer.
+- Field-level Quality Examples (non-output format): Weak = "Advances the relationship"; High-quality = "Specifies who acts for what reason, how the relationship changes, and how the next link connects."
+- Actionable Paths: Plan items must be directly verifiable by subsequent writing/auditing, avoiding only abstract wishes or thematic slogans.
+
+## Pre-delivery Verification
+- Is the P0/P1/P2 priority hierarchy maintained, and no weak references overriding hard constraints.
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans.
+- Are unauthorized characters, locations, world rules, future payoffs, or format agreements avoided.
+- Are abstract goals transformed into observable actions, conflicts, state changes, or chapter handoff points.
+
+{#- Format Layer -#}

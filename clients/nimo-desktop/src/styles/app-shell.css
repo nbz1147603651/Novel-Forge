@@ -1,0 +1,79 @@
+/*
+ * Responsive shell layer for non-baseline viewports.
+ *
+ * The 1440×900 parity viewport intentionally stays outside this rule.
+ */
+@media (max-width: 1180px), (max-height: 760px) {
+.content-shell {
+  gap: 4px;
+  padding: 6px;
+}
+
+.page-canvas {
+  padding: 6px 12px 10px 10px;
+  border-radius: var(--nf-radius-shell);
+}
+
+.top-bar {
+  align-items: center;
+  min-height: 44px;
+  padding: 6px 12px 6px;
+  border-radius: var(--nf-radius-shell);
+}
+
+.top-bar > :first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 610px;
+}
+
+.page-eyebrow {
+  font-size: var(--nf-font-ui);
+}
+
+.top-bar h1 {
+  font-family: "Songti SC", "STSong", "NSimSun", Georgia, serif;
+  font-size: var(--nf-font-page);
+  line-height: 1.25;
+}
+
+.topbar-controls {
+  align-self: center;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
+.top-bar p,
+.topbar-meta {
+  font-size: var(--nf-font-body);
+}
+
+.top-bar p {
+  max-width: 610px;
+  line-height: 1.45;
+}
+
+.topbar-action,
+.topbar-select {
+  min-height: 32px;
+  padding-inline: 12px;
+  font-size: var(--nf-font-body);
+}
+
+@media (max-width: 1080px) {
+  .top-bar {
+    min-height: 40px;
+  }
+
+  .topbar-meta {
+    font-size: var(--nf-font-ui);
+  }
+
+  .topbar-action,
+  .topbar-select {
+    min-height: 30px;
+    padding-inline: 10px;
+    font-size: var(--nf-font-ui);
+  }
+}
+}

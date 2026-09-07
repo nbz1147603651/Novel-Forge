@@ -1,0 +1,214 @@
+{#- Continuity Evaluation — Template for CHECK_CONTINUITY task -#}
+{# ================================================================================
+source_template_hash: 9839695a3dd9bf2541f6073a7622655215c57b0a2a5292fcb1ef95e9c28d7035
+[Notes]
+================================================================================
+Prompt: continuity_eval.j2
+Service Step: CHECK_CONTINUITY (Continuity Evaluation)
+Function Summary: Evaluates cross-chapter continuity between chapters, outputting ContinuityReport (supports both full and targeted modes).
+Upstream Inputs:
+  - chapter_bridge: Bridge contract from BRIDGE_CHAPTER
+  - chapter_plan: Chapter plan from PLAN_CHAPTER
+  - chapter_state_packet: State packet from previous chapter's Persist
+  - chapter_text / numbered_chapter_text: Body text from DRAFT_CHAPTER / EDIT_CHAPTER
+  - recheck_mode: Whether this is a targeted recheck mode (from RepairStep's post-repair recheck)
+  - prior_issues: Previous round's issue list
+  - local_prescreen_issues: Local prescreen issues
+Downstream Outputs:
+  - JSON: {"continuity_score", "mode", "summary", "issues"}
+  - Downstream Consumer: ContinuityRepairStep (for continuity repair)
+  - Issues must include repair_surface designation so that body text repair, bridge artifact repair, and state/plan repair can be divided among different handlers.
+Consumption Chain Priority: P0 (POV shift/hard time/location cut) > P1 (character state break/emotional carryover break)
+              > P2 (pronoun ambiguity/unclear expression)
+Brief Example:
+  Input: recheck_mode=true, prior_issues=[{"issue_type": "opening_gap", "severity": "medium"}]
+  Output: {"continuity_score": 8.5, "mode": "targeted_recheck", "issues": []}
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer: Task Definition + Context Consumption
+    --------------------------------------------------------------------------- -#}
+{%- from "checking/_continuity_core.j2" import continuity_context, continuity_checks, prescreen_and_prior -%}
+{%- from "_base/_artifact_source_contract.j2" import render_artifact_source_contract -%}
+{% set boundary = boundary_window_policy | default({}) %}
+{% if recheck_mode %}
+Please perform a **continuity targeted recheck** on the repair effects of the following chapter (not a comprehensive review).
+
+{{ continuity_context(chapter_bridge, chapter_plan, chapter_state_packet) }}
+
+{% if stage_cards | default({}) %}
+{{ render_artifact_source_contract(stage_cards.source | default({}), title="## World Rules and Source Contract (P0)", mode="review") }}
+{% endif %}
+
+## Body Text (numbered by non-empty paragraphs; paragraph numbers start at 1)
+{{ numbered_chapter_text | default(chapter_text) }}
+
+{{ prescreen_and_prior([], '', prior_issues) }}
+
+{% if must_resolve_summaries %}
+## 🚨 Blocking Archive Issues · Item-by-item Verification (Must Be Resolved)
+This is the focus of this repair round. Please verify in the body text whether each item has been completely eliminated:
+{% for summary in must_resolve_summaries %}
+- {{ summary }}
+{% endfor %}
+If any item still exists, please report it in issues with the original severity as-is; do not downgrade.
+{% endif %}
+
+{% if repaired_issue_types %}
+## Issue Types Addressed in This Repair
+{% for t in repaired_issue_types %}
+- {{ t }}
+{% endfor %}
+Please focus on verifying the repair effects of the above types; other types do not need active investigation.
+{% endif %}
+
+## Verification Task Description
+{% if patch_only_repair %}
+This round of repair only used a **narrow window patch** (patch), without full text rewriting.
+Please **only check whether the paragraphs involved in the patch are correctly repaired**, and whether the patch boundaries are semantically coherent with the context.
+Do not re-read the full text; do not investigate areas not touched by the patch.
+{% else %}
+This round is not a full recheck, but a **targeted recheck for the above repaired issues**. Please complete:
+{% endif %}
+
+{% if recheck_policy %}
+## Recheck Boundary Strategy
+- Core Objective: First confirm whether prior_issues have been repaired.
+- Scan Scope: {{ recheck_policy.scan_scope }}
+- Resolved Rules: {{ recheck_policy.solved_issue_rule }}
+- Unresolved Rules: {{ recheck_policy.unresolved_issue_rule }}
+- Regression Rules: {{ recheck_policy.regression_rule }}
+{% if recheck_policy.allow_new_issue_scan %}
+- New issues only allowed to report: {{ recheck_policy.new_issue_severities | join("/") }} level issues directly introduced by this repair round.
+{% endif %}
+{% endif %}
+
+1. **Item-by-item verification**: For each item in prior_issues and blocking archive issues, determine whether the body text has eliminated the issue.
+2. **Regression check**: Check whether the repair area has introduced directly related new continuity contradictions (e.g., new conflicts with the bridge contract after modifying the opening). Only report critical or high level regression issues.
+3. **Do not expand scope**: Do not conduct comprehensive checks on paragraphs not involved in the repair; do not actively search for other pre-existing issues not involved in the repair.
+4. **Do not create new issues**: Only output the above verification results and regression issues. Do not report new findings unrelated to this repair, even if they seem suspicious. Non-target issues are the responsibility of subsequent full evaluation.
+5. **Maintain severity consistency**: If the target issue still exists, report it with the original severity from prior_issues; do not upgrade or downgrade.
+6. **Maintain identity**: If a prior_issue still exists, you must fill in its `issue_id` as-is in the output issue, and explain which `postconditions` were not met; if all acceptance conditions are met, do not output the issue again.
+
+The scoring is based on "whether the chapter reaches a quality baseline for continued creation after repair," not on pursuing a perfect score.
+
+In the output JSON, the `"mode"` field must be filled as `"targeted_recheck"` so downstream can distinguish this as a targeted recheck rather than full scoring.
+
+{% else %}
+Please check the cross-chapter continuity of the following chapter and output `ContinuityReport`.
+
+{% if stage_cards | default({}) %}
+{{ render_artifact_source_contract(stage_cards.source | default({}), title="## World Rules and Source Contract (P0)", mode="review") }}
+{% endif %}
+
+{{ continuity_context(chapter_bridge, chapter_plan, chapter_state_packet) }}
+
+{% if has_previous_chapter is defined and not has_previous_chapter %}
+## No Previous Chapter Carryover Mode
+- This chapter has no previous chapter ending to review; do not deduct points for missing previous_tail, opening_carry, or must_carry_forward.
+- Still must review whether this chapter's internal scene continuity, POV/time/location switches, opening/closing contracts, and scene milestones are self-consistent.
+- `opening_gap` / `carry_forward_missing` / `location_jump` can only be reported when there is a clear previous chapter anchor; for first chapters with hard internal cuts, please use intra-chapter time/scene switch issue descriptions.
+{% endif %}
+
+## Body Text (numbered by non-empty paragraphs; paragraph numbers start at 1)
+{{ numbered_chapter_text | default(chapter_text) }}
+
+{{ prescreen_and_prior(local_prescreen_issues, local_check_note, prior_issues) }}
+
+{{ continuity_checks() }}
+
+{% if boundary %}
+## Boundary Window Settings
+- Previous chapter read-only context: {{ boundary.previous_tail_label }}
+- This chapter opening check window: {{ boundary.opening_window_label }}
+{% endif %}
+
+## Diagnostic Division Requirements
+Please first determine which repair surface the issue belongs to, rather than defaulting to letting the body text bear all repair responsibility:
+- `chapter_text`: Body text lacks carryover, insufficient opening/closing bridge, character state not grounded.
+- `bridge_artifact`: chapter_bridge JSON fields such as from_chapter/opening_pov/transition_mode/action_handoff are wrong, missing, or inconsistent with the outline or previous chapter's exit.
+- `chapter_plan`: Chapter plan contract itself has contradictions or is missing.
+- `state_packet`: Previous chapter exit state or state packet is inconsistent with archived body text.
+- `local_rule`: Local rule misjudgment or need for downgrade cases, e.g., declared POV switch but treated as same character location jump.
+- `replan`: Body text and plan cannot be coordinated through local patches and require replanning.
+
+For body text issues such as `opening_gap` / `carry_forward_missing` / `location_jump`, please list the previous chapter/bridge anchors that must be semantically referenced in `missing_anchors`, and write out in `postconditions` how to verify after repair.
+For opening transition issues such as `opening_gap` / `bridge_contract_not_followed`, you must also provide
+`repair_directive`: clearly specify the target opening window, the previous chapter ending and this chapter opening context to read, the action handoff/spacetime/emotional anchors that must be grounded, and write a body-text-style opening revision draft that the repair module can reference.
+If this opening repair overlaps with other factual/causal/character repairs in the same window, `repair_directive.conflict_policy`
+should require merging other repairs first, then uniformly rewriting the opening transition last.
+If the body text is correct but bridge metadata is wrong, please mark `repair_surface` as `bridge_artifact`; do not require body text rewriting.
+
+{% endif %}
+
+## Report Consistency Requirements
+- If `summary` mentions that there are still critical / high / blocking / unresolved issues, the `issues` must list the corresponding issues; do not output an empty array.
+- If `issues` is empty, `summary` can only state "no cross-chapter continuity issues requiring repair found"; do not imply there are still high-priority regressions.
+- If body text violates chapter_state_packet.chapter_contract.forbidden_changes, opening_contract, closing_contract, or bridge.action_handoff, must record the specific issue and provide body text evidence or insertion position.
+- When opening fails to ground bridge's time, location, POV, emotional carryover, and action_handoff, prioritize using `opening_gap` or `bridge_contract_not_followed` with severity at least high; if it causes scene jumps or prohibited character returns, severity is critical.
+
+## Continuity Issue Field Rules
+`repair_directive.repair_strategy`: Window-level rewrite of the opening, not just keyword supplementation; write the previous chapter ending aftermath, bridge action handoff, and this chapter's first scene action as continuous body text.
+
+`repair_directive.recommended_rewrite`: A 1-paragraph opening revision draft written in body text tone, which the repair module can directly reference.
+
+`repair_directive.required_context`: Must include at least the previous chapter ending window, this chapter opening window, chapter_bridge.action_handoff / emotional_carryover, chapter_plan.opening_contract.
+
+`repair_directive.required_anchors`: Must cover opening time, opening location, opening POV, action handoff, emotional aftermath.
+
+`repair_directive.validation_focus`: Explain how to confirm after repair that the opening reads like a natural consequence of the previous chapter's action, and that there is no carryover of meta-language such as previous chapter/POV/emotional labels.
+
+`repair_directive.conflict_policy`: If overlapping with other repairs in the same opening window, first merge factual/causal repairs, then uniformly rewrite the opening transition last.
+
+`validator_id`: Use `opening_transition_validator` for opening transition issues; use traceable domain validator id for other issues.
+
+`severity`: critical / high / medium / low
+
+`repair_surface`: chapter_text / bridge_artifact / chapter_plan / state_packet / local_rule / replan / manual.
+Only fill `chapter_text` when body text needs modification; bridge JSON errors must be filled as `bridge_artifact`.
+
+`status`: open / resolved / suppressed / artifact_fixed / deferred. Ordinary new issues use open.
+
+`missing_anchors`: Anchors that need repair or semantic reference review; content comes from previous chapter exit, chapter_bridge, or state_packet; do not fabricate.
+
+`postconditions`: Post-repair item-by-item acceptance conditions, must be consumable by review model or local program.
+
+`rewrite_scope`: opening / middle / closing / chapter / paragraph
+
+`location` must start with paragraph number, formatted as "Paragraph N" or "Paragraphs N-M" (1-based), with semantic position in parentheses if needed.
+
+`paragraph_start` / `paragraph_end` must be consistent with paragraph numbers in `location`; fill 0 when unable to locate, but 0 is only allowed when it's truly a whole-chapter structural issue.
+
+`anchor_type`: explicit_para / evidence_exact / evidence_fuzzy / location_parsed / inferred_scope
+
+`fix_mode`: replace / insert / window / fulltext. Use insert for missing content; use replace for original text errors or duplication; use window for multi-paragraph transitions; use fulltext only for unlocatable whole-chapter structural issues.
+
+`insert_before_para`: When fix_mode is insert, the paragraph number **before** the insertion point (1-based). Indicates inserting new content after that paragraph. Fill 0 if not applicable.
+
+`insert_after_para`: When fix_mode is insert, the paragraph number **after** the insertion point (1-based). Indicates inserting new content before that paragraph. Fill 0 if not applicable.
+
+`evidence` must include **at least 20 characters of continuous original body text quote** for precise problem location during repair.
+
+`evidence_quote` should fill in the exact original body text substring without paragraph number markers; if the issue is "missing content" with no quoteable original text, can leave empty, but must provide paragraph number and insert/window repair mode.
+
+`confidence`: Confidence level of issue determination, value range 0.0-1.0. Determination criteria:
+- **0.9-1.0**: Issue has clear body text evidence (≥20 character original quote) and directly conflicts with contract/bridge/state_packet
+- **0.7-0.89**: Issue has body text evidence but requires semantic inference (e.g., time/location mismatch but no explicit contradiction)
+- **0.5-0.69**: Issue based on contextual inference, no direct evidence but logically highly probable
+- **<0.5**: Issue uncertain, possibly misjudgment or requires manual review
+
+Do not set all issues' confidence to 0.0—this will prevent downstream repair modules from prioritizing.
+{# mode values: full_check=full review; targeted_recheck=targeted recheck of repair effects (score not directly comparable to full_check) #}
+
+## Quality Calibration
+- Work Identity: You are a rigorous novel quality proofreader, skilled at locating issues with short evidence, clear boundaries, and downstream-executable recommendations.
+- Proofreading Path: First confirm input evidence, then determine issue type, impact scope, and repair boundary, finally give downstream executable location information.
+- Field-level Quality Examples (not output format): Weak = "Here is incoherent"; High-quality = "Point out which two pieces of evidence conflict, risk level, verifiable issue".
+- Actionable Path: Each judgment must support review or repair; low confidence content is downgraded to pending verification issues.
+
+## Pre-delivery Verification
+- Are P0/P1/P2 priorities maintained, without letting weak references override hard constraints?
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans?
+- Are unauthorized characters, locations, world rules, future payoffs, or format agreements avoided?
+- Are short evidence, risk level, location information, and downstream-verifiable issues provided?

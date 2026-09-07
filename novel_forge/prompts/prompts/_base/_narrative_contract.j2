@@ -1,0 +1,59 @@
+{#-
+  === 宏模块：叙事契约渲染 ===
+  文件类型：宏模块（macro module）
+  作用简述：将 narrative_contract 对象渲染为 markdown 格式的叙事契约段落，包含世界规则、基调约束、主题、角色弧光、结局策略、连贯性协议等信息。
+
+  定义的宏及参数：
+  1. render_narrative_contract(narrative_contract, mode: str = "chapter")
+     - mode 可选值："chapter"(默认) | "plan" | "bridge" | "draft"
+     - 不同 mode 决定显示哪些字段（如 plan 模式显示角色弧光，draft 模式显示信息密度预算等）
+
+  使用方式：
+  - 被 planning/plan_chapter.j2, writing/draft_chapter.j2, writing/bridge_chapter.j2 等模板通过 {% import %} 调用
+-#}
+{% macro render_narrative_contract(narrative_contract, mode="chapter") -%}
+{% if narrative_contract %}
+{% set _suffix = " — 规划时必须遵守" if mode == "plan" else (" — 所有章节桥接必须遵守" if mode == "bridge" else "") %}
+## 全局叙事契约（★ 硬约束{{ _suffix }}）
+{% if narrative_contract.world_rules %}- 世界规则：{{ narrative_contract.world_rules | join('；') }}{% endif %}
+{% if narrative_contract.tone %}- 基调约束：{{ narrative_contract.tone }}{% endif %}
+{% set _wc = narrative_contract.world_context %}
+{% if _wc %}
+- 时代语境/礼制约束（写作时作为世界规则执行）：
+{% if _wc.social_hierarchy %}  - 社会等级：{{ _wc.social_hierarchy }}{% endif %}
+{% if _wc.address_rules %}  - 称谓规则：{{ _wc.address_rules | join('；') }}{% endif %}
+{% if _wc.self_reference_rules %}  - 自称规则：{{ _wc.self_reference_rules | join('；') }}{% endif %}
+{% if _wc.etiquette_rules %}  - 礼制/行为边界：{{ _wc.etiquette_rules | join('；') }}{% endif %}
+{% if _wc.institution_terms %}  - 制度术语：{{ _wc.institution_terms | join('；') }}{% endif %}
+{% if _wc.material_culture %}  - 时代器物：{{ _wc.material_culture | join('；') }}{% endif %}
+{% if _wc.anachronism_blacklist %}  - 时代错位禁用：{{ _wc.anachronism_blacklist | join('；') }}{% endif %}
+{% if _wc.dialogue_register_rules %}  - 对白语体：{{ _wc.dialogue_register_rules | join('；') }}{% endif %}
+{% endif %}
+{% if mode in ["plan", "bridge"] and narrative_contract.themes %}- 核心主题：{{ narrative_contract.themes | join('；') }}{% endif %}
+{% if mode == "plan" and narrative_contract.character_arcs %}
+- 角色弧光：
+{% for arc in narrative_contract.character_arcs %}
+  - {{ arc.name }}（{{ arc.role }}）：{{ arc.arc }}
+{% endfor %}
+{% endif %}
+{% if narrative_contract.ending_strategy %}- 结局走向{% if mode == "draft" %}（写作时注意铺垫方向）{% endif %}：{{ narrative_contract.ending_strategy }}{% endif %}
+{% if mode == "plan" and narrative_contract.key_turning_points %}- 关键转折：{{ narrative_contract.key_turning_points | join('；') }}{% endif %}
+{% set _cp = narrative_contract.continuity_protocol %}
+{% if _cp %}
+  - 连贯性协议（初始化硬规则）：
+  - 场景切换：开场地点变化时，前 {{ story_bible.get('location_transition_window_sentences', 3) }} 句必须出现位移动作链。
+  - 桥接落地：开场前 {{ story_bible.get('bridge_echo_window_chars', 900) }} 字须回应 {{ "action_handoff" if mode == "bridge" else "bridge.action_handoff" }}。
+  - 时间合法性：{{ time_convention | default('按项目时代背景自然选择时间单位') }}
+  - POV可见性：{{ _cp.pov_visibility_rule | default('限知视角仅描写可观察事实。') }}
+  - 禁复用规则：{{ _cp.forbidden_repetition_rule | default('禁用元素不得近义复现。') }}
+{% if mode == "plan" %}
+  - 信息密度预算（★ 硬约束）：单章重大揭示不超过 {{ story_bible.get('max_key_revelations_per_chapter', 2) }} 条，超出部分必须改为伏笔或误导线索。
+{% elif mode == "draft" %}
+  - 信息密度预算（★ 硬约束）：单章重大揭示不超过 {{ story_bible.get('max_key_revelations_per_chapter', 2) }} 条。
+{% endif %}
+{% if mode in ["plan", "draft"] %}
+  - 悬念留存：本章至少保留 {{ story_bible.get('min_unresolved_threads_to_keep', 1) }} 条未决线索进入下一章（若为 0 则不强制）。
+{% endif %}
+{% endif %}
+{% endif %}
+{%- endmacro %}

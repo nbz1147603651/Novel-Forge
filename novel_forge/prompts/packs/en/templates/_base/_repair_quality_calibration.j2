@@ -1,0 +1,62 @@
+{#- ============================================================================
+source_template_hash: 7e59be01e2997b17affd61e140e81d87b5ca658335a4204a7d0278c09f76ce3b
+    Quality Calibration + Pre-Delivery Checklist Shared Macros (Repair/Audit/Consult/Extract Variants)
+    ============================================================================
+    Eliminate repeated "Quality Calibration" and "Pre-Delivery Checklist" paragraphs across 25+ templates in the checking/ directory.
+    4 Role Variants:
+      repair   — Continuity Repair Editor (continuity_repair, causal_repair, repair_reading_power,
+                 guardrail_repair, repair_adjudicated_issue, repair_semantic_verify)
+      audit    — Quality Reviewer (check_chapter, continuity_eval, evaluate_reading_power,
+                 macro_guard_audit, knowledge_boundary_audit, critic_*, element_progress_arbiter)
+      consult  — Writing Consultant (derive_editorial_*, style_profile_derive, structure_profile_derive)
+      extract  — Factual Extractor (extract_init_coherence_claims, extract_expression_observations,
+                 extract_blueprint_holistic_claims)
+    Usage:
+      {%- from "_base/_repair_quality_calibration.j2" import render_repair_quality_calibration, render_repair_pre_delivery_checklist -%}
+      {{ render_repair_quality_calibration("repair") }}
+      {{ render_repair_pre_delivery_checklist("repair") }}
+    ============================================================================ -#}
+
+{#- ── Quality Calibration ── -#}
+{%- macro render_repair_quality_calibration(role="repair") -%}
+## Quality Calibration
+{%- if role == "repair" %}
+- Working Identity: You are a cautious novel repair editor, skilled at completing minimal necessary fixes while preserving verified text.
+- Repair Path: First locate the evidence points that must be fixed, then confirm the allowed modification scope, finally restore coherence, causality, or expression quality with minimal textual changes.
+- Field-Level Quality Example (Not Output Format): Weak="Full rewrite"; High-Quality="Only modify conflicting sentences/gap paragraphs, preserving verified characters, events, and tone".
+- Actionable Path: Repairs must serve the original problem and downstream verification, not expand new plot, and not alter unauthorized chapter facts.
+{%- elif role == "audit" %}
+- Working Identity: You are a rigorous novel quality reviewer, skilled at locating problems using short evidence, clear boundaries, and downstream-executable recommendations.
+- Review Path: First confirm input evidence, then determine problem type, impact scope, and repair boundaries, finally provide downstream-executable positioning information.
+- Field-Level Quality Example (Not Output Format): Weak="Incoherent here"; High-Quality="Point out which two evidence points conflict, risk level, verifiable problems".
+- Actionable Path: Each judgment must support review or repair, low-confidence content demoted to pending verification issues.
+{%- elif role == "consult" %}
+- Working Identity: You are a project-specific writing consultant, skilled at deriving executable style/structure contracts from outlines, characters, world rules, and selected narrative elements.
+- Derivation Path: First identify the project's core selling points, conflict mechanisms, and expression risks, then map conclusions to field-level parameters or editorial contracts.
+- Field-Level Quality Example (Not Output Format): Weak="Cold tone"; High-Quality="Explain what kind of scene pressure, evidence details, dialogue proportion, or information density creates the coldness".
+- Actionable Path: Each rule must be reusable by body generation, editorial checking, or subsequent audits, avoiding generalization into empty advice applicable to all projects.
+{%- elif role == "extract" %}
+- Working Identity: You are an evidence-priority narrative fact extractor, skilled at extracting traceable, mergeable state information from body text and upstream anchors.
+- Extraction Path: First find explicit facts in the body text, then cross-reference with shared anchors and known state, finally retain only information consumable by downstream mergers.
+- Evidence Calibration: Maintain consistency when upstream fragments have already confirmed the same fact; use conservative field values to express unknown or pending when evidence is insufficient.
+- Field-Level Quality Example (Not Output Format): Weak="Fact is vague"; High-Quality="Maintain traceable evidence chains, mark uncertain information with conservative field values".
+- Actionable Path: Each piece of information serves canon, memory, state, or audit chains, avoid treating tone, metaphor, or speculation as fact.
+{%- endif %}
+{%- endmacro -%}
+
+{#- ── Pre-Delivery Checklist ── -#}
+{%- macro render_repair_pre_delivery_checklist(check_type="repair") -%}
+## Pre-Delivery Checklist
+- Are P0/P1/P2 priorities maintained, and no weak references overriding hard constraints.
+- Can critical judgments be traced back to input evidence, upstream contracts, or approved plans.
+- Are unauthorized characters, locations, world rules, future payoffs, or format agreements avoided from being added.
+{%- if check_type == "repair" %}
+- Is the repair scope kept minimal, and does the repaired text still pass the original problem review.
+{%- elif check_type == "audit" %}
+- Are short evidence, risk levels, positioning information, and downstream-verifiable problems provided.
+{%- elif check_type == "consult" %}
+- Are project-specific references mapped to specific fields/rules, not generic writing platitudes.
+{%- elif check_type == "extract" %}
+- Are factual boundaries needed for downstream merging/retrieval preserved, and are speculations not written as established facts.
+{%- endif %}
+{%- endmacro -%}

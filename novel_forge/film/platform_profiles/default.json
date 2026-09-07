@@ -1,0 +1,41 @@
+{
+  "provider_id": "default",
+  "profile_version": "1.0",
+  "display_name": "通用视觉生成平台",
+  "char_budget": {
+    "prompt_zh": 800,
+    "negative_zh": 200
+  },
+  "structure": {
+    "kind": "flat",
+    "section_order": ["subject", "action", "camera", "lighting", "style"],
+    "guidance": "按 主体→动作→镜头→光线→风格 顺序组织；供应商无关的自然语言描述，不写厂商私有标记。"
+  },
+  "camera_vocabulary": {
+    "slow_push": "缓慢推近",
+    "push_in": "推镜头",
+    "pull_out": "拉镜头",
+    "tracking": "跟拍移动",
+    "pan": "水平摇镜",
+    "tilt": "垂直摇镜",
+    "crane": "升降镜头",
+    "orbit": "环绕镜头",
+    "subtle_handheld": "轻微手持晃动",
+    "static": "固定机位",
+    "dolly_zoom": "滑动变焦"
+  },
+  "negative_policy": {
+    "required_terms": ["画面模糊", "肢体畸形", "多余手指"],
+    "forbidden_terms": [],
+    "guidance": "负面提示只写画面缺陷与合规红线，不写叙事内容。"
+  },
+  "capability_switches": {
+    "multi_shot": false,
+    "native_audio": false,
+    "multi_image_reference": false,
+    "camera_command": false,
+    "trusted_actor_asset": false
+  },
+  "platform_prompt_guidance": "只使用供应商无关字段；镜头运动用自然语言描述，不写入任何厂商私有语法。",
+  "special_rules": []
+}

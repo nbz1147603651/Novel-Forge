@@ -1,0 +1,206 @@
+请对以下长篇小说已完成章节进行全书一致性审计，并输出可验证的问题清单与修复队列候选计划。
+
+## 阶段边界
+- 本阶段只负责发现一致性问题、给出证据、定位与候选修复方向；不要声称已经修复任何正文。
+- `repair_plan` 只是修复队列候选排序，不是执行命令。所有问题必须先经本地锚点、语义召回或 targeted verifier 确认后，才允许进入独立修复队列执行。
+- 证据不足、无法定位或需要多章同时判断的问题，请降低 `confidence`，并在 `description` 中说明需要验证的章节对比点；不要为了凑修复计划而放大问题。
+
+## 判断职责
+- 语义判断由你完成：是否为真实矛盾、是否为普通叙述词误认实体、是否为回忆/梦境/转述导致的表面冲突，都必须由你基于文本证据裁决。
+- 本地程序只负责 JSON 格式校验、章节/段落编号规范化、去重、计数、聚合和下游传递；不要依赖本地规则替你判断真伪。
+- 如果某条问题需要下游逐章验证，请把待验证点写进 `verification_questions`，把交接说明写进 `handoff_notes`，让下游模型知道要比较什么。
+
+## 共享证据锚点
+{
+  "anchors": [
+    "checksum",
+    "terminal"
+  ]
+}
+所有审计维度必须以此作为共同依据；维度特需上下文只用于补充判断，不得覆盖锚点事实。
+
+## 审计模式
+- analysis_mode=summary
+- location_strictness=balanced
+- max_issues_per_chunk=8
+
+## 全局审计切片
+说明：
+- 你必须优先按这些 slice 做全局诊断，而不是重新逐章做章节审计。
+- volume / blueprint_phase / turning_point 负责连续章节的弧线判断。
+- promise_thread / plot_thread / motif 可能是非连续切片，重点检查承诺、支线、母题是否断裂或漂移。
+- 输出问题时如能判断所属切片，请在 issue_id 或 description 中保留 slice 线索；程序会再归一化为 global_findings。
+
+- slice_id=phase_1 | kind=phase | chapters=1,2 | boundary=1,2 | focus=timeline,character_state
+
+## 语义召回证据
+以下内容来自语义检索，只能作为候选召回；必须被章节文本、段落锚点或 targeted verifier 支撑后才可作为自动修复依据。
+[
+  {
+    "claim": "checksum cannot be forged silently"
+  }
+]
+
+## 额外审计要求
+Prioritize contradictions with exact chapter references.
+
+## 世界观设定
+
+Underground hangar archive.
+
+### 硬性规则（违反即为错误）
+
+- Signal records leave checksum traces.
+
+## 核心角色档案
+
+- **Lin Wan**，protagonist
+
+## 叙事弧结构
+Lin Wan moves from suspicion to targeted confrontation.
+
+## 核心主题与叙事命题
+trust under evidence pressure
+
+## 内外冲突定义（审计叙事漂移的判据）
+evidence versus loyalty
+
+## 世界观补充说明
+Signal forensics society.
+
+## 记忆增强上下文（来自历史章节记忆）
+Recent motif: checksum as trust pressure.
+
+## 章节摘要
+
+### 第 1 章
+- 摘要：Lin Wan finds a locked archive terminal.
+- 关键事件：terminal locked；Zhou Lin withholds context
+
+### 第 2 章
+- 摘要：The checksum changes after the archive powers on.
+- 关键事件：checksum shifts；Lin Wan records evidence
+
+## 问题面板问题池（来自各章连贯性/因果报告）
+说明：
+- 这是已存在的问题面板条目，包含 chapter_number + lane + index 锚点。
+- 在输出 issues 时，如能对齐到该问题池，请填写 linked_issue_refs，便于后续精准修复。
+- `lane` 仅允许 `continuity` 或 `causal`。
+
+- [ch=2 | lane=continuity | idx=1]
+  type=checksum_ownership | severity=warning
+  location=chapter 2
+  summary=checksum ownership may be unclear
+
+## 当前正典状态（Canon）
+
+### 角色状态
+
+- Lin Wan：存活
+
+- Zhou Lin：存活
+
+### 角色关系
+
+- Lin Wan ↔ Zhou Lin：uneasy ally（trust is pressured by hidden evidence）
+
+## 大纲概要
+Archive evidence drives each chapter choice.
+
+## 角色设定名单
+Lin Wan、Zhou Lin
+
+## 审计维度
+1. 全局时间弧（timeline_arc）
+2. 承诺与伏笔兑现（promise_payoff）
+3. 角色弧演进（character_arc）
+4. 情节线生命力（plot_thread_liveness）
+5. 母题分布与语义漂移（motif_distribution）
+6. 张力曲线（tension_curve）
+7. 世界规则完整性（world_rule_integrity）
+8. 跨章交叉验证（cross_chapter_validation）
+
+## 禁用元素判定校准
+- 禁用元素只审计“明确列入计划/问题池/规则的具体表达”或高度模板化的感官、身体反应，不把普通叙述功能词当作禁词。
+- “声音”作为普通名词或对话标签不是违规；如“声音压低”“声音平稳”“声音沙哑”“他说”不单独报告。只有明确硬禁短语或机械复用的具体表达才报告。
+- 优先报告具体短语与模板化反应，例如“心跳如擂鼓”“耳中嗡鸣”“耳畔回响”“血液轰鸣”“掌心冷汗”“指尖冰凉”“脊背发寒”等。
+- 如确需报告禁用元素，issue_type 使用 `forbidden_element_violation`，evidence 必须给出原文中的具体短证据，不要只写“声音”“气味”等单词。
+
+## 实体与状态判定校准
+- 不要把普通时间词、动作词、情绪词、叙述功能词当作实体，例如“开始”“明天”“等待”“夜色”“声音”“视线”等。只有当文本明确把它作为角色、地点、组织、物品或专有概念使用时才可报告。
+- 被引号包围的短词不必然是道具或实体；先判断它在上下文中是称谓、标题、物件、台词片段还是普通强调。
+- 生死、关系、位置等状态矛盾必须区分现实发生、回忆、梦境、传闻、档案记录、比喻性说法和角色误解。无法区分时降为 suspected/低 confidence，并列入下游验证问题。
+
+## 跨章交叉验证指令
+你必须对以下维度进行跨章节对比分析，识别跨章矛盾：
+- **时间线交叉验证**：对比各章时间标记（年号、月份、季节、日期、时辰），检测时间顺序矛盾、时间跳跃、时间倒流。例如：第 5 章说"腊月"，第 8 章却说"三月"，但中间没有过渡。
+- **角色状态交叉验证**：对比各章角色状态（生死、位置、身份、关系、知识），检测状态矛盾。例如：第 10 章角色 A 已死亡，但第 15 章角色 A 又出现且无合理解释。
+- **物品/道具追踪**：追踪关键物品（信物、武器、秘籍、财物）在各章的出现和流转，检测物品凭空出现或消失。例如：第 3 章获得的玉佩在第 7 章突然变成铜镜。
+- **伏笔回收验证**：检查前文埋设的伏笔、悬念、承诺是否在后续章节得到回应或合理解释。例如：第 2 章提到的"神秘信封"在后续 20 章内从未提及。
+- **因果关系交叉验证**：检查跨章事件因果链是否完整，前因后果是否合理衔接。例如：第 6 章的"刺杀行动"结果在第 9 章毫无体现。
+
+跨章问题的章节号列出要求：
+- 每个跨章问题必须列出所有涉及的章节号（chapters_involved），至少 2 个章节。
+- primary_chapter 应选择问题最明显或最需要修复的章节。
+- description 中应明确指出矛盾的具体章节对比，如"第 5 章称 X 为女性，但第 12 章称 X 为男性"。
+- evidence_pairs 应列出跨章证据对：每项至少包含 chapter_number、evidence、claim。不要只给单边证据。
+
+## 上下游交接格式
+- `evidence`：给当前 primary_chapter 的最短关键原文证据。
+- `evidence_pairs`：给跨章对比证据数组，便于验证阶段复核；单章问题可为空数组。
+- `verification_questions`：写成下游模型可直接回答的问题，例如“第 6 章该句是否为回忆而非现实时间？”。
+- `handoff_notes`：说明你为什么认为它需要修复、验证时最容易误判的点，以及修复边界。这里不是正文修复指令。
+- 只有当 `evidence_pairs` 和 `verification_questions` 能支撑下游判断时，才把 confidence 设为 0.7 以上。
+
+## 定位与修复输出要求
+1. 每个问题必须给出明确章节（chapters_involved、primary_chapter）。
+2. 如果能定位到段落，必须给出 paragraph_index（1-based）和 location（如"第12段"）。
+3. 对可进入修复队列的问题，提供：
+   - fix_mode：`repair_continuity` / `repair_causal` / `manual_patch`
+   - fix_action：`replace` / `insert` / `delete` / `rewrite`
+4. 如问题可映射到"问题面板问题池"，请返回 linked_issue_refs（可多条）：
+   - chapter_number：章节号
+   - lane：continuity 或 causal
+   - index：问题索引（0-based）
+5. evidence 尽量给出原文短证据（不要长篇复述）。
+6. issue_id 必须稳定、简短（例如 `ch12_timeline_01`）。
+7. 本次调用最多输出 8 条 issues；优先输出 critical/warning、可验证、可定位、可修复的问题。低价值重复项放进 summary 概述，不要穷举。
+
+## 定位严格度（balanced）
+- 在覆盖率与可定位性之间平衡；优先给出可落段问题。
+
+## 审计结果字段要求
+- `issues`：只放可验证、可定位、可交接的问题；每项字段含义以上文“问题字段语义”和“定位与修复输出要求”为准。
+- `repair_plan`：修复队列的候选排序；每项包含 chapter_number、issue_ids、priority、strategy，不表示已修改正文。
+- `summary`：概述本批次整体一致性风险，低价值重复项可在此合并说明。
+- `consistency_score`：0-10 分，按问题严重度和覆盖范围扣分；没有明确问题时保持高分。
+
+## 质量校准
+- 工作身份：你是一位严谨的小说质量审校员，擅长用短证据、明确边界和下游可执行建议定位问题。
+- 审校路径：先确认输入证据，再判断问题类型、影响范围和修复边界，最后给下游可执行的定位信息。
+- 字段级质量示例（非输出格式）：平弱=“这里不连贯”；高质量=“指出哪两处证据冲突、风险等级、可验证问题”。
+- 可操作路径：每条判断都要能支持复核或修复，低置信度内容降级为待验证问题。
+
+## 交付前核验
+- P0/P1/P2 优先级是否被保持，且没有让弱参考覆盖硬约束。
+- 是否能把关键判断回指到输入证据、上游契约或已批准计划。
+- 是否避免新增未授权的人物、地点、世界规则、未来 payoff 或格式协议。
+- 是否给出短证据、风险等级、定位信息和下游可验证的问题。
+
+## 统一格式契约（系统注入）
+- contract_id: `book_audit:book_consistency`
+- contract_mode: `full_object`
+- 输出必须是单一 JSON 对象，可被 `json.loads` 直接解析。
+- 禁止 Markdown 代码块、注释、解释性前后缀文本。
+- 字段名和字符串必须使用英文双引号；禁止 Python dict、单引号和省略号。
+- 字符串内容引用台词、术语或标题时，使用中文引号「」或转义 `\"`，禁止裸英文双引号。
+- 数组元素和对象字段之间必须使用英文逗号，禁止用换行直接连接相邻字符串。
+- 禁止把结构字段泄漏到文本字段中；不要在 `description`、`notes` 等字符串里写 `.field: value`、`field=value` 来替代 JSON key。
+- 本任务要求完整对象：必须一次性输出契约声明的全部顶层字段。
+- 顶层必须包含字段：`issues`、`repair_plan`、`summary`、`consistency_score`。缺失会触发解析重试。
+- 下方 JSON Schema 仅供理解校验规则，不是输出样例；其中 `$schema`、`type`、`properties`、`items`、`required`、`additionalProperties`、`minItems`、`maxItems` 等 schema 元字段绝不能作为最终输出 JSON 的 key。
+- JSON Schema（顶层约束，运行时会按此验证）：
+{"properties": {"issues": {"items": {"properties": {"issue_id": {"type": "string"}, "category": {"type": "string"}, "severity": {"type": "string"}, "chapters_involved": {"items": {"type": "integer"}}, "primary_chapter": {"type": "integer"}, "issue_type": {"type": "string"}, "location": {"type": "string"}, "paragraph_index": {"type": "integer"}, "paragraph_span": {"items": {"type": "integer"}}, "evidence": {"type": "string"}, "description": {"type": "string"}, "suggestion": {"type": "string"}, "fix_mode": {"type": "string"}, "fix_action": {"type": "string"}, "confidence": {"type": "number"}, "evidence_pairs": {"items": {"properties": {"chapter_number": {"type": "integer"}, "evidence": {"type": "string"}, "claim": {"type": "string"}}}}, "verification_questions": {"items": {"type": "string"}}, "handoff_notes": {"type": "string"}, "linked_issue_refs": {"items": {"properties": {"chapter_number": {"type": "integer"}, "lane": {"type": "string"}, "index": {"type": "integer"}}}}}}}, "repair_plan": {"items": {"properties": {"chapter_number": {"type": "integer"}, "issue_ids": {"items": {"type": "string"}}, "priority": {"type": "string"}, "strategy": {"type": "string"}}}}, "summary": {"type": "string"}, "consistency_score": {"type": "number"}}}
+
+## 语言文字硬约束
+- 输出语言：简体中文（zh-Hans）。中文内容必须统一使用简体字，禁止输出繁体字、异体字或繁简混排；专有名词和必要英文术语可保留原文。

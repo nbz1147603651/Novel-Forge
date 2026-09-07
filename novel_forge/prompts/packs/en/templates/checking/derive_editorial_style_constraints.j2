@@ -1,0 +1,87 @@
+{# ================================================================================
+source_template_hash: e0652357cc5079bcde23a72db057fa69b6df4dfd0fbea997ab594ec7fdf3dead
+[NOTES]
+================================================================================
+Prompt: derive_editorial_style_constraints.j2
+Service Step: DERIVE_EDITORIAL_STYLE_CONSTRAINTS (Editorial Contract: Style Constraints)
+Brief Description: Only generate theme presentation, symbol explanations, scene resistance, and expression channel budgets.
+Upstream Inputs:
+  - project_brief / story_bible / character_bible / style_profile / blueprint / blueprint_elements
+Downstream Outputs:
+  - JSON: theme_policies, symbol_policies, scene_resistance_rules,
+          expression_channel_budget, expression_channel_profiles,
+          body_signal_budget_per_high_emotion_scene, forbidden_confirmation_phrases,
+          revision_priorities
+Consumption Chain Priority: P1 (Publication-Grade Editorial Constraints)
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer: Task Definition + Context Consumption
+    --------------------------------------------------------------------------- -#}
+You are a novel editor responsible for this project. This round only generates the **style and scene constraint contract**—do not output voice, climax, revelation ladder, or element directives.
+
+## Project Information
+{{ project_brief | tojson(indent=2) }}
+
+## Worldview and Theme Summary (Compressed)
+{{ story_bible | tojson(indent=2) }}
+
+## Character Summary (Compressed)
+{{ character_bible | tojson(indent=2) }}
+
+## Style Specifications (Compressed)
+{{ style_profile | tojson(indent=2) }}
+
+## Blueprint Summary (Compressed)
+{{ blueprint | tojson(indent=2) }}
+
+## Selected Narrative Elements (Compressed)
+{{ blueprint_elements | tojson(indent=2) }}
+
+## Generation Requirements
+1. `theme_policies` restricts theme monologues and explanations, requiring themes to be presented through actions, choices, conflicts, and scene consequences.
+2. `symbol_policies` - maximum 5 items, covering the most important tokens, locations, objects, thematic phrases, or recurring imagery.
+3. `scene_resistance_rules` - maximum 5 items, specify scene resistance as concrete elements that can be written into the text: doors, stairs, crowds, distance, processes, obstructions, object handoffs, signatures, screens, phones, time windows, etc.
+4. `expression_channel_budget` controls the per-chapter/per-scene budget for somatic reactions, action tags, dialogue tags, and sensory anchors.
+5. `expression_channel_profiles` only extracts **the expression channel profiles most likely to be mechanically reproduced by the model for this specific project**—do not generalize with common writing taboos. Extraction direction is fixed from:
+   - Genre and Tone: Expression mechanisms that are easily templated from genre, tone, and narrative pacing;
+   - Character Voice: Character's common actions, taboo expressions, emotional syntax;
+   - Style Profile: Dialogue ratio, imagery preference, pacing and white space methods;
+   - Editorial Contract: Somatic reaction budget, symbol explanations, scene resistance.
+6. `forbidden_confirmation_phrases` writes phrases that easily lead to circular confirmation or theme self-evidence.
+7. `revision_priorities` - maximum 6 items, arranged in editorial revision order.
+
+## Schema Hard Constraints
+- `symbol_policies[].explanation_policy` can only use: `never_explain`, `explain_once`, `explain_on_escalation`, `free`.
+- `symbol_policies[]` only allowed to contain: `symbol`, `narrative_function`, `explanation_policy`, `escalation_rule`, `max_explicit_explanations`.
+- `symbol_policies[].max_explicit_explanations` must be an integer from 0-10; do not use 99, 999, unlimited to represent "unlimited"—write `10` for unlimited.
+- `scene_resistance_rules[]` only allowed to contain: `scene_type`, `required_resistance`, `examples`.
+- `expression_channel_budget` can only contain 4 integer keys: `somatic_reaction`, `action_tag`, `dialogue_tag`, `sensory_anchor`.
+- `expression_channel_profiles` - maximum 8 items; each only allowed to contain: `channel_id`, `channel`, `label`, `surface_forms`, `trigger_contexts`, `risk_reason`, `replacement_axes`, `allowed_when`, `cooldown_chapters`, `actor_scope`, `confidence`.
+- `expression_channel_profiles[].channel` can only use: `somatic_reaction`, `action_tag`, `dialogue_tag`, `sensory_anchor`, `sentence_pattern`, `other`.
+- `expression_channel_profiles[].surface_forms` can only write natural language phrases—no regex, wildcards, full sentence template libraries, or long rule paragraphs.
+- `expression_channel_profiles[]` each item: maximum 8 surface_forms, 4 trigger_contexts, 4 replacement_axes; `risk_reason` and `allowed_when` must be short sentences.
+- Each expression profile must simultaneously have expression form, risk reason, replacement direction, and applicable boundary; do not output items without replacement direction or applicable boundary.
+- High-emotion scene body budget is only written to the integer field `body_signal_budget_per_high_emotion_scene`.
+- Only output 8 English `snake_case` top-level fields: `theme_policies`, `symbol_policies`, `scene_resistance_rules`, `expression_channel_budget`, `expression_channel_profiles`, `body_signal_budget_per_high_emotion_scene`, `forbidden_confirmation_phrases`, `revision_priorities`.
+
+## Field Content Constraints
+- `theme_policies`, `forbidden_confirmation_phrases`, `revision_priorities` must be short string arrays.
+- `symbol_policies[]` each item contains symbol, narrative_function, explanation_policy, escalation_rule, max_explicit_explanations.
+- `scene_resistance_rules[]` each item contains scene_type, required_resistance, examples.
+- `expression_channel_budget` fixed to contain somatic_reaction, action_tag, dialogue_tag, sensory_anchor, with integer values.
+- `expression_channel_profiles` only writes high-risk expression mechanisms specific to this project; prohibit outputting generic advice like "avoid monotonous descriptions" or "enhance literary quality".
+- `body_signal_budget_per_high_emotion_scene` is an integer.
+
+## Quality Calibration
+- Work Identity: You are a project-specific writing consultant, skilled at deriving executable style/structure contracts from synopses, characters, world rules, and selected narrative elements.
+- Derivation Path: First identify this project's core selling points, conflict mechanisms, and expression risks, then map conclusions to field-level parameters or editorial contracts.
+- Field-Level Quality Examples (not output format): Weak = "cold style"; High-Quality = "explain what kind of scene pressure, evidentiary details, dialogue ratio, or information density produces the coldness".
+- Actionable Path: Each rule must be reusable by body generation, editorial checking, or subsequent audits—avoid generalizing into empty advice applicable to all projects.
+
+## Pre-Delivery Verification
+- Are P0/P1/P2 priorities maintained, and do weak references not override hard constraints?
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans?
+- Are unauthorized characters, locations, world rules, future payoffs, or format agreements avoided?
+- Is project-specific evidence mapped to specific fields/rules, rather than reusing generic writing maxims?

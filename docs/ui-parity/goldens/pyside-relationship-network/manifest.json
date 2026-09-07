@@ -1,0 +1,71 @@
+{
+  "source": "PySide6 CharacterGraphWidget",
+  "fixture": "three source-shaped characters with alliance, family and secret relationship edges",
+  "themes": [
+    "narrative_ember"
+  ],
+  "states": [
+    "populated",
+    "focused",
+    "hover-node",
+    "hover-edge",
+    "relationship-edit-dialog"
+  ],
+  "records": [
+    {
+      "surface": "relationship-network",
+      "theme": "narrative_ember",
+      "state": "populated",
+      "size": {
+        "width": 920,
+        "height": 540
+      },
+      "file": "relationship-network--graph--narrative_ember--populated.png",
+      "sha256": "ef9b91fecc82f9bb3875b841843d67039acea0128b98e26e3f71393481ea04ce"
+    },
+    {
+      "surface": "relationship-network",
+      "theme": "narrative_ember",
+      "state": "focused",
+      "size": {
+        "width": 920,
+        "height": 540
+      },
+      "file": "relationship-network--graph--narrative_ember--focused.png",
+      "sha256": "f96699499d8fadd119ec4054694bfb05dc02caf8d2ed5721e44ea7dc5017fc4b"
+    },
+    {
+      "surface": "relationship-network",
+      "theme": "narrative_ember",
+      "state": "hover-node",
+      "size": {
+        "width": 920,
+        "height": 540
+      },
+      "file": "relationship-network--graph--narrative_ember--hover-node.png",
+      "sha256": "ef9b91fecc82f9bb3875b841843d67039acea0128b98e26e3f71393481ea04ce"
+    },
+    {
+      "surface": "relationship-network",
+      "theme": "narrative_ember",
+      "state": "hover-edge",
+      "size": {
+        "width": 920,
+        "height": 540
+      },
+      "file": "relationship-network--graph--narrative_ember--hover-edge.png",
+      "sha256": "ef9b91fecc82f9bb3875b841843d67039acea0128b98e26e3f71393481ea04ce"
+    },
+    {
+      "surface": "relationship-network-edit-dialog",
+      "theme": "narrative_ember",
+      "state": "open",
+      "size": {
+        "width": 520,
+        "height": 417
+      },
+      "file": "relationship-network--relationship-edit-dialog--narrative_ember--open.png",
+      "sha256": "53c311b7f621d63c21e80d08203e9f4a9d7050dd269d73a78c5e5c9ce7142a26"
+    }
+  ]
+}

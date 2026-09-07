@@ -1,0 +1,27 @@
+{
+  "provider_id": "bailian",
+  "profile_version": "1.0",
+  "display_name": "阿里百炼 (CosyVoice/Qwen-Audio-TTS)",
+  "scoring_weights": {
+    "expressive": 0.30,
+    "role": 0.15
+  },
+  "expressive_group_overrides": {
+    "沉稳克制": ["沉稳", "克制", "冷静", "质感", "书卷", "文雅", "calm"],
+    "温柔亲和": ["温柔", "柔和", "亲和", "温暖", "共情", "治愈", "贴心", "gentle"],
+    "活泼明亮": ["活泼", "开朗", "明亮", "元气", "阳光", "活力", "lively"],
+    "低沉厚实": ["低沉", "浑厚", "磁性", "厚实", "deep", "resonant"],
+    "威严有压迫感": ["威严", "权威", "坚定", "说服力", "commanding"],
+    "稚嫩天真": ["稚嫩", "天真", "童声", "烂漫", "顽皮", "childlike"]
+  },
+  "adjudication_guidance": {
+    "platform_context": "百炼平台的音色目录来自 CosyVoice 和 Qwen-Audio-TTS 系列。每个音色有官方「特质」描述（如'阳光大男孩'、'沉稳质感男'），这是该音色最核心的声纹身份标签。",
+    "voice_metadata_hint": "百炼音色元数据中 trait 字段为官方特质描述，tags 为场景标签，personality 为推断的性格关键词。trait 是最可靠的声纹身份依据。",
+    "selection_criteria": "优先匹配官方特质（trait）与角色核心人格底色的一致性；其次比较 tags 中的场景适配度；最后考虑年龄感和性别。百炼支持 Instruct 情感控制（部分音色），情绪表达可通过指令调节，不必苛求情绪匹配。",
+    "caution_notes": [
+      "百炼部分音色支持 Instruct 情感指令（neutral/happy/sad/angry等），选角时关注声纹底色而非情绪范围",
+      "百炼音色名称中的'龙'字为品牌前缀，不代表角色属性",
+      "同一特质可能有多个音色候选，需通过团队辨识度（避免重复）做最终区分"
+    ]
+  }
+}

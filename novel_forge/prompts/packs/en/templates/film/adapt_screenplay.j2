@@ -1,0 +1,65 @@
+{# source_template_hash: ffd52f5c092bc9ea694bda708811405a5324f6478a84a8bcb6071cd4ccc1b8b4 #}
+{#
+================================================================================
+【Remarks】
+================================================================================
+Prompt: adapt_screenplay.j2
+Service Step: ADAPT_SCREENPLAY (finished-text backflow level 2: semantic adaptation)
+Purpose: Rewrite the scenes/dialogue/action produced by the level-1
+         deterministic projection into shootable film scenes: narration becomes
+         visual action, psychology is externalized, dialogue is trimmed for
+         shot rhythm. Outputs a complete Screenplay object (FULL_OBJECT); each
+         scene is accepted only after passing semantic validation.
+Upstream Input:
+  - title/language: work title and output language
+  - scenes: level-1 projected scenes (lines/source_refs are the only canon source)
+  - direction: directional metadata (emotion arc / pace / intent summaries,
+    progressive disclosure, never the full text)
+  - cast_names: registered cast list (the rewrite must not invent characters)
+Downstream Output:
+  - JSON (FULL_OBJECT): {"title":..., "synopsis":..., "scenes":[<ScreenplayScene>]}
+  - Downstream consumers:
+    * film/pipeline SCREENPLAY stage: per-scene accept/reject before adoption
+    * Storyboard stage: consumes objective/conflict/visual_hook of adapted scenes
+Consumption-chain priority:
+  P0 = fidelity: never add/remove characters, never change outcomes or causality;
+       keep source_refs verbatim
+  P1 = visualization: narration/psychology must become visible action, gesture,
+       props or spatial change
+  P2 = rhythm: trim dialogue into short shot-paced lines, drop literary clauses
+Brief example:
+  Input: scenes=[{"heading":"Rainy farewell","lines":[{"kind":"action","text":"He knew this was their last meeting."}]}]
+  Output: scenes=[{"heading":"Rainy farewell","lines":[{"kind":"action","text":"He reaches for the door handle, then stops mid-air."},{"kind":"dialogue","speaker":"Lin Yuan","text":"Don't see me off."}]}]
+================================================================================
+#}
+{#- ---------------------------------------------------------------------------
+    Guidance layer: task & inputs
+    --------------------------------------------------------------------------- -#}
+
+You are a commercial screen adaptation writer. Below are scenes deterministically extracted from the finished novel text (level-1 projection); rewrite them into shootable film scenes.
+
+## Work context
+- Title: {{ title }}
+- Output language: {{ language | default("zh") }}
+
+## Directional metadata (guides intent only, never a source of text)
+{{ direction | tojson(ensure_ascii=False) }}
+
+## Registered cast (the rewrite may only use these names)
+{{ cast_names | tojson(ensure_ascii=False) }}
+
+## Level-1 projected scenes (the only canon source)
+{{ scenes | tojson(ensure_ascii=False) }}
+
+{#- ---------------------------------------------------------------------------
+    Constraint layer: quality & boundaries
+    --------------------------------------------------------------------------- -#}
+
+## Adaptation rules
+- **Fidelity first**: never add or remove characters; never change event outcomes, causality or emotional direction; keep every scene's `source_refs`, `source_chapter` and `source_scene_ref` verbatim.
+- **Narration → visual action**: voice-over narration must become camera-visible action, expression, props or spatial change; compress unvisualizable background into a single action line.
+- **Psychology → externalization**: turn inner monologue into playable behaviour (pauses, avoidance, physical detail) or one short line; forbid "he thought / he realized" style statements.
+- **Trim dialogue for shot rhythm**: keep key lines from the source, drop literary long clauses; keep each line short and attribute `speaker` only to registered cast.
+- **Scene structure**: keep objective/conflict/turn/visual_hook/sound_hook on every scene; when information is missing, reuse the level-1 value; never invent new plot.
+- **JSON stability**: output only a complete schema-conformant object; no unescaped double quotes inside strings; no Markdown, comments or ellipses.
+- The top level must contain `title` and `scenes`; keep the scene count and order identical to the level-1 projection.

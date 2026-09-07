@@ -1,0 +1,35 @@
+{
+  "provider_id": "bailian",
+  "profile_version": "1.0",
+  "display_name": "阿里百炼 · Wan 视觉生成",
+  "char_budget": {
+    "prompt_zh": 1000,
+    "negative_zh": 300
+  },
+  "structure": {
+    "guidance": "百炼 Wan 2.7 支持长中文提示词与多镜头叙事；多镜头场次按“第1个镜头…第2个镜头…”顺序分段描述，参考主体用名称显式锚定。"
+  },
+  "camera_vocabulary": {
+    "slow_push": "镜头缓慢向前推进",
+    "tracking": "镜头平稳跟拍移动主体",
+    "orbit": "镜头围绕主体环绕运动",
+    "subtle_handheld": "镜头带轻微手持晃动感"
+  },
+  "negative_policy": {
+    "required_terms": ["画面模糊", "肢体畸形", "多余手指", "水印文字"],
+    "guidance": "百炼支持独立 negative_prompt 字段；角色一致性镜头必须加入“角色外貌改变”负面项。"
+  },
+  "capability_switches": {
+    "multi_shot": true,
+    "native_audio": true,
+    "multi_image_reference": true,
+    "camera_command": false,
+    "trusted_actor_asset": false
+  },
+  "platform_prompt_guidance": "百炼专属：多镜头叙事在单个提示词内按镜头编号分段；角色图集/多主体参考通过 references 传入并在提示词中用角色名锚定；声画同步镜头显式写出口型与音效时机。",
+  "special_rules": [
+    "多镜头提示词每个镜头段落不超过 300 字",
+    "参考图中的角色名必须与提示词中的称呼完全一致",
+    "需要成组输出时显式说明张数与差异点"
+  ]
+}

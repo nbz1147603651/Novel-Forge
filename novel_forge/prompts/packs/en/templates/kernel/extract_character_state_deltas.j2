@@ -1,0 +1,72 @@
+{# source_template_hash: 43c57b9ebc49d1a1c29a1e59112c4bee8d2308b62ed8fa527d965290532bd980 #}
+{#
+================================================================================
+【Remarks】
+================================================================================
+Prompt: extract_character_state_deltas.j2
+Service Step: EXTRACT_CHARACTER_STATE_DELTAS (Canon Fragment: Character State Changes)
+Function Summary: Only extract explicit character state changes in this chapter to avoid cross-contamination with relationship/plotline fragments.
+Upstream Inputs: chapter_number/chapter_text/summary_exit/prior_character_snapshots/known_characters
+Downstream Outputs: JSON: {"character_state_deltas": [...]}
+Downstream Consumers: EXTRACT_CANON Local Merger, NarrativeState
+Consumption Chain Priority: P0 = gender authority does not drift; P1 = only write changes; P2 = control quantity
+================================================================================
+#}
+{#- Guidance Layer -#}
+Only extract character state changes. Return an empty array when no explicit changes exist.
+
+## Fact Source Boundary (P0)
+- Only extract character state changes from the final text / `chapter_text` corresponding to FinalArtifact.
+- Prior state snapshots, authoritative gender, and summary_exit are only for reference, not new state sources.
+- Do not write position, identity, emotional state, item, knowledge, or life/death state without textual evidence from the main text.
+
+## Output Field Description
+- `character_state_deltas`: Character state change list, each containing character name, change dimension (alive/location/emotional_state/inventory/knowledge/social_status), prior state value, post-state value, and textual evidence.
+
+{% if shared_evidence_anchor %}
+## Shared Evidence Anchor
+{{ shared_evidence_anchor | tojson(indent=2) }}
+Use this as the common basis for this fragment; dimension-specific information can only supplement, not overwrite, anchor facts.
+{% endif %}
+
+## Chapter Anchor
+- Chapter {{ chapter_number }}
+{% if summary_exit %}{{ summary_exit | tojson(indent=2) }}{% endif %}
+
+## Known Characters
+{% for name in known_characters %}- {{ name }}{% endfor %}
+
+{% if authoritative_character_genders %}
+## Authoritative Character Genders (Highest Priority)
+{% for name, gender in authoritative_character_genders.items() %}
+- {{ name }}: {{ gender }}
+{% endfor %}
+{% endif %}
+
+{% if prior_character_snapshots %}
+## Prior Character State (Only Output Changes in This Chapter)
+{% for cs in prior_character_snapshots %}
+- {{ cs.name }}: location={{ cs.location }}, emotional_state={{ cs.emotional_state }}{% if cs.social_status %}, social_status={{ cs.social_status }}{% endif %}
+{% endfor %}
+{% endif %}
+
+## Main Text
+{{ chapter_text }}
+
+## Requirements
+- Maximum {{ max_character_state_deltas | default(8) }} entries.
+- Only output when there are actual changes in alive/location/emotional_state/inventory/knowledge/social_status.
+
+## Quality Calibration
+- Work Identity: You are an evidence-prioritized narrative fact extractor, skilled at extracting traceable, mergeable state information from main text and upstream anchors.
+- Extraction Path: First locate explicit facts in the main text, then cross-reference with shared anchors and known states, and finally only preserve information consumable by downstream mergers.
+- Evidence Calibration: Maintain consistency when upstream fragments have confirmed the same fact; use conservative field values to express unknown or pending confirmation when evidence is insufficient.
+- Actionable Path: Each piece of information must serve canon, memory, state, or audit chain; avoid treating tone, metaphor, or speculation as fact.
+
+## Pre-Delivery Verification
+- Are P0/P1/P2 priorities maintained, and has weak reference not overridden hard constraints?
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans?
+- Are unauthorized characters, locations, world rules, future payoffs, or format agreements avoided?
+- Are factual boundaries for downstream merging/retrieval preserved, and has speculation not been written as established fact?
+
+{#- Format Layer -#}

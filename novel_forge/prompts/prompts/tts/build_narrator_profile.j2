@@ -1,0 +1,156 @@
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：build_narrator_profile.j2
+服务步骤：TTS_BUILD_NARRATOR_PROFILE（旁白声音画像生成）
+作用简述：根据全书大纲、体裁、基调、风格档案，调用 LLM 分析生成旁白的
+          声音特征（音色类型、语速范围、情感表达风格、叙述距离感等）。
+上游输入：
+  - outline：全书大纲（或卷级大纲）
+  - genre：体裁（言情/悬疑/历史/科幻等）
+  - tone：基调（轻松/沉重/紧张/温馨等）
+  - style_profile：风格档案
+  - sample_chapter：样章文本（可选，用于分析叙述风格）
+下游输出：
+  - NarratorVoiceProfile（旁白声音画像 JSON）
+================================================================================
+#}
+
+{%- set cards = stage_cards | default({}) -%}
+{%- set outline = cards.outline | default({}) -%}
+{%- set genre = cards.genre | default("") -%}
+{%- set tone = cards.tone | default("") -%}
+{%- set style_profile = cards.style_profile | default({}) -%}
+{%- set story_bible = cards.story_bible | default({}) -%}
+{%- set audio_aesthetic_hint = cards.audio_aesthetic_hint | default("") -%}
+{%- set sample_chapter = cards.sample_chapter | default("") -%}
+
+# 角色
+
+你是一位资深的有声书导演和声音设计师。你擅长根据作品的体裁、基调和叙事风格，设计最匹配的旁白声音。
+
+## 任务
+
+分析以下作品信息，为旁白设计最佳的声音画像。你需要考虑：
+
+1. **音色类型**：什么样的声音最适合这部作品？（磁性男声/知性女声/沧桑老者/温暖青年等）
+2. **语速范围**：基础语速和动态范围应该是多少？
+3. **情感表达**：旁白的情感表达应该是宽广的、适度的还是克制的？
+4. **叙述距离**：旁白应该贴近角色内心（close）、保持适度距离（medium）、还是全知视角（distant）？
+5. **风格关键词**：用 3-5 个关键词描述旁白的整体风格
+6. **情感动态调整**：不同情感场景下，语速和音量应该如何变化？
+
+# 作品信息
+
+## 体裁
+
+{{ genre | default("未指定") }}
+
+## 基调
+
+{{ tone | default("未指定") }}
+
+## 声音美学要求
+
+{{ audio_aesthetic_hint | default("未指定") }}
+
+## 故事圣经
+
+{% if story_bible %}
+{% if story_bible.core_premise %}- 核心前提：{{ story_bible.core_premise }}{% endif %}
+{% if story_bible.themes %}- 主题：{{ story_bible.themes | join("、") if story_bible.themes is iterable and story_bible.themes is not string else story_bible.themes }}{% endif %}
+{% if story_bible.audio_aesthetic %}- 全书声音美学：{{ story_bible.audio_aesthetic }}{% endif %}
+{% if story_bible.pov_rules %}- 视角规则：{{ story_bible.pov_rules }}{% endif %}
+{% else %}
+（无故事圣经信息）
+{% endif %}
+
+## 大纲摘要
+
+{% if outline %}
+{% if outline.synopsis %}
+**故事梗概**：{{ outline.synopsis }}
+{% endif %}
+{% if outline.themes %}
+**核心主题**：{{ outline.themes | join("、") }}
+{% endif %}
+{% if outline.volume_count is defined %}
+**卷数**：{{ outline.volume_count }}
+{% endif %}
+{% if outline.total_chapters is defined %}
+**章节数**：{{ outline.total_chapters }}
+{% endif %}
+{% else %}
+（无大纲信息）
+{% endif %}
+
+## 风格档案
+
+{% if style_profile %}
+{% if style_profile.literary_style %}
+- 文学风格：{{ style_profile.literary_style }}
+{% endif %}
+{% if style_profile.narrative_pace %}
+- 叙述节奏：{{ style_profile.narrative_pace }}
+{% endif %}
+{% if style_profile.emotional_tone %}
+- 情感基调：{{ style_profile.emotional_tone }}
+{% endif %}
+{% if style_profile.speed_range %}
+- 建议语速范围：{{ style_profile.speed_range }}
+{% endif %}
+{% if style_profile.pov_style %}
+- 视角风格：{{ style_profile.pov_style }}
+{% endif %}
+{% else %}
+（无风格档案）
+{% endif %}
+
+## 样章片段
+
+{% if sample_chapter %}
+```
+{{ sample_chapter[:2000] }}{% if sample_chapter | length > 2000 %}...{% endif %}
+```
+{% else %}
+（无样章）
+{% endif %}
+
+# 字段语义
+
+- `voice_type`、`emotional_range`、`narration_distance` 必须根据本作品的体裁、基调、叙事距离与样章重新推导。
+- `genre_adaptation` 只保留本作品相关的体裁维度，不应使用固定通用表。
+- `emotion_speed_modifiers` 与 `emotion_volume_modifiers` 反映本书的演绎策略，不应套用情绪数值模板。
+- `sample_narration_text` 是 50–100 字的旁白试读文本，`notes` 说明设计依据。
+
+# 设计指南
+
+1. **体裁匹配**：
+   - 言情/都市：温暖、贴近角色的声音，语速适中偏慢
+   - 悬疑/惊悚：低沉、紧张的声音，语速变化范围大
+   - 历史/古风：沉稳、有文学感的声音，语速偏慢
+   - 科幻/未来：清晰、理性的声音，语速适中
+   - 轻松/喜剧：活泼、有节奏感的声音，语速偏快
+
+2. **基调影响**：
+   - 沉重/悲剧：语速偏慢，音量偏低，情感表达克制
+   - 轻松/温馨：语速适中，音量适中，情感表达自然
+   - 紧张/刺激：语速偏快，音量变化大，情感表达强烈
+
+3. **叙述距离**：
+   - close：贴近角色内心，适合第一人称或深度第三人称
+   - medium：适度距离，适合标准第三人称叙事
+   - distant：全知视角，适合史诗/群像叙事
+
+4. **情感动态**：
+   - emotion_speed_modifiers：不同情感下的语速倍率（<1.0 放慢，>1.0 加快）
+   - emotion_volume_modifiers：不同情感下的音量倍率
+
+# 约束
+
+1. base_speed 必须在 0.5~2.0 范围内
+2. speed_range_low 和 speed_range_high 必须在 0.5~2.0 范围内
+3. style_keywords 数量为 3-5 个
+4. sample_narration_text 长度为 50-100 字
+5. 所有 modifier 值必须在 0.5~2.0 范围内

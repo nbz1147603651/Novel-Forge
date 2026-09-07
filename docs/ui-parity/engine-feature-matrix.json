@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 1,
+  "purpose": "PySide → Engine → Nimo convergence gate. A row may be marked verified only with automated evidence for its declared Engine contract.",
+  "defaultUiGate": {
+    "target": "nimo",
+    "status": "ready",
+    "reason": "NIMO is the user-selected primary desktop as of 2026-08-31. In-progress rows remain explicit product gaps; PySide stays frozen behind nimo-p as a safety and compatibility fallback rather than blocking the default entry."
+  },
+  "rows": [
+    {
+      "area": "projects",
+      "engineReadModel": "workspace/project views",
+      "command": "project selection and artifact mutations",
+      "longTask": "not_applicable",
+      "nimoEntry": "ProjectsPage",
+      "evidence": ["clients/nimo-desktop/src/lib/engine-command-integration.test.ts"],
+      "status": "in_progress",
+      "limitation": "Full PySide project-file mutation parity still requires contract-by-contract verification."
+    },
+    {
+      "area": "initialization",
+      "engineReadModel": "workflow draft and long-init state",
+      "command": "start-workflow / save workflow draft",
+      "longTask": "init_long durable job",
+      "nimoEntry": "WorkflowPage",
+      "evidence": ["clients/nimo-desktop/src/lib/long-init-session.test.ts"],
+      "status": "in_progress",
+      "limitation": "Visible coverage is not yet an end-to-end PySide replacement sign-off."
+    },
+    {
+      "area": "chapters_and_book_tools",
+      "engineReadModel": "chapter studio, reader, book audit views",
+      "command": "prepare/run/repair/audit/export commands",
+      "longTask": "chapter and book durable jobs",
+      "nimoEntry": "ChapterStudioPage / ReaderPage",
+      "evidence": ["tests/unit/test_engine_book_autorun_e2e.py"],
+      "status": "in_progress",
+      "limitation": "This batch only regresses existing autorun semantics; it does not modify the chapter state machine."
+    },
+    {
+      "area": "ollama_models_and_routing",
+      "engineReadModel": "GET /api/v1/engine/ollama",
+      "command": "configure/set roles/ensure/restart/stop/pull/delete Ollama commands",
+      "longTask": "system-scoped Ollama runtime, pull and delete jobs",
+      "nimoEntry": "OllamaModelPanel",
+      "evidence": ["tests/unit/test_ollama_management.py", "tests/unit/test_api_ollama_routes.py", "tests/unit/test_app_service_jobs.py", "tests/unit/test_engine_ui_boundary.py", "clients/nimo-desktop/src/components/OllamaModelPanel.test.tsx", "tests/unit/test_settings_page_routing.py"],
+      "status": "verified",
+      "limitation": "Remote clients manage the Engine host but never receive Engine-host paths or endpoint reconfiguration authority."
+    },
+    {
+      "area": "storage",
+      "engineReadModel": "storage/settings view",
+      "command": "allowlisted settings mutation",
+      "longTask": "not_applicable",
+      "nimoEntry": "SettingsPage",
+      "evidence": ["tests/unit/test_settings_save.py"],
+      "status": "in_progress",
+      "limitation": "Only the Engine-owned settings store boundary is verified in this batch."
+    },
+    {
+      "area": "task_center_and_recovery",
+      "engineReadModel": "GET /api/v1/engine/jobs and task stream",
+      "command": "cancel/resume job",
+      "longTask": "project and system durable jobs",
+      "nimoEntry": "Task center and OllamaModelPanel operation list",
+      "evidence": ["tests/unit/test_app_service_jobs.py", "clients/nimo-desktop/src/lib/task-stream.test.ts"],
+      "status": "in_progress",
+      "limitation": "Ollama system-task cancellation and restart adjudication are verified; all product task surfaces remain under the global parity gate."
+    },
+    {
+      "area": "error_recovery",
+      "engineReadModel": "task error archive and job error summary",
+      "command": "retry/resume/clear error archive",
+      "longTask": "durable retry flows",
+      "nimoEntry": "Task stream error presentation",
+      "evidence": ["clients/nimo-desktop/src/lib/task-call-presentation.test.ts"],
+      "status": "in_progress",
+      "limitation": "Needs complete client-reconnect and native visual proof."
+    },
+    {
+      "area": "memory",
+      "engineReadModel": "memory views",
+      "command": "memory mutation and rebuild commands",
+      "longTask": "rebuild_memory_vectors job",
+      "nimoEntry": "MemoryPanel",
+      "evidence": ["docs/ui-parity/engine-adoption-readiness.md"],
+      "status": "in_progress",
+      "limitation": "No new PySide feature is allowed here until the Engine contract evidence is recorded."
+    },
+    {
+      "area": "tts_audio",
+      "engineReadModel": "voice studio and delivery views",
+      "command": "voice configuration and delivery commands",
+      "longTask": "TTS durable jobs",
+      "nimoEntry": "VoiceStudioPage",
+      "evidence": ["clients/nimo-desktop/src/lib/voice-script-session.test.ts"],
+      "status": "in_progress",
+      "limitation": "Native picker and delivery reconnection evidence remain required."
+    },
+    {
+      "area": "platform_capabilities",
+      "engineReadModel": "Engine runtime/capabilities view",
+      "command": "capability-gated native bridge actions",
+      "longTask": "not_applicable",
+      "nimoEntry": "Tauri launcher and settings adapters",
+      "evidence": ["docs/ui-parity/engine-adoption-readiness.md"],
+      "status": "in_progress",
+      "limitation": "Only a token-authenticated loopback Engine may receive a local path through a native bridge."
+    }
+  ]
+}

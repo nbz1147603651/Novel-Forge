@@ -1,0 +1,189 @@
+{%- from "_quality_standards.j2" import creative_specificity_rules -%}
+{%- from "_base/_artifact_source_contract.j2" import render_artifact_source_contract -%}
+{%- from "_base/_repair_attempt_guidance.j2" import render_repair_attempt_guidance, render_repair_self_check -%}
+{%- from "_base/_repair_quality_calibration.j2" import render_repair_quality_calibration, render_repair_pre_delivery_checklist -%}
+
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：continuity_repair.j2
+服务步骤：REPAIR_CONTINUITY（连贯性修复）
+作用简述：只根据 continuity_report 和 repair_plan 修复正文中被定位的问题。
+          本阶段不得重写结构化产物，不得重新规划整章。
+上游输入：
+  - chapter_text：待修复正文
+  - continuity_report：待修问题
+  - repair_plan：保留/修改清单
+  - stage_cards.source：ChapterSourceSlice，含禁揭示边界
+  - stage_cards：bridge / contract / plan / repair 派生不可破坏卡
+下游输出：
+  - TEXT：修复后的完整正文
+消费链优先级：
+  P0 = report 中 critical/high 问题与 postconditions
+  P1 = BridgeCard / ContractCard 不可破坏 / 已验证风格声纹保持
+  P2 = 字数边界
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    指导层
+    --------------------------------------------------------------------------- -#}
+
+{% set cards = stage_cards | default({}) %}
+{% set source = cards.source | default({}) %}
+{% set source_contract = source.chapter_contract | default({}, true) %}
+{% set contract = source_contract if source_contract else ((cards.contract | default({})) if (cards.contract is defined and cards.contract) else {}) %}
+{% set bridge = (cards.bridge | default({})) if (cards.bridge is defined and cards.bridge) else {} %}
+{% set plan_card = (cards.plan | default({})) if (cards.plan is defined and cards.plan) else {} %}
+{% set repair = (cards.repair | default({})) if (cards.repair is defined and cards.repair) else {} %}
+{% set style = (cards.style | default({})) if (cards.style is defined and cards.style) else {} %}
+{% set editorial = (cards.editorial | default({})) if (cards.editorial is defined and cards.editorial) else {} %}
+{% set knowledge = (cards.knowledge | default({})) if (cards.knowledge is defined and cards.knowledge) else {} %}
+{% set item_function_map = (item_function | default({})) if (item_function is defined and item_function) else {} %}
+{% set cognitive_constraints = contract.cognitive_constraints | default([]) %}
+
+请对第 {{ chapter_number }} 章做连贯性定向修复。
+
+本步骤只修 `repair_surface=chapter_text` 或 `manual` 的问题。若问题属于 bridge_artifact / chapter_plan / state_packet / replan，不要通过改正文掩盖。
+
+{{ render_artifact_source_contract(source, title="## Source Artifact 边界（P0）", mode="repair") }}
+
+## ticket/window 规则
+- 先看 continuity_report 中的 issue、location、evidence、repair_scope、postconditions，再决定文本改动。
+- 只修 ticket 与文本窗口，不自由重写整章；不得借本章契约、计划或宏观创作规划扩写新增剧情。
+- source 只提供不可越界边界，不能替代正文证据或成为新增事实来源。
+
+## 不可破坏卡
+{% if bridge.action_handoff is defined and bridge.action_handoff %}- 开场动作接力：{{ bridge.action_handoff }}{% endif %}
+{% if bridge.causal_link is defined and bridge.causal_link and bridge.causal_link.previous_event is defined %}- 因果链：{{ bridge.causal_link.previous_event }} → {{ bridge.causal_link.causal_mechanism }}{% endif %}
+{% if contract.must_carry_forward is defined and contract.must_carry_forward %}- 必须承接：{{ contract.must_carry_forward | join('；') }}{% endif %}
+{% if contract.required_events is defined and contract.required_events %}- 必达事件：{{ contract.required_events | join('；') }}{% endif %}
+{% if contract.forbidden_changes is defined and contract.forbidden_changes %}- 禁止变化：{{ contract.forbidden_changes | join('；') }}{% endif %}
+{% if contract.forbidden_progressions is defined and contract.forbidden_progressions %}- 禁止提前推进：{{ contract.forbidden_progressions | join('；') }}{% endif %}
+{% if contract.future_leak_risks is defined and contract.future_leak_risks %}- 未来泄露风险：{{ contract.future_leak_risks | join('；') }}{% endif %}
+{% if contract.exit_state_targets is defined and contract.exit_state_targets %}- 出口目标：{{ contract.exit_state_targets | join('；') }}{% endif %}
+{% if plan_card.opening_contract is defined and plan_card.opening_contract %}- 开场契约：{{ plan_card.opening_contract }}{% endif %}
+{% if plan_card.closing_contract is defined and plan_card.closing_contract %}- 结尾契约：{{ plan_card.closing_contract }}{% endif %}
+{% if cognitive_constraints %}
+- 认知揭示边界已在 Source Artifact 中完整列出；修复只能降级、遮蔽或补足证据，不得把怀疑、误判、间接异常改成确认、坐实、公开揭示或完整解释。
+{% endif %}
+{% if repair.preserve is defined and repair.preserve %}- 必须保留：{{ repair.preserve | join('；') }}{% endif %}
+{% if repair.do_not_introduce is defined and repair.do_not_introduce %}- 不得引入：{{ repair.do_not_introduce | join('；') }}{% endif %}
+
+{% if (knowledge.character_cards is defined and knowledge.character_cards) or (knowledge.chapter_ops is defined and knowledge.chapter_ops) %}
+## 角色知识边界（修复时不得破坏）
+- 修复只能补足正文证据，不能让角色凭空知道 `StoryKernel.knowledge_ledger` 之外的信息。
+{% for kb in knowledge.character_cards | default([]) %}
+{% set changes = kb.chapter_promised_changes | default([]) %}
+- {{ kb.character }}{% if kb.is_pov is defined and kb.is_pov %}（当前 POV）{% endif %}：已知={{ kb.known_facts | default([]) | join('；') or '无特殊已知事实' }}；怀疑={{ kb.suspicions | default([]) | join('；') or '无' }}；误信={{ kb.misbeliefs | default([]) | join('；') or '无' }}{% if changes %}；本章认知变化={{ changes | map(attribute='target_text') | list | join('；') }}{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if plan_card.forbidden_elements is defined and plan_card.forbidden_elements %}
+## 🚫 禁用元素清单（正文中不得出现以下任何意象/句式及其近义变体）
+请确保新意象能实现同样的叙事功能，但表达通道必须与禁用项明显不同。
+{% for item in plan_card.forbidden_elements %}
+- {{ item }}：{{ item_function_map.get(item, "保留叙事功能，换用完全不同表达") }}
+{% endfor %}
+{% endif %}
+
+{% if repair_plan is defined and repair_plan and not repair_plan.no_op %}
+## 修复计划
+{% if repair_plan.must_keep is defined and repair_plan.must_keep %}- 保留：{{ repair_plan.must_keep | join('；') }}{% endif %}
+{% if repair_plan.must_change is defined and repair_plan.must_change %}- 修改：{{ repair_plan.must_change | join('；') }}{% endif %}
+{% endif %}
+
+## 问题报告
+{% if structured_issues_block | default('') %}
+{{ structured_issues_block }}
+{% else %}
+{% for issue in continuity_report.issues %}
+{{ loop.index }}. [Issue {{ issue.issue_id | default('未提供', true) }}] [{{ issue.severity | default('') }}] {{ issue.issue_type | default('') }}：{{ issue.summary | default('') }}
+{% if issue.repair_surface | default('') %}   修复面：{{ issue.repair_surface }}{% endif %}
+{% if issue.location | default('') %}   定位：{{ issue.location }}{% endif %}
+{% if issue.evidence | default('') %}   证据：{{ issue.evidence }}{% endif %}
+{% if issue.fix_actions | default([]) %}   动作：{{ issue.fix_actions | join('；') }}{% endif %}
+{% if issue.adjudication_notes | default('') %}   验证裁决：{{ issue.adjudication_notes }}{% endif %}
+{% if issue.handoff_notes | default('') %}   审计交接：{{ issue.handoff_notes }}{% endif %}
+{% if issue.repair_boundary | default('') %}   修复边界：{{ issue.repair_boundary }}{% endif %}
+{% if issue.repair_scope | default([]) %}   修复范围：{{ issue.repair_scope }}{% endif %}
+{% if issue.must_preserve | default([]) %}   本问题必须保留：{{ issue.must_preserve | join('；') }}{% endif %}
+{% if issue.forbidden_changes | default([]) %}   本问题禁止改动：{{ issue.forbidden_changes | join('；') }}{% endif %}
+{% if issue.evidence_pairs is defined and issue.evidence_pairs %}   跨章证据对：{{ issue.evidence_pairs }}{% endif %}
+{% if issue.missing_anchors is defined and issue.missing_anchors %}
+   必须回扣：
+{% for anchor in issue.missing_anchors %}
+   - {{ anchor.text }}（{{ anchor.role }}）
+{% endfor %}
+{% endif %}
+{% if issue.postconditions is defined and issue.postconditions %}
+   验收：
+{% for condition in issue.postconditions %}
+   - {{ condition.description }}
+{% endfor %}
+{% endif %}
+{% endfor %}
+{% endif %}
+
+{# 历史修复提醒:优先读顶层 escalation_note,兼容旧的 memory_context.escalation_note #}
+{%- set _escalation_note = escalation_note | default("", true) -%}
+{%- if memory_context is defined and memory_context and memory_context.escalation_note is defined and memory_context.escalation_note -%}
+  {%- set _escalation_note = memory_context.escalation_note -%}
+{%- endif -%}
+{% if _escalation_note %}
+## 历史修复提醒
+{{ _escalation_note }}
+{% endif %}
+
+{# 本轮修复策略:优先读顶层 repair_attempt_guidance,兼容旧的 memory_context.repair_attempt_guidance #}
+{%- set _repair_guidance = repair_attempt_guidance | default(none) -%}
+{%- if memory_context is defined and memory_context and memory_context.repair_attempt_guidance is defined and memory_context.repair_attempt_guidance -%}
+  {%- if not _repair_guidance -%}
+    {%- set _repair_guidance = memory_context.repair_attempt_guidance -%}
+  {%- endif -%}
+{%- endif -%}
+{{ render_repair_attempt_guidance(_repair_guidance) }}
+
+{% set style_modules = style.modules | default([]) %}
+{% set style_banned = style.banned_phrases | default([]) %}
+{% set editorial_voices = editorial.character_voices | default([]) %}
+{% if style.summary | default('') or style_modules or style_banned or editorial_voices %}
+## 风格与声纹保持（P1，不覆盖 ticket）
+- 本节只用于保持已验证正文的语感和角色 register；若与待修问题、source 边界或不可破坏卡冲突，服从 P0/P1 修复目标。
+{% if style.summary | default('') %}- 风格概述：{{ style.summary }}{% endif %}
+{% if style.dialogue_ratio | default('') or style.pace_mode | default('') %}- 对话/节奏：{{ style.dialogue_ratio | default('') }} / {{ style.pace_mode | default('') }}{% endif %}
+{% if style.emotional_style | default('') or style.environment_ratio | default('') or style.info_density | default('') %}- 情绪/环境/信息密度：{{ style.emotional_style | default('') }} / {{ style.environment_ratio | default('') }} / {{ style.info_density | default('') }}{% endif %}
+{% for module in style_modules %}
+- {{ module.name | default('风格模块') }}：{{ module.rules | default([]) | join('；') }}
+{% endfor %}
+{% if style_banned %}- 项目级禁用短语：{{ style_banned | join('、') }}{% endif %}
+{% if editorial_voices %}
+- 对白声纹参考（只用于被修窗口，禁止照抄样例）：
+{% for item in editorial_voices %}
+  - {{ item.character | default('角色') }}：{{ item.sentence_profile | default('') }}；情绪句法={{ item.emotion_syntax | default('') }}{% if item.sample_lines | default([]) %}；样例={{ item.sample_lines[:2] | join(' / ') }}{% endif %}{% if item.taboo_patterns | default([]) %}；禁用={{ item.taboo_patterns | join('、') }}{% endif %}
+{% endfor %}
+{% endif %}
+{% endif %}
+
+## 原始正文
+{{ chapter_text }}
+
+## 修复规则
+1. 只改问题定位段、证据段、开头/结尾必要窗口；未引用段落保持原文。
+2. 若问题是 opening_gap / bridge_contract_not_followed / location_jump，优先在前 300-500 字补足时间、地点、POV、动作接力、情绪余波和转场因果。
+3. 若问题是 forbidden_element，必须换用完全不同的意象/句式，不做近义替换。
+4. 修复后字数必须在 {{ word_count_min }}-{{ word_count_max }} 之间。
+5. 禁止新增 POV 段、计划外角色正面行动、禁变更事件、后续章节揭秘或大段注水。
+6. 不写解释、报告、JSON 或修复说明；正文必须完整。
+{{ creative_specificity_rules(title="") }}
+
+{{ render_repair_self_check("continuity") }}
+
+{{ render_repair_quality_calibration("repair") }}
+
+{{ render_repair_pre_delivery_checklist("repair") }}
+
+{#- ---------------------------------------------------------------------------
+    格式层
+    --------------------------------------------------------------------------- -#}

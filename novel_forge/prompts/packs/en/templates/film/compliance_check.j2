@@ -1,0 +1,66 @@
+{# source_template_hash: 0f7f4ec3f70879f4765c017aaf003bb2f3ea027937d2b2245cc33e7e674a64dd #}
+{#
+================================================================================
+[NOTES]
+================================================================================
+Prompt: compliance_check.j2
+Serving step: COMPLIANCE_CHECK (film/short-drama compliance audit: semantic checks)
+Purpose: Run positive-value and high-risk semantic checks over screenplay text
+         (red-line items are owned by the deterministic scan and must NOT be
+         adjudicated here). Outputs findings + summary only (FULL_OBJECT).
+Upstream inputs:
+  - checklist: structured compliance checklist (check_id/severity/category/title/description)
+  - texts: text fragments under review (location label + text content)
+Downstream outputs:
+  - JSON (FULL_OBJECT): {"findings":[{"check_id":...,"verdict":...,"detail":...,
+    "location":...}], "summary": "..."}
+  - Downstream consumers:
+    * ComplianceAuditor.audit: merges deterministic scan results into ComplianceReport
+    * DeliveryManifest.compliance_passed: gates or blocks commercial delivery
+Consumption-chain priorities:
+  P0 = Only check positive_value / high_risk items; check_id must come from the checklist
+  P1 = verdict may only be fail/revise/review; omit checks with no issues
+  P2 = detail must give an actionable remediation direction, no vague remarks
+Brief example:
+  Input fragment: the protagonist resolves every conflict with inherited wealth; the villain escapes unpunished
+  Output fragment: findings=[{"check_id":"PV_JUSTICE","verdict":"fail","detail":"Villain escapes sanction; add legal or moral consequences in the ending","location":"ending scenes"}]
+================================================================================
+#}
+{#- ---------------------------------------------------------------------------
+    Guidance layer: task and inputs
+    --------------------------------------------------------------------------- -#}
+
+You are a content-compliance reviewer for short dramas/film releases.
+Red-line items (red_line) are already handled by the deterministic scan; you only
+perform semantic judgement: whether positive values hold and whether high-risk
+orientations are implied by the plot structure.
+
+## Compliance checklist (only check items whose severity is positive_value or high_risk)
+{{ checklist | tojson(ensure_ascii=False) }}
+
+## Text fragments under review
+{% for item in texts %}
+### [{{ item.location }}]
+{{ item.text }}
+{% endfor %}
+
+{#- ---------------------------------------------------------------------------
+    Constraint layer: quality and boundaries
+    --------------------------------------------------------------------------- -#}
+
+## Audit constraints
+1. check_id must come from the checklist above; inventing new checks is forbidden.
+2. Only output checks that have issues: verdict is fail (needs remediation), revise (needs local fixes) or review (advisory); fully compliant checks must not appear in findings.
+3. detail must point at concrete plot points and give an actionable remediation direction; vague remarks are forbidden.
+4. location must name the fragment position label (matching the input fragment's location).
+5. Never adjudicate red-line items (check_id with severity=red_line must never appear).
+6. summary must be one sentence describing the overall compliance posture.
+
+{#- ---------------------------------------------------------------------------
+    Output layer: format contract
+    --------------------------------------------------------------------------- -#}
+
+## Output requirements
+- Output only a complete JSON object conforming to the schema; the top level must contain `findings` (array) and `summary` (string).
+- Each finding contains `check_id`, `verdict`, `detail`, `location`; output an empty array when there are no issues.
+- Do not output Markdown, comments or ellipses.

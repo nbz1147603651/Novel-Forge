@@ -1,0 +1,212 @@
+.chapter-dialog { display: grid; grid-template-rows: minmax(0, 1fr) auto; width: min(520px, calc(100vw - 42px)); max-height: min(88vh, 780px); overflow: hidden; border: 1px solid color-mix(in srgb, var(--nf-border-default) 19%, transparent); border-radius: var(--nf-radius-dialog); background: var(--nf-bg-dialog); box-shadow: 0 22px 60px color-mix(in srgb, var(--nf-shadow) 29%, transparent); animation: dialog-rise-in 180ms cubic-bezier(.22, .61, .36, 1); }
+.chapter-dialog.is-compact { width: min(480px, calc(100vw - 42px)); height: min(531px, calc(100vh - 42px)); max-height: min(531px, calc(100vh - 42px)); border-radius: var(--nf-radius-dialog-compact); }
+.chapter-dialog.is-export { height: min(712px, calc(100vh - 42px)); max-height: min(712px, calc(100vh - 42px)); }
+.chapter-dialog.is-wide { width: min(640px, calc(100vw - 42px)); }
+.chapter-dialog-scroll { min-height: 0; padding: 24px 28px 12px; overflow: auto; }
+.chapter-dialog-scroll > header h2 { margin: 0; color: var(--nf-text-heading); font-family: Georgia, "Songti SC", serif; font-size: var(--nf-font-display); font-weight: 600; letter-spacing: .03em; }
+.chapter-dialog-scroll > header p { margin: 13px 0 0; color: var(--nf-text-secondary); font-size: var(--nf-font-label); line-height: 1.6; }
+.chapter-dialog footer { display: flex; justify-content: flex-end; gap: 14px; padding: 12px 28px 18px; border-top: 1px solid color-mix(in srgb, var(--nf-border-default) 13%, transparent); background: color-mix(in srgb, var(--nf-bg-dialog) 88%, var(--nf-bg-surface)); }
+.chapter-dialog-quiet, .chapter-dialog-primary, .chapter-path-row button { min-height: 38px; padding: 0 16px; border: 1px solid color-mix(in srgb, var(--nf-border-default) 20%, transparent); border-radius: 11px; font-size: var(--nf-font-subsection); font-weight: 700; }
+.chapter-dialog-quiet, .chapter-path-row button { color: var(--nf-text-body); background: color-mix(in srgb, var(--nf-bg-input) 55%, var(--nf-bg-surface)); }
+.chapter-dialog-primary { color: var(--nf-brand-logo-frame); border-color: var(--nf-accent-primary); background: var(--nf-accent-primary); }
+.chapter-dialog-primary:disabled { cursor: default; opacity: .58; }
+.chapter-dialog-section { display: grid; gap: 10px; margin-top: 16px; padding-top: 15px; border-top: 1px solid color-mix(in srgb, var(--nf-border-default) 15%, transparent); }
+.chapter-dialog-section h3 { margin: 0; color: var(--nf-text-heading); font-size: var(--nf-font-section); font-weight: 700; }
+.chapter-radio-row { display: flex; flex-wrap: wrap; gap: 10px 18px; }
+.chapter-radio-row label, .chapter-radio-stack label, .chapter-version-choice, .chapter-check-label { color: var(--nf-text-body); font-size: var(--nf-font-subsection); }
+.chapter-radio-row input, .chapter-radio-stack input, .chapter-version-choice input, .chapter-check-label input, .chapter-checkbox-grid input { margin: 0 6px 0 0; accent-color: var(--nf-accent-primary); }
+.chapter-radio-stack { display: grid; gap: 10px; }
+.chapter-dialog-hint { margin: 0; color: var(--nf-text-muted-soft); font-size: var(--nf-font-body); line-height: 1.65; }
+.chapter-dialog-hint.is-error { color: var(--nf-accent-primary-pressed); }
+.chapter-checkbox-grid { display: flex; flex-wrap: wrap; gap: 7px 14px; padding: 10px; border: 1px solid color-mix(in srgb, var(--nf-border-default) 15%, transparent); border-radius: 9px; background: color-mix(in srgb, var(--nf-bg-control) 28%, var(--nf-bg-surface)); }
+.chapter-checkbox-grid label { color: var(--nf-text-secondary); font-size: var(--nf-font-body); }
+.chapter-path-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; }
+.chapter-path-row input, .chapter-path-display, .chapter-text-input, .chapter-field-row select, .chapter-advanced-grid input { min-width: 0; height: 39px; padding: 0 12px; border: 1px solid color-mix(in srgb, var(--nf-border-default) 21%, transparent); border-radius: 10px; outline: none; color: var(--nf-text-body); background: var(--nf-bg-input); font-size: var(--nf-font-subsection); }
+.chapter-path-display { display: flex; align-items: center; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.chapter-path-row input:focus, .chapter-text-input:focus, .chapter-field-row select:focus, .chapter-advanced-grid input:focus { border-color: var(--nf-accent-primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--nf-accent-primary) 11%, transparent); }
+.chapter-version-choice { display: block; padding: 5px 0; }
+.chapter-dialog.is-compact .chapter-dialog-scroll { padding-bottom: 0; }
+.chapter-dialog.is-compact .chapter-dialog-scroll > header p { margin-top: 15px; font-size: var(--nf-font-subsection); line-height: 1.75; }
+.chapter-dialog.is-compact .chapter-dialog-section { gap: 11px; margin-top: 18px; padding-top: 17px; }
+.chapter-dialog.is-compact .chapter-version-choice { padding: 6px 0; font-size: var(--nf-font-section-sm); }
+.chapter-dialog.is-compact .chapter-version-choice input { width: 16px; height: 16px; margin-right: 7px; accent-color: color-mix(in srgb, var(--nf-text-secondary) 78%, transparent); vertical-align: -2px; }
+.chapter-dialog.is-compact footer { gap: 14px; padding: 12px 28px 20px; border-top-color: transparent; }
+.chapter-dialog.is-compact .chapter-dialog-quiet { min-width: 74px; font-size: var(--nf-font-section-sm); }
+.chapter-dialog.is-compact .chapter-dialog-primary { min-width: 108px; font-size: var(--nf-font-section-sm); }
+.chapter-dialog.is-export .chapter-dialog-scroll > header p { font-size: var(--nf-font-subsection); line-height: 1.7; }
+.chapter-dialog.is-export .chapter-dialog-section { gap: 11px; margin-top: 18px; padding-top: 17px; }
+.chapter-dialog.is-export .chapter-dialog-section h3 { font-size: var(--nf-font-section-lg); }
+.chapter-dialog.is-export .chapter-radio-row label, .chapter-dialog.is-export .chapter-radio-stack label, .chapter-dialog.is-export .chapter-checkbox-grid label { font-size: var(--nf-font-section); }
+.chapter-dialog.is-export .chapter-radio-row input, .chapter-dialog.is-export .chapter-radio-stack input, .chapter-dialog.is-export .chapter-checkbox-grid input { width: 16px; height: 16px; margin-right: 7px; accent-color: color-mix(in srgb, var(--nf-text-secondary) 78%, transparent); vertical-align: -2px; }
+.chapter-dialog.is-export .chapter-dialog-hint { font-size: var(--nf-font-subsection); line-height: 1.6; }
+.chapter-dialog.is-export .chapter-path-display, .chapter-dialog.is-export .chapter-text-input { font-size: var(--nf-font-section); }
+.chapter-dialog.is-export .chapter-path-row button { min-width: 124px; font-size: var(--nf-font-section-sm); }
+.chapter-dialog.is-export footer { border-top-color: transparent; }
+.chapter-dialog.is-export .chapter-dialog-quiet { min-width: 74px; font-size: var(--nf-font-section-sm); }
+.chapter-dialog.is-export .chapter-dialog-primary { min-width: 108px; font-size: var(--nf-font-section-sm); }
+.chapter-dialog.is-audit { height: min(532.1px, calc(100vh - 42px)); max-height: min(532.1px, calc(100vh - 42px)); }
+.chapter-dialog.is-audit .chapter-dialog-scroll { padding: 14px 18px 4px; }
+.chapter-dialog.is-audit .chapter-dialog-scroll > header p { margin-top: 6px; font-size: var(--nf-font-body); line-height: 1.45; }
+.chapter-dialog.is-audit .chapter-dialog-section { gap: 7px; margin-top: 9px; padding-top: 8px; }
+.chapter-dialog.is-audit .chapter-dialog-section h3 { font-size: var(--nf-font-section); }
+.chapter-dialog.is-audit .chapter-radio-stack { gap: 6px; }
+.chapter-dialog.is-audit .chapter-radio-stack label, .chapter-dialog.is-audit .chapter-checkbox-grid label, .chapter-dialog.is-audit .chapter-check-label { font-size: var(--nf-font-body); }
+.chapter-dialog.is-audit .chapter-dialog-hint { font-size: var(--nf-font-body); line-height: 1.5; }
+.chapter-dialog.is-audit .chapter-compact-actions { justify-content: flex-start; margin-top: 0; }
+.chapter-dialog.is-audit .chapter-compact-actions .chapter-dialog-quiet { min-height: 24px; height: 24px; padding-inline: 8px; border-radius: 6px; font-size: var(--nf-font-ui); }
+.chapter-dialog.is-audit .chapter-field-row { grid-template-columns: 88px minmax(0, 1fr); font-size: var(--nf-font-body); }
+.chapter-dialog.is-audit .chapter-field-row select, .chapter-dialog.is-audit .chapter-field-row input { height: 32px; font-size: var(--nf-font-body); }
+.chapter-audit-advanced-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.chapter-audit-advanced-grid label { display: grid; grid-template-columns: minmax(0, 1fr) 80px; align-items: center; gap: 7px; color: var(--nf-text-muted); font-size: var(--nf-font-ui); }
+.chapter-audit-advanced-grid input { min-width: 0; height: 31px; padding: 0 8px; border: 1px solid color-mix(in srgb, var(--nf-border-default) 21%, transparent); border-radius: 7px; color: var(--nf-text-body); background: var(--nf-bg-input); font-size: var(--nf-font-body); }
+.chapter-audit-parallel { display: grid; gap: 5px; }
+.chapter-audit-parallel strong { color: var(--nf-text-muted); font-size: var(--nf-font-body); }
+.chapter-audit-prompt { display: grid; gap: 5px; color: var(--nf-text-muted); font-size: var(--nf-font-body); }
+.chapter-audit-prompt textarea { min-height: 68px; padding: 9px; resize: vertical; border: 1px solid color-mix(in srgb, var(--nf-border-default) 21%, transparent); border-radius: 8px; outline: none; color: var(--nf-text-body); background: var(--nf-bg-input); font: inherit; }
+.chapter-audit-prompt textarea:focus { border-color: var(--nf-accent-primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--nf-accent-primary) 11%, transparent); }
+.chapter-dialog.is-audit footer { padding: 10px 18px 6px; border-top-color: transparent; }
+.chapter-dialog.is-audit .chapter-dialog-quiet, .chapter-dialog.is-audit .chapter-dialog-primary { min-height: 32px; height: 32px; padding-inline: 15px; font-size: var(--nf-font-subsection); }
+.chapter-audit-warning-dialog { display: grid; gap: 15px; width: min(360px, calc(100vw - 42px)); padding: 22px; border: 1px solid color-mix(in srgb, var(--nf-border-default) 20%, transparent); border-radius: 12px; color: var(--nf-text-body); background: var(--nf-bg-dialog); box-shadow: 0 22px 60px color-mix(in srgb, var(--nf-shadow) 29%, transparent); }.chapter-audit-warning-dialog h2 { margin: 0; color: var(--nf-text-heading); font-family: Georgia, "Songti SC", serif; font-size: var(--nf-font-nav); }.chapter-audit-warning-dialog p { margin: 0; color: var(--nf-text-secondary); font-size: var(--nf-font-label); line-height: 1.65; }.chapter-audit-warning-dialog footer { display: flex; justify-content: flex-end; }.chapter-audit-warning-dialog .chapter-dialog-primary { min-width: 72px; }
+.chapter-version-diff-artifact {
+  min-height: 236px;
+  padding: 10px 8px;
+  color: var(--nf-text-body);
+  background: color-mix(in srgb, var(--nf-bg-surface) 92%, transparent);
+}
+
+.chapter-version-diff-artifact > h3,
+.chapter-version-diff-details h4 {
+  color: var(--nf-text-heading);
+  font-family: Georgia, "Songti SC", serif;
+  font-weight: 600;
+}
+
+.chapter-version-diff-artifact > h3 {
+  margin: 0 0 22px;
+  font-size: var(--nf-font-display);
+  font-weight: 700;
+}
+
+.chapter-version-diff-summary {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  margin: 10px 0;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 12%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--nf-bg-surface) 70%, transparent);
+  text-align: center;
+}
+
+.chapter-version-diff-summary > strong {
+  color: var(--nf-accent-primary);
+  font-family: Georgia, "Songti SC", serif;
+  font-size: var(--nf-font-brand-hero);
+  line-height: 1;
+}
+
+.chapter-version-diff-summary > span {
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-section);
+}
+
+.chapter-version-diff-summary small {
+  margin-top: 1px;
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-subsection);
+}
+
+.chapter-version-diff-summary > div {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+  font-size: var(--nf-font-section-sm);
+}
+
+.chapter-version-diff-summary b { color: var(--nf-status-success); }
+.chapter-version-diff-summary i { color: var(--nf-status-error); font-style: normal; }
+.chapter-version-diff-details { display: grid; gap: 8px; }
+
+.chapter-version-diff-details h4 {
+  margin: 20px 0 0;
+  padding-bottom: 5px;
+  border-bottom: 1px solid color-mix(in srgb, var(--nf-border-default) 18%, transparent);
+  font-size: var(--nf-font-section);
+}
+
+.chapter-version-diff-details p {
+  margin: 0;
+  padding: 12px 13px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 18%, transparent);
+  border-radius: 6px;
+  background: var(--nf-bg-input);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--nf-font-subsection);
+  line-height: 1.75;
+}
+
+.chapter-version-diff-segment { white-space: pre-wrap; }
+
+.chapter-version-diff-segment.is-deletion {
+  padding: 1px 2px;
+  color: var(--nf-status-error);
+  background: color-mix(in srgb, var(--nf-status-error) 11%, var(--nf-bg-input));
+  text-decoration: line-through;
+}
+
+.chapter-version-diff-segment.is-addition {
+  padding: 1px 2px;
+  color: var(--nf-status-success);
+  background: color-mix(in srgb, var(--nf-status-success) 10%, var(--nf-bg-input));
+  font-weight: 600;
+}
+
+.chapter-version-diff-segment.is-context { color: var(--nf-text-body); }
+.chapter-compact-actions { display: flex; justify-content: flex-end; margin-top: -3px; }
+.chapter-compact-actions .chapter-dialog-quiet { min-height: 29px; padding-inline: 10px; font-size: var(--nf-font-ui); }
+.chapter-field-row { display: grid; grid-template-columns: 80px minmax(0, 1fr); align-items: center; gap: 10px; color: var(--nf-text-muted); font-size: var(--nf-font-body); }
+.chapter-field-row select { height: 39px; }
+.chapter-advanced-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+.chapter-advanced-grid label { display: grid; gap: 5px; color: var(--nf-text-muted); font-size: var(--nf-font-ui); }
+.chapter-advanced-grid input { height: 33px; font-size: var(--nf-font-body); }
+@media (max-width: 700px) { .chapter-dialog-scroll { padding-inline: 20px; }.chapter-dialog footer { padding-inline: 20px; }.chapter-radio-row { display: grid; gap: 9px; }.chapter-path-row { grid-template-columns: 1fr; } }
+
+/* Mirrors PySide6 CheckpointDialog: a compact, non-modal tool at the
+   chapter workspace's right edge.  OverlaySurface still traps keyboard focus
+   and restores it to the originating task action. */
+.overlay-backdrop.checkpoint-overlay { display: block; padding: 0; pointer-events: none; background: transparent; }
+/* CheckpointDialog is a narrow Qt.Tool anchored to Chapter Studio's right
+   edge, not a wide centered browser modal. Keep its measured source width so
+   the working canvas remains legible while the decision can be inspected. */
+.checkpoint-overlay .overlay-surface { position: absolute; top: 184px; right: 18px; width: min(560px, calc(100vw - 36px)); height: min(460px, calc(100vh - 36px)); min-height: min(460px, calc(100vh - 36px)); pointer-events: auto; }
+.checkpoint-dialog { display: grid; grid-template-rows: auto minmax(0, 1fr); width: 100%; height: 100%; overflow: hidden; border: 1px solid color-mix(in srgb, var(--nf-border-default) 18%, transparent); border-radius: 12px; background: var(--nf-bg-surface); box-shadow: 0 12px 30px color-mix(in srgb, var(--nf-shadow) 14%, transparent); animation: dialog-rise-in 180ms cubic-bezier(.22, .61, .36, 1); }
+.checkpoint-dialog-header { display: flex; align-items: center; justify-content: space-between; min-height: 34px; padding: 6px 10px; border-bottom: 1px solid color-mix(in srgb, var(--nf-border-default) 10%, transparent); }
+.checkpoint-dialog-header > span { color: var(--nf-text-heading); font-size: var(--nf-font-ui); font-weight: 700; }
+.checkpoint-dialog-header button { display: grid; width: 24px; height: 24px; place-items: center; padding: 0; border: 1px solid color-mix(in srgb, var(--nf-border-default) 18%, transparent); border-radius: 50%; color: var(--nf-text-secondary); background: transparent; font-size: var(--nf-font-section); line-height: 1; }
+.checkpoint-dialog-header button:hover { border-color: color-mix(in srgb, var(--nf-accent-primary) 28%, transparent); color: var(--nf-text-heading); background: color-mix(in srgb, var(--nf-accent-primary) 10%, transparent); }
+.checkpoint-dialog-scroll { display: grid; align-content: start; gap: 6px; min-height: 0; padding: 0 10px 8px; overflow: auto; }
+.checkpoint-summary { display: grid; align-content: end; gap: 5px; min-height: 88px; padding: 14px 10px 10px; border-left: 3px solid var(--nf-accent-primary); border-radius: 10px; color: var(--nf-text-primary); background: color-mix(in srgb, var(--nf-bg-panel) 70%, var(--nf-bg-surface)); font-size: var(--nf-font-ui); line-height: 1.45; }
+.checkpoint-summary p, .checkpoint-summary small { margin: 0; }
+.checkpoint-summary small { color: var(--nf-text-muted-soft); font-size: var(--nf-font-ui); line-height: 1.4; }
+.checkpoint-choice { display: grid; gap: 10px; min-height: 92px; padding: 9px; border: 1px solid color-mix(in srgb, var(--nf-border-default) 14%, transparent); border-radius: 10px; background: color-mix(in srgb, var(--nf-bg-surface) 98%, var(--nf-bg-input)); }
+.checkpoint-choice.is-recommended { border-color: color-mix(in srgb, var(--nf-accent-primary) 35%, transparent); background: color-mix(in srgb, var(--nf-accent-primary) 8%, var(--nf-bg-surface)); }
+.checkpoint-choice header { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.checkpoint-choice header > span { flex: 0 0 auto; padding: 8px 7px; border-radius: 9px; color: var(--nf-accent-primary-pressed); background: color-mix(in srgb, var(--nf-accent-primary) 14%, var(--nf-bg-surface)); font-size: var(--nf-font-micro); font-weight: 700; }
+.checkpoint-choice strong { min-width: 0; color: var(--nf-text-primary); font-size: var(--nf-font-ui); font-weight: 700; }
+.checkpoint-choice button { flex: 0 0 auto; min-width: 46px; height: 22px; margin-left: auto; padding: 0 8px; border: 1px solid color-mix(in srgb, var(--nf-border-default) 22%, transparent); border-radius: 11px; color: var(--nf-text-primary); background: color-mix(in srgb, var(--nf-bg-surface) 78%, transparent); font-size: var(--nf-font-ui); font-weight: 700; }
+.checkpoint-choice.is-recommended button { border-color: var(--nf-accent-primary); color: var(--nf-brand-logo-frame); background: color-mix(in srgb, var(--nf-accent-primary) 95%, transparent); }
+.checkpoint-choice p { margin: 0; color: var(--nf-text-secondary); font-size: var(--nf-font-ui); line-height: 1.35; }
+.checkpoint-dialog textarea { width: 100%; min-height: 52px; max-height: 52px; padding: 8px; resize: vertical; border: 1px solid color-mix(in srgb, var(--nf-border-default) 14%, transparent); border-radius: 10px; outline: none; color: var(--nf-text-primary); background: color-mix(in srgb, var(--nf-bg-surface) 95%, transparent); font: inherit; }
+.checkpoint-dialog textarea:focus { border-color: var(--nf-accent-primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--nf-accent-primary) 12%, transparent); }
+@media (max-width: 760px) { .checkpoint-overlay .overlay-surface { top: 12px; right: 12px; width: calc(100vw - 24px); }.checkpoint-dialog-scroll { padding-inline: 8px; } }
+
+/* Honor reduced motion (design-tokens has global guard, this is explicit for
+ * dialog rise-in animation). */
+@media (prefers-reduced-motion: reduce) {
+  .chapter-dialog,
+  .checkpoint-dialog,
+  .chapter-path-row button {
+    animation: none !important;
+  }
+}

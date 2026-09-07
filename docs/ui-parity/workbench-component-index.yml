@@ -1,0 +1,189 @@
+version: 1
+scope: phase-1-react-tauri-ui
+rules:
+  - Pages consume EngineClient view models only.
+  - Components never read Python source, environment variables, API keys, or model profiles directly.
+  - Every dialog uses OverlaySurface; no page-owned keyboard or focus implementation.
+  - Every incremental task view consumes TaskStreamEvent with monotonic sequence numbers.
+  - Every artifact reader consumes RenderDocumentView and remains read-only until a future engine command is introduced.
+  - Dense settings workbenches load only after an explicit user action; page navigation never starts connectivity work or constructs a routing matrix.
+
+components:
+  - id: overlay-surface
+    source: novel_forge/desktop/components/dialogs.py
+    react: clients/nimo-desktop/src/components/OverlaySurface.tsx
+    states: [open, escape-close, focus-loop, restore-focus]
+    status: implemented
+  - id: task-observation
+    source: novel_forge/desktop/components/task_focus/dialog.py
+    react: clients/nimo-desktop/src/components/TaskObservationDialog.tsx
+    states: [connecting, streaming, completed, failed, reasoning-collapsed]
+    status: implemented-foundation
+  - id: task-stream-state
+    source: novel_forge/desktop/task_observation.py
+    react: clients/nimo-desktop/src/lib/task-stream.ts
+    states: [start, delta, restart, end, error, replay]
+    status: implemented-foundation
+  - id: floating-stream-window
+    source: novel_forge/desktop/components/task_focus/stream_window.py
+    react: clients/nimo-desktop/src/components/FloatingStreamDialog.tsx
+    states: [streaming, reasoning-collapsed, reasoning-expanded, calls, raw-events, completed]
+    status: implemented-foundation
+  - id: document-renderer
+    source: novel_forge/desktop/pages/document_renderer
+    react: clients/nimo-desktop/src/components/ContentRenderer.tsx
+    states: [markdown-heading, list, quote, table, code, safe-link, json-tree, malformed-json, plain-text]
+    status: implemented-foundation
+  - id: workflow-artifact
+    source: novel_forge/desktop/pages/workflow/artifacts.py
+    react: clients/nimo-desktop/src/App.tsx + clients/nimo-desktop/src/components/ContentRenderer.tsx
+    states: [artifact, empty]
+    status: implemented-foundation
+  - id: workflow-error-log
+    source: novel_forge/desktop/pages/workflow/widgets.py#TaskFlowErrorLogDialog
+    react: clients/nimo-desktop/src/components/WorkflowErrorLogDialog.tsx
+    states: [empty, unresolved, marked-resolved, auto-resolved]
+    status: implemented-foundation
+  - id: chapter-error-log
+    source: novel_forge/desktop/pages/chapter_studio/jobs.py#TaskFlowErrorLogDialog
+    react: clients/nimo-desktop/src/components/WorkflowErrorLogDialog.tsx
+    states: [empty, unresolved, marked-resolved]
+    status: implemented-foundation
+  - id: workflow-form-session
+    source: novel_forge/desktop/pages/workflow/forms.py + novel_forge/desktop/pages/workflow/presets.py
+    react: clients/nimo-desktop/src/components/LongInitFormPanel.tsx + clients/nimo-desktop/src/components/WorkflowAiAssistant.tsx
+    states: [field-edit, validation-error, ai-hint, generating, failed, retry, diff-select, applied, history, restore, clear]
+    status: engine-backed
+  - id: workflow-cancel
+    source: novel_forge/desktop/pages/workflow/jobs.py#CancelJobDialog
+    react: clients/nimo-desktop/src/components/WorkflowCancelDialog.tsx
+    states: [confirmation, preserve-checkpoint, cancelled, resume]
+    status: implemented-foundation
+  - id: model-registry
+    source: novel_forge/desktop/pages/settings/components.py
+    react: clients/nimo-desktop/src/components/ModelRoutingWorkbench.tsx
+    states: [profile-list, selected-profile, unavailable-profile, add, edit, delete, offline-check]
+    status: implemented-foundation
+  - id: routing-matrix
+    source: novel_forge/desktop/pages/settings/page.py + novel_forge/desktop/pages/settings/components.py
+    react: clients/nimo-desktop/src/components/ModelRoutingWorkbench.tsx
+    states: [route-group, route-subgroup, primary-route, fallback-route, fallback-order, fallback-capability, thinking, multi-turn, task-temperature, bulk-assign, session-draft]
+    status: implemented-foundation
+  - id: settings-route-boundary
+    source: novel_forge/desktop/pages/settings/page.py + novel_forge/desktop/pages/settings/model_mgmt.py
+    react: clients/nimo-desktop/src/components/settings-page-loader.ts + clients/nimo-desktop/src/components/SettingsPage.tsx
+    states: [cold-shell, idle-prefetch, ready, workbench-loading, workbench-open]
+    status: implemented-foundation
+  - id: model-connection-status
+    source: novel_forge/desktop/pages/settings/components.py#_ModelStatusCard + novel_forge/desktop/pages/settings/model_mgmt.py#_test_all_connections
+    react: clients/nimo-desktop/src/components/ModelConnectionStatus.tsx + clients/nimo-desktop/src/lib/connectivity-session.ts
+    states: [idle, queued, checking, succeeded, failed, unavailable]
+    status: implemented-foundation
+  - id: chapter-checkpoint
+    source: novel_forge/desktop/components/checkpoint_dialog.py
+    react: clients/nimo-desktop/src/components/ChapterStudioDialogs.tsx#ChapterCheckpointDialog
+    states: [open, notes, primary-option, secondary-option, dismissed]
+    status: implemented-foundation
+  - id: chapter-operations
+    source: novel_forge/desktop/pages/chapter_studio/dialogs.py#CleanChaptersDialog + SkipStrategyDialog + ProjectSwitchConfirmDialog
+    react: clients/nimo-desktop/src/components/ChapterOperationsDialogs.tsx
+    states: [clean-range, clean-progress, skip, regenerate, preserve-chapters, project-switch, background-task-preserved]
+    status: implemented-foundation
+  - id: voice-rebuild
+    source: novel_forge/desktop/pages/voice_studio/page.py#RebuildConfirmDialog
+    react: clients/nimo-desktop/src/components/VoiceRebuildDialog.tsx
+    states: [selection-empty, selected, system-matched, preserve-unselected, cancelled]
+    status: implemented-foundation
+  - id: voice-script-editor
+    source: novel_forge/desktop/pages/voice_studio/page.py#ScriptSegmentEditorDialog
+    react: clients/nimo-desktop/src/components/VoiceScriptEditorDialog.tsx
+    states: [selected-segment, local-draft, safe-suggestion, validation-error, local-saved]
+    status: implemented-foundation
+  - id: voice-performance-guidance
+    source: novel_forge/desktop/pages/voice_studio/page.py#ScriptSegmentEditorDialog(performance_only=True)
+    react: clients/nimo-desktop/src/components/VoiceScriptEditorDialog.tsx
+    states: [selected-segment, local-draft, local-saved, source-script-preserved]
+    status: implemented-foundation
+  - id: voice-design
+    source: novel_forge/desktop/pages/voice_studio/page.py#_on_design_voice
+    react: clients/nimo-desktop/src/components/VoiceDesignDialog.tsx
+    states: [configuration, running, completed, failed, local-applied]
+    status: implemented-foundation
+  - id: voice-clone
+    source: novel_forge/desktop/pages/voice_studio/page.py#_on_clone_voice
+    react: clients/nimo-desktop/src/components/VoiceCloneDialog.tsx
+    states: [local-file, provider-file-id, authorization, running, completed, failed, local-applied]
+    status: implemented-foundation
+  - id: voice-delivery
+    source: novel_forge/desktop/pages/voice_studio/page.py#_on_reassemble_chapter + _on_export_mp3
+    react: clients/nimo-desktop/src/components/VoiceDeliveryDialog.tsx
+    states: [assemble-configuration, export-configuration, running, completed, failed, cancelled]
+    status: implemented-foundation
+  - id: export-and-audit
+    source: novel_forge/desktop/pages/chapter_studio/dialogs.py
+    react: clients/nimo-desktop/src/App.tsx + clients/nimo-desktop/src/components/OperationProgress.tsx
+    states: [configuration, running, completed, failed]
+    status: implemented-foundation
+  - id: operation-progress
+    source: novel_forge/desktop/pages/chapter_studio/dialogs.py
+    react: clients/nimo-desktop/src/components/OperationProgress.tsx
+    states: [configuration, running, completed, failed]
+    status: implemented-foundation
+  - id: project-reader
+    source: novel_forge/desktop/pages/document_renderer
+    react: clients/nimo-desktop/src/App.tsx + clients/nimo-desktop/src/components/ContentRenderer.tsx
+    states: [chapter, report, empty, deep-link]
+    status: partial
+  - id: character-profile
+    source: novel_forge/desktop/pages/standalone/character_profile_page.py
+    react: clients/nimo-desktop/src/components/NarrativeToolsWorkbench.tsx#CharacterWorkbench
+    states: [list, selected-profile, inspector-visible, inspector-hidden, search, status-filter, edit-draft, local-saved, discarded, empty]
+    status: implemented-foundation
+  - id: narrative-visualization
+    source: novel_forge/desktop/pages/document_renderer/narrative_blueprint.py
+    react: clients/nimo-desktop/src/components/NarrativeVisualization.tsx
+    states: [phase, milestone, subplot-lane, weave-link, selected-element, empty]
+    status: implemented-foundation
+  - id: relationship-network
+    source: novel_forge/desktop/pages/standalone/relationship_network_page.py
+    react: clients/nimo-desktop/src/components/NarrativeVisualization.tsx#RelationshipGraphRenderer
+    states: [graph, table, zoom, type-filter, focused-character, selected-edge, inspector, empty]
+    status: implemented-foundation
+  - id: outline-editor
+    source: novel_forge/desktop/pages/standalone/outline_editor.py
+    react: clients/nimo-desktop/src/components/NarrativeToolsWorkbench.tsx
+    states: [chapter-list, extend-request]
+    status: implemented-foundation
+  - id: subplot-manager
+    source: novel_forge/desktop/pages/standalone/subplot_manager.py
+    react: clients/nimo-desktop/src/components/NarrativeToolsWorkbench.tsx
+    states: [collapsed, expanded, create-request, edit-request, save-confirm, delete-confirm, refreshed]
+    status: implemented-foundation
+  - id: humanize-library
+    source: novel_forge/desktop/pages/standalone/humanize_library_dashboard.py
+    react: clients/nimo-desktop/src/components/NarrativeToolsWorkbench.tsx
+    states: [populated, filters, search, enabled, disabled, empty, create-dialog, edit-dialog, hit-examples, duplicate-pairs, merge-target, merge-confirm, delete-confirm, import-session, export-preview, refreshed]
+    status: implemented-foundation
+  - id: final-revision
+    source: novel_forge/desktop/pages/standalone/final_revision.py
+    react: clients/nimo-desktop/src/components/ProjectReaderWorkbenches.tsx#ChapterProseRevision
+    states: [read, revision, selection-direction, fixed-candidate, save-preview, impact-scope, local-saved, unsaved-exit]
+    status: implemented-foundation
+
+verification:
+  source-capture: tools/ui-parity/capture_pyside_goldens.py
+  native-capture: tools/ui-parity/capture_tauri_macos.py
+  screenshot-compare: tools/ui-parity/compare_screenshots.py
+  unit-tests:
+    - clients/nimo-desktop/src/lib/task-stream.test.ts
+    - clients/nimo-desktop/src/lib/task-stream-presentation.test.ts
+    - clients/nimo-desktop/src/lib/ui-session.test.ts
+    - clients/nimo-desktop/src/lib/parity-fixture.test.ts
+    - clients/nimo-desktop/src/lib/humanize-library-session.test.ts
+    - clients/nimo-desktop/src/lib/narrative-visualization-layout.test.ts
+    - clients/nimo-desktop/src/lib/voice-script-session.test.ts
+    - clients/nimo-desktop/src/lib/voice-design-session.test.ts
+    - clients/nimo-desktop/src/lib/voice-clone-session.test.ts
+  integration-checks:
+    - Every reachable dialog is owned by OverlaySurface.
+    - Every raw JSON preview is owned by ContentRenderer.

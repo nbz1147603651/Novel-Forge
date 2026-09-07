@@ -1,0 +1,133 @@
+{# ================================================================================
+【备注】
+================================================================================
+提示词：blueprint_element_select.j2
+服务步骤：BLUEPRINT_ELEMENT_SELECT（叙事要素选择）
+作用简述：根据题材（Genre）、冲突类型（ConflictHint）和用户偏好，从叙事要素库
+         中筛选必要项和扩展项，生成 ElementSelection 输出供后续规划使用。
+上游输入：
+  - spec: 用户输入的故事规格（genre, theme, tone, language, characters_hint,
+          world_hint, conflict_hint, pov_hint, extra_instructions）
+  - mode: 模式（长篇/短篇）
+  - library_version: 要素库版本
+  - genre_presets: 题材预置配置列表
+  - selector_preferences: 用户偏好（preset_id, manual_override, items）
+  - required_elements: 必要项列表（不可删除）
+  - extension_elements: 可选扩展项列表
+下游输出：
+  - JSON：{genre_inference, required_ids, extension_ids, extension_selection,
+           focus_constraints, selector_summary}
+  - 下游消费者：PLAN_OUTLINE / PLAN_OUTLINE_BATCH（注入 element_selection）
+消费链优先级：
+  P0 = required_elements 硬约束 / mode 决定扩展项上限
+  P1 = genre_presets 题材匹配 / selector_preferences 用户偏好
+  P2 = extension_selection.reason 可执行性
+简要例子：
+  输入：spec={genre:"言情", conflict_hint:"误解与和解"}, mode="长篇"
+  输出：{required_ids:["core_time_anchor"], extension_ids:["romance_emotional_barriers"],
+         extension_selection:[{element_id:"romance_emotional_barriers", reason:"..."}]}
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    指导层：任务定义 + 上下文消费
+    --------------------------------------------------------------------------- -#}
+
+请你担任"叙事蓝图要素选择器"，根据故事梗概、题材、冲突、世界观与角色提示，从要素库中筛选当前项目最需要的扩展要素。
+
+本任务不是简单按题材标签套模板。请先判断本故事真正需要被长期追踪的叙事机制：关系机制、线索机制、权力结构、资源循环、时间机制、特殊视角、风格化母题等；再从库中选择最能服务这些机制的元素。
+
+## 项目信息
+- 模式：{{ mode }}
+- 体裁：{{ spec.genre }}
+- 主题：{{ spec.theme }}
+- 基调：{{ spec.tone }}
+- 语言：{{ describe_language(spec.language) }}
+{% if spec.characters_hint %}- 角色提示：{{ spec.characters_hint }}{% endif %}
+{% if spec.world_hint %}- 世界观提示：{{ spec.world_hint }}{% endif %}
+{% if spec.conflict_hint %}- 核心冲突：{{ spec.conflict_hint }}{% endif %}
+{% if spec.pov_hint %}- 视角提示：{{ spec.pov_hint }}{% endif %}
+{% if spec.extra_instructions %}- 补充要求：{{ spec.extra_instructions }}{% endif %}
+
+## 要素库版本
+- {{ library_version }}
+
+{% set matched_preset = namespace(found=none) %}
+{% for preset in genre_presets %}
+  {% if not matched_preset.found and spec.genre in preset.recommended_genres %}
+    {% set matched_preset.found = preset %}
+  {% endif %}
+{% endfor %}
+{% if matched_preset.found %}
+## 题材预置（{{ matched_preset.found.label }}）
+{{ matched_preset.found.description }}
+默认要素：{{ matched_preset.found.default_enabled | join("、") }}
+{% endif %}
+
+## 用户偏好（如有）
+- preset_id: {{ selector_preferences.preset_id or "未指定" }}
+- manual_override: {{ "true" if selector_preferences.manual_override else "false" }}
+{% if selector_preferences["items"] %}
+- items:
+{% for item in selector_preferences["items"] -%}
+  - {{ item.element_id }} | enabled={{ item.enabled }} | locked={{ item.locked }} | weight={{ item.weight }}
+{% endfor %}
+{% else %}
+- items: []
+{% endif %}
+
+## 必要项（必须全部保留）
+{% for item in required_elements -%}
+- {{ item.element_id }}｜{{ item.name }}｜{{ item.description }}
+  提示词：{{ item.prompt_hint }}
+{% endfor %}
+
+## 可选扩展项（按项目机制匹配）
+{% for item in extension_elements -%}
+- {{ item.element_id }}｜{{ item.name }}（{{ item.category }}）
+  说明：{{ item.description }}
+  价值：{{ item.rationale }}
+  推荐题材：{{ item.recommended_genres | join("、") }}
+  提示词：{{ item.prompt_hint }}
+{% endfor %}
+
+## 选择规则
+1. 必要项 `required_ids` 必须包含全部必要项 ID，不可删除。
+2. 扩展项最多选择 {{ 8 if mode == "长篇" else 6 }} 个，优先选择与本作冲突机制、信息差、关系压力、世界规则或风格母题强相关、可形成"专用约束层"的要素。
+3. ID 必须存在于库中，不要自造 ID。
+4. `extension_selection.reason` 必须是"当前项目为什么需要该要素"，要可执行，不要空话。
+5. 若项目机制横跨多个类别，允许跨类目组合；请按故事梗概中的真实叙事任务分配名额，避免只因标签命中而堆满同类元素。
+6. 结果要能直接用于后续叙事蓝图、项目风格规范和章节 `element_focus` 提示词注入。
+7. 若 `selector_preferences.manual_override=true`，优先遵循用户 `enabled=true` 的条目；`locked=true` 视为硬约束。
+8. `weight` 越高表示用户越希望保留该元素；在同等条件下优先高权重元素。
+9. 配置型元素（quality_hook_score_config、quality_strand_keywords、quality_time_keywords）用于参数化质量评估模块，prompt_hint 字段需填写 JSON 配置内容：
+   - quality_hook_score_config: {hook_score_strong:数值, hook_score_medium:数值, hook_score_weak:数值, payoff_cap:数值, transition_penalty:数值}
+   - quality_strand_keywords: {quest_keywords:["关键词1","关键词2"], fire_keywords:["关键词"], constellation_keywords:["关键词"]}
+   - quality_time_keywords: {large_gap_keywords:["三天后","数日后"], skip_keywords:["次日","翌日"]}
+	   注意：配置型元素的可选性取决于题材需求（文学类可降低钩子权重，推理类需定制关键词）。
+10. 每个选中扩展项的 reason 必须点名本故事中的具体机制或风险，例如"父兄流放真相需要证据链回收"、"双面身份需要伪装完整度追踪"；不要写成"增强代入感"这类泛化理由。
+11. 若故事需要一个库中没有的机制，不要自造 ID；请选择最接近的已有元素，并在 `focus_constraints` 写出补充执行约束。
+
+## 质量校准
+- 工作身份：你是一位长篇叙事架构师，擅长把故事资产拆成可承接、可验证、不过度剧透的执行计划。
+- 规划推断路径：先锁定 P0 硬约束，再分配 P1 推进节奏，最后用 P2 风格/主题补足表现层。
+- 字段级质量示例（非输出格式）：平弱=“推进关系”；高质量=“写清谁因何行动、关系如何变化、下一环如何承接”。
+- 可操作路径：计划项要能被后续写作/审计直接检查，避免只给抽象愿望或主题口号。
+
+## 交付前核验
+- P0/P1/P2 优先级是否被保持，且没有让弱参考覆盖硬约束。
+- 是否能把关键判断回指到输入证据、上游契约或已批准计划。
+- 是否避免新增未授权的人物、地点、世界规则、未来 payoff 或格式协议。
+- 是否把抽象目标转化为可观察的行动、冲突、状态变化或章节承接点。
+
+{#- ---------------------------------------------------------------------------
+    系统契约由 PromptBuilder 注入
+    --------------------------------------------------------------------------- -#}
+
+## 字段要求
+- `genre_inference` 写 1-4 个子题材或机制判断。
+- `required_ids` 必须包含全部必要项 ID。
+- `extension_ids` 只包含已选扩展项 ID，不超过当前模式上限。
+- `extension_selection` 的每项写 `element_id` 和具体 reason，reason 必须点名本故事机制或风险。
+- `focus_constraints` 写后续蓝图/章节需要执行的具体约束。
+- `selector_summary` 用一句话总结本次保留策略。

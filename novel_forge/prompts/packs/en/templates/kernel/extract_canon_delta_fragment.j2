@@ -1,0 +1,71 @@
+{# source_template_hash: 75a08c483f73da255a7f00edd8a032c42680b4e2ea24ae990e604e971a94e917 #}
+{#
+================================================================================
+[NOTES]
+================================================================================
+Prompt: extract_canon_delta_fragment.j2
+Service Step: EXTRACT_CANON_DELTA (Canon Fragment: Canon Delta)
+Function Summary: Extract only canon_delta, using summary/exit as the shared factual anchor to prevent fragment fragmentation.
+Upstream Input: chapter_number/chapter_text/summary_exit/known_characters
+Downstream Output: JSON: {"canon_delta": {...}}
+Downstream Consumer: EXTRACT_CANON Local Merger / CanonStore
+Consumption Chain Priority: P0 = Extract only body facts; P1 = Do not duplicate other fragment fields; P2 = Event and world facts reduction
+================================================================================
+#}
+{#- Guidance Layer -#}
+Please extract only this chapter's canon_delta. Do not output creative_report, chapter_exit_state, or delta arrays.
+
+## Factual Source Boundary (P0)
+- Write canon_delta only from the final body text / `chapter_text` corresponding to FinalArtifact.
+- summary_exit, shared evidence anchors, and confirmed fragments are used only for consistency alignment, not as new factual sources.
+- Events, world rules, foreshadowing updates, or character changes without final body text evidence must NOT be written to canon.
+
+{% if shared_evidence_anchor %}
+## Shared Evidence Anchor
+{{ shared_evidence_anchor | tojson(indent=2) }}
+Please use this as the common basis for this fragment; dimension-specific information can only supplement, not overwrite, anchor facts.
+{% endif %}
+
+## Chapter Anchor
+- Chapter {{ chapter_number }}
+{% if summary_exit %}{{ summary_exit | tojson(indent=2) }}{% endif %}
+
+{% if existing_thread_ids %}
+## Existing Plot Thread IDs (This fragment is for reference only)
+{% for tid in existing_thread_ids %}- {{ tid }}{% endfor %}
+{% endif %}
+
+## Currently Known Characters
+{% for name in known_characters %}- {{ name }}{% endfor %}
+
+{% if character_state_deltas %}
+## Confirmed Character State Changes (character_updates must be consistent with this)
+{{ character_state_deltas | tojson(indent=2) }}
+{% endif %}
+
+{% if relationship_deltas %}
+## Confirmed Relationship Changes (new_events can reference, but do not repeat relationship delta output)
+{{ relationship_deltas | tojson(indent=2) }}
+{% endif %}
+
+## Body Text
+{{ chapter_text }}
+
+## Requirements
+- `character_updates` should only write confirmed character states for this chapter.
+- `new_events` should only write factual events that will enter the canon.
+- `foreshadowing_updates` and `new_world_facts` should follow a "better to leave out than include incorrectly" principle.
+
+## Quality Calibration
+- Work Identity: You are an evidence-first narrative fact extractor, skilled at extracting traceable, mergeable state information from body text and upstream anchors.
+- Extraction Path: First identify explicit facts in the body text, then cross-reference with shared anchors and known states, finally keeping only information consumable by downstream mergers.
+- Evidence Calibration: Maintain consistency when the same fact has already been confirmed by upstream fragments; use conservative field values to express unknown or pending confirmation when evidence is insufficient.
+- Actionable Path: Each piece of information should serve canon, memory, state, or audit chains; avoid treating tone, metaphor, or speculation as fact.
+
+## Pre-Delivery Verification
+- Whether P0/P1/P2 priorities are maintained, and weak references are not allowed to override hard constraints.
+- Whether key judgments can be traced back to input evidence, upstream contracts, or approved plans.
+- Whether unauthorized characters, locations, world rules, future payoffs, or format agreements have been avoided.
+- Whether factual boundaries needed for downstream merging/retrieval are preserved, and speculation has not been written as established fact.
+
+{#- Format Layer -#}

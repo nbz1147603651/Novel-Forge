@@ -1,0 +1,157 @@
+{#- Causal Chain Verification — Template for VALIDATE_CAUSAL task -#}
+{# ================================================================================
+source_template_hash: b32ff2404e519aba30990cb2513f726fbaabb5d4d6725e4b51d5f33618f7f96e
+【Notes】
+================================================================================
+Prompt: causal_validate.j2
+Service Step: VALIDATE_CAUSAL (Causal Verification)
+Function Summary: Perform in-depth causal chain audit on chapter body text, output causal verification report (supports full/recheck modes).
+Upstream Input:
+  - causal_link: Causal chain anchor from BRIDGE_CHAPTER
+  - chapter_bridge: Bridge contract from BRIDGE_CHAPTER
+  - chapter_number: Chapter number
+  - character_notes: Character notes
+  - previous_chapter_ending: Ending text from previous chapter Persist
+  - chapter_text / numbered_chapter_text: Text to be verified
+  - recheck_mode: Whether it is recheck mode
+  - prior_issues: Previous round issue list
+  - repaired_issue_types: Issue types involved in this repair
+  - must_resolve_summaries: Blocking archive issues that must be resolved
+  - must_resolve_issue_ids: Issue IDs that must be rechecked
+Downstream Output:
+  - JSON: Causal verification result, output contract injected by Builder
+  - Downstream Consumer: CausalRepairStep (for causal repair)
+Consumption Chain Priority: P0 (event occurring out of nowhere/causal contradiction) > P1 (missing decision motivation/insufficient transition setup)
+              > P2 (suspense management explicitly listed in causal_link)
+Brief Example:
+  Input: recheck_mode=true, prior_issues=[{"issue_type": "opening_causal_gap", "severity": "high"}]
+  Output: {"causal_score": 9.0, "issues": []}
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer: Task Definition + Context Consumption
+    --------------------------------------------------------------------------- -#}
+{%- from "checking/_causal_core.j2" import causal_context, causal_checks, causal_issue_field_rules, causal_must_resolve -%}
+{% if recheck_mode %}
+Please perform **repair effect verification** on the following chapter body (not a comprehensive review).
+
+{{ causal_context(causal_link, chapter_bridge, chapter_number, character_notes, previous_chapter_ending | default('')) }}
+{{ numbered_chapter_text | default(chapter_text) }}
+
+{{ causal_must_resolve(must_resolve_summaries) }}
+{% if must_resolve_issue_ids %}
+## Issue IDs that must be rechecked
+{% for issue_id in must_resolve_issue_ids %}
+- {{ issue_id }}
+{% endfor %}
+If any of these issues remain unresolved, the corresponding issue in the output must retain the same issue_id.
+{% endif %}
+{% if prior_issues %}
+## Target issues for this repair round (for recheck only)
+{% for item in prior_issues %}
+- [{{ item.severity | default('medium') }}] {{ item.issue_type | default('unknown') }}{% if item.issue_id %} id={{ item.issue_id }}{% endif %}：{{ item.summary | default('') }}{% if item.location %}（{{ item.location }}）{% endif %}
+  {% if item.repair_focus %}Repair focus: {{ item.repair_focus }}{% endif %}
+  {% if item.postconditions %}
+  Acceptance criteria:
+  {% for condition in item.postconditions %}
+  - [{{ condition.validator_id }}] {{ condition.description }}{% if condition.evidence_hint %}（Evidence hint: {{ condition.evidence_hint }}）{% endif %}
+  {% endfor %}
+  {% endif %}
+{% endfor %}
+{% endif %}
+
+{% if repaired_issue_types %}
+## Issue types involved in this repair
+{% for t in repaired_issue_types %}
+- {{ t }}
+{% endfor %}
+Please prioritize verifying the above types; do not proactively expand scope for other types.
+{% endif %}
+
+## Verification Task Description
+{% if patch_only_repair %}
+This repair round only used **narrow window patch (patch)**, without full chapter rewriting.
+Please only check the areas touched by the patch and their adjacent paragraphs; no need to re-audit the full text.
+{% endif %}
+
+This round is not a full re-audit, but a **targeted recheck of the above repaired issues**. Please complete:
+
+{% if recheck_policy %}
+## Recheck Boundary Strategy
+- Core objective: First confirm whether prior_issues have been fixed.
+- Scan scope: {{ recheck_policy.scan_scope }}
+- Resolved rule: {{ recheck_policy.solved_issue_rule }}
+- Unresolved rule: {{ recheck_policy.unresolved_issue_rule }}
+- Regression rule: {{ recheck_policy.regression_rule }}
+{% if recheck_policy.allow_new_issue_scan %}
+- New issues only allowed to report: {{ recheck_policy.new_issue_severities | join("/") }} level issues directly introduced by this repair round.
+{% endif %}
+{% endif %}
+
+1. **Verify each item**: For each item in "blocking archive issues", find the corresponding paragraph in the body text and determine whether the issue has been eliminated.
+
+   Standards for judging "eliminated" by issue type:
+
+   | Issue Type | Must be satisfied to be judged as eliminated |
+   |-----------|------------------------|
+   | `event_without_cause` | Body text must clearly state **initiator → transmission channel → receiving scenario**, all three are required or it is considered unresolved; cannot assume resolved just because "there were changes" |
+   | `unmotivated_decision` | Body text has inner monologue or situational pressure supporting the decision; the decision no longer seems abrupt |
+   | `opening_causal_gap` | Opening paragraph has perceptible narrative connection with previous chapter ending; readers don't need to fill in gaps themselves |
+   | `missing_causal_transition` | Transition has prior setup (details/dialogue/psychology); transition is no longer abrupt |
+   | `causal_contradiction` | Contradiction point has been corrected; no longer conflicts with historical causal chain |
+   | Other types | Core disconnect in issue description has been addressed in body text |
+
+   **Important: Only report unresolved issues**
+   - If an issue has been fixed (disconnect eliminated in body text), do NOT include it in the `issues` array
+   - Resolved issues should only be briefly mentioned in the `summary` field
+   - The `issues` array should only contain: ① Unresolved issues ② Regression issues introduced by repair ③ New critical/high issues found by global guard scan
+   - If all issues are resolved, the `issues` array should be empty `[]`
+
+2. **Regression check**: Check whether the repair operation introduced **directly related new issues** (e.g., modified paragraph causing new contradiction with context), only report critical or high level issues directly related to this repair area.
+3. **Do not expand scope**: Do not comprehensively check paragraphs not involved in the repair; do not proactively look for other pre-existing issues.
+4. **Do not create new issues**: Only output the above verification results and regression issues. Do not report unrelated new discoveries. Non-target issues are handled by subsequent full evaluation.
+5. **Maintain severity**: If target issue still exists, report with original severity; do not upgrade or downgrade.
+6. **Maintain identity**: If prior_issue still exists, must fill in its `issue_id` exactly in the output issue; if resolved, do not output that issue again.
+{% if recheck_strategy | default('targeted_with_global_guard') == 'targeted_with_global_guard' %}
+7. **Global guard scan**: After completing the above targeted recheck, quickly scan the entire text, only report new critical or high level structural issues after repair (e.g., core character motivation break, event causality completely unexplainable). Do not report issues below medium level, do not re-report issues that existed before repair.
+{% endif %}
+
+Scoring is based on "whether the chapter reaches the quality baseline for continuing creation after repair", not pursuing a perfect score.
+
+{% else %}
+Please perform **in-depth causal chain audit within the chapter** on the following chapter body.
+
+{{ causal_context(causal_link, chapter_bridge, chapter_number, character_notes, previous_chapter_ending | default('')) }}
+{% if has_previous_chapter is defined and not has_previous_chapter %}
+## No Previous Chapter Causal Continuation Mode
+- This chapter has no previous chapter ending to review; do not deduct points for lacking previous chapter event continuation, opening_causal_gap, or previous_event reference.
+- Must still review whether major events within the chapter, character decisions, key turns, information transmission sources, and suspense management have causal support.
+- If abrupt events occur within paragraphs 1-4, can report as intra-chapter `event_without_cause` / `missing_causal_transition`, but cannot require "previous chapter ending continuation" to be added.
+{% endif %}
+{{ numbered_chapter_text | default(chapter_text) }}
+
+{{ causal_must_resolve(must_resolve_summaries) }}
+{% if must_resolve_issue_ids %}
+## Issue IDs that must be rechecked
+{% for issue_id in must_resolve_issue_ids %}
+- {{ issue_id }}
+{% endfor %}
+{% endif %}
+{{ causal_checks() }}
+
+{% endif %}
+## Causal Issue Field Rules
+{{ causal_issue_field_rules(include_memory_fields=false) }}
+
+## Quality Calibration
+- Work identity: You are a rigorous novel quality editor, skilled at locating issues using short evidence, clear boundaries, and downstream executable suggestions.
+- Editing path: First confirm input evidence, then judge issue type, impact scope, and repair boundary, finally give downstream executable location information.
+- Field-level quality examples (not output format): Weak = "here is incoherent"; High quality = "point out which two pieces of evidence conflict, risk level, verifiable issue".
+- Actionable path: Each judgment must support review or repair; low confidence content demoted to pending verification issues.
+
+## Pre-delivery Verification
+- Whether P0/P1/P2 priority is maintained, and hard constraints are not overwritten by weak references.
+- Whether key judgments can be traced back to input evidence, upstream contracts, or approved plans.
+- Whether unauthorized new characters, locations, world rules, future payoffs, or format agreements are avoided.
+- Whether short evidence, risk level, location information, and downstream verifiable issues are provided.

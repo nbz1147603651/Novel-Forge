@@ -1,0 +1,73 @@
+{#- 检查模板职责边界定义 - base 模块 -#}
+{#- 此文件从 _role_definitions.j2 迁移而来，保持向后兼容 -#}
+
+{#-
+  === 宏模块：角色职责边界定义 ===
+  文件类型：宏模块（macro module）
+  作用简述：定义各类检查模板的职责边界，包括章节内检查、连贯性评估、因果验证、对齐检查的职责范围矩阵。
+
+  定义的宏及参数：
+  1. check_chapter_role() → 返回章节内检查职责描述
+  2. check_continuity_role() → 返回跨章连贯性检查职责描述
+  3. validate_causal_role() → 返回因果链验证职责描述
+  4. check_alignment_role() → 返回大纲对齐检查职责描述
+  5. responsibility_matrix(current_template: str) → 根据模板名称返回职责范围矩阵
+
+  使用方式：
+  - 被 checking/ 目录下模板通过 {% import %} 或 {% from %} 调用
+  - check_chapter.j2, continuity_eval.j2, causal_validate.j2, check_alignment.j2 等模板导入使用
+-#}
+
+{#- check_chapter.j2 职责 -#}
+{% macro check_chapter_role() %}
+- 专注本章内部质量：语法、表达、事实错误
+- 检查提示词泄露和系统痕迹
+- 检查章内自洽性（因果、视角、逻辑）
+- 检查章内因果链完整性（事件触发、决策动机、悬念衔接）
+- 不处理跨章连贯性问题
+{% endmacro %}
+
+{#- check_continuity.j2 职责 -#}
+{% macro check_continuity_role() %}
+- 专注跨章连贯性：时间、地点、人物状态、情绪承接
+- 检查 must_carry_forward 事项的落实
+- 检查章节桥接契约的履行情况
+- 不处理章内逻辑问题
+{% endmacro %}
+
+{#- validate_causal.j2 职责 -#}
+{% macro validate_causal_role() %}
+- 专注章内因果链完整性
+- 检查事件间的逻辑关联
+- 验证角色决策的动机合理性
+- 不处理跨章连贯性或语法问题
+{% endmacro %}
+
+{#- check_alignment.j2 职责 -#}
+{% macro check_alignment_role() %}
+- 专注章节与大纲的对齐程度
+- 检查主线推进点的覆盖情况
+- 评估支线与主线的协调性
+- 不处理语法或连贯性问题
+{% endmacro %}
+
+{#- 审查职责矩阵 — 在模板开头注入，明确职责边界 -#}
+{% macro responsibility_matrix(current_template) %}
+{% if current_template == "check_chapter" %}
+## 本模板职责范围
+✅ 负责：提示词泄露、事实错误、表达错误、章内自洽（因果/视角/逻辑）、章内因果链完整性
+❌ 不负责：跨章连贯性（→ continuity_eval）、大纲对齐（→ check_alignment）
+{% elif current_template == "continuity_eval" %}
+## 本模板职责范围
+✅ 负责：桥接契约履行、人物状态连续性、关系演进支撑、章末交接、禁用元素、非规划角色出现
+❌ 不负责：因果链细节验证（→ causal_validate）、大纲对齐（→ check_alignment）、语法/表达错误（→ check_chapter）
+{% elif current_template == "causal_validate" %}
+## 本模板职责范围
+✅ 负责：开头因果承接、因果过渡铺垫、事件因果支撑、决策动机、悬念管理、称呼身份因果
+❌ 不负责：桥接契约结构检查（→ continuity_eval）、大纲对齐（→ check_alignment）、语法/表达错误（→ check_chapter）
+{% elif current_template == "check_alignment" %}
+## 本模板职责范围
+✅ 负责：主线推进点覆盖、支线协调性、叙事阶段符合性、视角合规、特质密度
+❌ 不负责：跨章连贯性（→ continuity_eval）、因果链细节（→ causal_validate）、语法/表达错误（→ check_chapter）
+{% endif %}
+{% endmacro %}

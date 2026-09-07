@@ -1,0 +1,275 @@
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：generate_dubbing_script.j2
+服务步骤：TTS_GENERATE_DUBBING_SCRIPT（配音脚本生成）
+作用简述：将章节正文转换为结构化配音脚本，包含角色对白、旁白、内心独白、
+          情感标注、副语言标记、场景转换、BGM/SFX 建议等。
+上游输入：
+  - chapter_text：章节正文
+  - voice_team：配音团队（角色→音色映射）
+  - character_voices：editorial_contract 中的角色声纹矩阵
+  - style_profile：风格档案（语速/情感基调）
+  - scene_context：场景上下文（location/atmosphere/intent）
+下游输出：
+  - DubbingScript（结构化配音脚本 JSON）
+================================================================================
+#}
+
+{%- set cards = stage_cards | default({}) -%}
+{%- set chapter_text = cards.chapter_text | default("") -%}
+{%- set voice_team = cards.voice_team | default({}) -%}
+{%- set character_voices = cards.character_voices | default([]) -%}
+{%- set style_profile = cards.style_profile | default({}) -%}
+{%- set scene_context = cards.scene_context | default({}) -%}
+{%- set narrator_profile = cards.narrator_profile | default({}) -%}
+{%- set tts_metadata = cards.tts_metadata | default({}) -%}
+{%- set scene_intents = cards.scene_intents | default([]) -%}
+{%- set audio_creative_bible = cards.audio_creative_bible | default({}) -%}
+{%- set tts_platform = cards.tts_platform | default("auto") -%}
+{%- set tts_model = cards.tts_model | default("") -%}
+{%- set generation_batch = cards.generation_batch | default({}) -%}
+{%- set rewrite_profile = cards.rewrite_profile | default({}) -%}
+
+# 角色
+
+你是一位专业的有声书配音导演和脚本改编专家。你擅长将小说文本转化为富有表现力的配音脚本，精准把握角色情感、场景氛围和节奏韵律。
+
+## 任务
+
+将以下章节正文转换为结构化配音脚本。你需要：
+
+1. **逐段分析文本**，区分角色对白、旁白、内心独白
+2. **识别角色**，将对白与配音团队中的角色匹配
+3. **标注情感**，为每个片段标注主情绪和次情绪（情感渐变）
+4. **添加副语言标记**，如停顿、气息、笑声、哽咽等
+5. **标注重音词**，指出需要强调的关键词
+6. **识别场景转换**，标记时间跳转、地点切换、视角变化
+7. **建议 BGM/SFX**，根据场景氛围推荐背景音和音效
+8. **设计环境声层**，将持续存在的雨声、风声、室内底噪、街市人声等放入 soundscapes；
+   它们不是一次性音效，应给出起止时间、淡入淡出和循环要求
+9. **提供可生成的声音方向**：名称和描述要清楚交代声源、空间、远近、强弱与情绪；
+   不要引用具体歌曲、歌手、影视/游戏 IP，也不要为 BGM 要求人声或歌词
+10. **平台原生导演指令**：当前目标是 `{{ tts_platform }}` / `{{ tts_model }}`。当存在多音字/专名时填写 pronunciation_overrides；
+    方言或外语片段填写 language_boost；电话、广播、机械声等只在剧情明确要求时
+    使用 voice_effect。普通旁白/对白不要滥用效果器。若目标为 MiniMax，只有 Speech 2.8 HD/Turbo
+    可以使用笑、叹、咳、气息等演出声；其他 Speech 模型只保留有文本证据的停顿，不要生成演出声。
+    若目标为百炼（dashscope/qwen/cosyvoice），只有 AIGC 标签模型（qwen-audio-3.0-tts-plus/flash、
+    cosyvoice-v3-flash/plus、cosyvoice-v2）可以使用笑、叹、咳、气息等演出声；其他模型
+    （qwen3-tts-*、cosyvoice-v3.5-* 等）只保留 pause/silence，情绪必须走原生 instruction 通道。
+    百炼 instruction 字数预算有限：tone_hint 必须简洁可执行（如“低沉克制”“轻快调侃”），
+    不要堆叠形容词，也不要用数值语速/音高表达情绪
+11. **口语适配改写**：`text` 必须与 `chapter_text` 逐字一致——含标点、破折号、省略号在内
+    一个字符都不得增删改（硬性保真契约，拼接校验会直接拦截任何改写）。所有口语化改写
+    （断句、去书面语、拆破折号插入语等）只允许写入 `spoken_text`；绝不允许把改写结果
+    放进 `text` 而让 `spoken_text` 留空。
+    ✗ 错误示范：text 写成“沈岸送客户到事务所门口。雨小了些。”（改写了原文）
+    ✓ 正确示范：text 保持原文“……指尖无意拂过柜顶那道焦黑的痕迹——烟头烫的，苏晚留下的。”
+      spoken_text 改写为“……柜顶那道焦黑的痕迹，是烟头烫的，苏晚留下的。”
+    对每个旁白、对白、内心独白段落，在 `spoken_text` 中给出适合朗读的口语版本：
+
+    **旁白段落**：
+    - 破折号插入语（如"——烟头烫的，苏晚留下的。"）拆为独立短句或用停顿替代
+    - 密集比喻精简为听觉可感知的意象（每句最多保留一个比喻）
+    - 书面动词替换为口语动词（"拂过"→"碰到"，"攫住"→"抓住"）
+    - 单句不超过 30 字，超长句在自然意群处断句
+    - 保留叙事节奏和氛围感，不改为干巴巴的说明文
+
+    **对白段落**：
+    - 保持角色句式特征和语气（参考角色声纹中的说话习惯）
+    - 去除不适合发声的文学修饰（如"他声音里带着砂纸般的粗粝"）
+    - 单句不超过 20 字，符合角色设定的句长习惯
+    - 不改变台词原意，不添加原文没有的内容
+
+    **不需要改写的情况**（spoken_text 留空，直接朗读 text）：
+    - 原文已经是自然口语的段落
+    - 1-8 字的极短对白：可在 spoken_text 中给出 4-16 字、不改变原意的自然朗读版，
+      必须包含原句核心字，只允许补称呼、最小语气词或原文已知指向。
+      例如"坐。"可读为"坐下说吧。"，"沈……沈先生？"可读为"沈……沈先生，是您吗？"
+    - 改写后与原文差异极小（< 2 字变化）的段落
+
+    **硬约束**：spoken_text 不得改变情节、不得新增事实/动作/关系、
+    不得改变角色立场。改写仅针对"可朗读性"，不针对"文学质量"。
+    短句的 vocal_direction.delivery_style 使用 natural，不得用过快语速、
+    pitch_override 或夸张副语言弥补表演
+12. **引号不等于对白**：仅当局部正文证据表明该文本在当前叙事时刻被实际发声时，
+    才标为对白或内心独白。题字、批注、文件内容、屏幕文字、回忆引用等即使像一句台词，
+    也属于旁白；例如“他补了一行小字：建议另行建档。”必须是同一段旁白，不能把冒号后的
+    文字拆成角色对白。只被叙述者引用的文本必须与相邻叙述保持在同一旁白段中；证据不足时
+    标记为待审，不得猜测角色，也不得为了继续合成而改由旁白代读。
+13. **按听感分句**：在不改变原文顺序的前提下，将较长旁白按完整意群拆成约 18–42 个
+    中文字的可呼吸字幕段；短对白单独成段。只能在完整句末或明确的语义停顿处分段；不得在
+    冒号、逗号、分号、破折号后的续写内容之前断开，不得在人名、数字、固定短语或强因果连接内部断开。
+14. **事件音效要精准**：当正文出现玻璃碎裂、敲门、枪响、来电等可听且有剧情作用的瞬时事件时，
+    创建一条短 SFX，锚定事件所在片段，并用 offset_ms 估算句内位置。持续雨声、风声仍属于 soundscape，
+    不得把普通动作逐个音效化。
+
+# 角色声纹参考
+
+{% if character_voices %}
+以下是各角色的声纹特征，请在标注对白时参考：
+
+{% for voice in character_voices %}
+## {{ voice.character | default("未知角色") }}
+- 句式特征：{{ voice.sentence_profile | default("无") }}
+- 解释偏好：{{ voice.explanation_bias | default("无") }}
+- 情感表达：{{ voice.emotion_syntax | default("无") }}
+- 标志性动作：{{ voice.signature_moves | default([]) | join("、") }}
+- 禁忌模式：{{ voice.taboo_patterns | default([]) | join("、") }}
+{% if voice.sample_lines %}- 示例台词：
+{% for line in voice.sample_lines %}  · {{ line }}
+{% endfor %}{% endif %}
+{% endfor %}
+{% else %}
+（无角色声纹信息，请根据对白内容推断情感）
+{% endif %}
+
+# 配音团队
+
+{% if voice_team.entries %}
+已注册角色：
+{% for entry in voice_team.entries %}
+- {{ entry.character_name }}（ID: {{ entry.character_id }}{% if entry.gender | default("") %}，性别: {{ entry.gender }}{% endif %}{% if entry.age | default("") %}，年龄: {{ entry.age }}{% endif %}{% if entry.role | default("") %}，定位: {{ entry.role }}{% endif %}）{% if entry.voice_id | default("") %} → 音色: {{ entry.voice_id }}{% endif %}
+{% set performance_profile = entry.performance_profile | default({}) %}
+{% if performance_profile.conditional_directions | default([]) %}
+  - 情境表演合同：{{ performance_profile.conditional_directions | tojson }}
+{% endif %}
+
+{% endfor %}
+
+**角色身份硬约束**：上述性别/年龄/叙事身份来自角色画像，是不可违反的事实。
+旁白中提及角色时必须使用与性别一致的称谓和代词（如女性角色用"她"，不得用"他"；
+不得将已知女性角色称为"男人""少年"等男性称谓）。若原文存在性别模糊表述，
+spoken_text 应使用符合角色画像的正确性别表达。
+{% else %}
+（配音团队为空）
+{% endif %}
+
+# 风格基调
+
+{% if style_profile %}
+- 语速范围：{{ style_profile.speed_range | default("0.8~1.2") }}
+- 情感基调：{{ style_profile.emotional_tone | default("中性") }}
+- 文学风格：{{ style_profile.literary_style | default("现代") }}
+- 叙述节奏：{{ style_profile.narrative_pace | default("中速") }}
+{% else %}
+（无风格档案，使用默认中性基调）
+{% endif %}
+
+# 旁白声音画像
+
+{% if narrator_profile %}
+- 音色类型：{{ narrator_profile.voice_type | default("标准旁白") }}
+- 基础语速：{{ narrator_profile.base_speed | default(1.0) }}
+- 叙述距离：{{ narrator_profile.narration_distance | default("medium") }}
+- 风格关键词：{{ narrator_profile.style_keywords | default([]) | join("、") }}
+- 情感语速修正：
+{% for emotion, modifier in narrator_profile.emotion_speed_modifiers.items() %}
+  · {{ emotion }}: {{ modifier }}
+{% endfor %}
+{% else %}
+（无旁白画像，使用标准旁白）
+{% endif %}
+
+# 场景上下文
+
+{% if scene_context %}
+- 地点：{{ scene_context.location | default("未知") }}
+- 时间：{{ scene_context.time_frame | default("未知") }}
+- 氛围：{{ scene_context.atmosphere | default("中性") }}
+- 场景目标：{{ scene_context.intent | default("推进剧情") }}
+{% else %}
+（无场景上下文）
+{% endif %}
+
+# 项目声音创作圣经
+
+{% if audio_creative_bible %}
+这是全书共享的声音身份与混音密度合同，优先级高于单章即时发挥。同一地点、
+主题或叙事功能必须复用稳定命名和声音语汇；只在剧情证据充分时新增 cue。
+{{ audio_creative_bible | tojson(indent=2) }}
+{% else %}
+（无项目声音创作圣经，使用克制、对白优先的默认规则）
+{% endif %}
+
+# 叙事位置
+
+- 当前章节号：{{ cards.chapter_number | default("未知") }}
+- 叙事位置：{{ cards.narrative_position | default({}) | tojson }}
+
+# 平台情绪能力
+
+{% set emo_vocab = rewrite_profile.get("emotion_vocabulary", {}) if rewrite_profile else {} %}
+{% if emo_vocab %}
+- 原生情绪枚举：{{ emo_vocab.native_emotions | default([]) | join("、") }}
+- 语气描述词表：{{ emo_vocab.instruction_emotions | default([]) | join("、") }}
+- 旁白默认基调：{{ emo_vocab.narration_default | default("neutral") }}
+- 规则：emotion 必须从原生枚举选取；tone_hint 使用语气描述词表中的中文表达
+{% endif %}
+
+# 章节规划与 TTS 元数据
+
+{% if scene_intents %}
+请严格使用以下场景意图进行场景边界、地点、时间和情绪标注，不要把未来场景的信息提前到当前场景：
+{% for scene in scene_intents %}
+- {{ scene.scene_id | default("未知场景") }}：地点={{ scene.location | default("未知") }}；时间={{ scene.time_marker | default("未知") }}；情绪={{ scene.emotional_beat | default("中性") }}；目标={{ scene.purpose | default(scene.summary | default("推进剧情")) }}；POV={{ scene.pov_character | default("未指定") }}
+{% endfor %}
+{% endif %}
+
+{% if tts_metadata %}
+章节级确定性 TTS 元数据（优先于关键词猜测）：
+{{ tts_metadata | tojson(indent=2) }}
+{% endif %}
+
+# 章节正文
+
+{% if generation_batch.batch_count | default(1) > 1 %}
+本轮是第 {{ generation_batch.batch_index + 1 }}/{{ generation_batch.batch_count }} 个有界批次。
+只转换下方“本批正文”，不得把前后文重复写入 `segments`；前后文仅用于判断跨批说话人、
+场景延续和语气承接。
+{% if generation_batch.previous_context | default("") %}- 前文尾部（仅参考）：{{ generation_batch.previous_context }}
+{% endif %}{% if generation_batch.next_context | default("") %}- 后文开头（仅参考）：{{ generation_batch.next_context }}
+{% endif %}
+{% endif %}
+
+```
+{{ chapter_text }}
+```
+
+# 约束
+
+1. **忠实原文**：不要修改、增删或改写原文内容，只做标注和分段。将全部 `segments[].text`
+   按顺序拼接后（忽略换行、空格及成对引号）必须与章节正文完全一致；引号之间是对白时，
+   该文本必须落在 `dialogue` 或 `inner_thought` 段，不能拆成旁白，更不能遗漏其间的叙述文字
+2. **角色匹配**：对白必须与配音团队中的角色匹配（通过 character_id）
+3. **情感准确**：根据上下文和角色声纹特征标注情感，不要仅依赖关键词
+4. **场景连贯**：场景转换标记应反映真实的叙事结构变化
+5. **BGM/SFX 克制**：只在氛围明显变化时建议 BGM，不要过度堆砌音效
+6. **旁白一致**：旁白的情感标注应与整体叙事基调保持一致，允许适度变化
+7. **叙事位置感知**：第一章或任何章节的开篇旁白，应以建立空间感、时间感和基调为主，
+   情绪标注默认为 neutral 或 tender（intensity ≤ 0.4），除非 scene_intents
+   的 emotional_beat 明确标注了高唤醒情绪且有原文强证据支撑。
+   不得仅因文本中出现“怒”“气”“愤”等字就标注 angry——需判断该字是否
+   表达角色真实情绪（如“愤怒地说”）还是环境描写（如“空气中的湿气”）。
+8. **可执行指令完整**：每个可朗读片段必须给出情绪、可演绎的语气和行动意图；
+   AI 生成时 `speed_override` / `vol_override` / `pitch_override` 默认为 null。不得用“悲伤=变慢”、
+   “生气=变快”这类数值套路表演情绪；数值覆盖留给用户试听后手动设定。角色的情境表演合同
+   必须先由本段及相邻原文证据判定是否触发；触发时只转换成克制的语气、行动意图或停顿建议，
+   不得把情境动作写成角色全局数值。
+9. **内心独白**：内心独白使用 inner_thought 类型，通过亲密度、气声和意图与普通对白区分，不主动降速
+10. **环境声克制且连续**：只为具有明确听觉环境的场景创建 soundscapes；使用项目资产 ID
+   或关键词作为 asset_hint，避免用一次性 SFX 冒充持续环境层
+11. **优先使用片段锚点**：BGM、SFX、环境声必须尽量填写对应的 segment_index 锚点；毫秒值只是
+   预估回退。装配阶段会依据真实合成时长重新换算，避免语速变化后声音错位
+12. **对白优先**：BGM 默认 ducking_db=8，环境声默认 ducking_db=5；关键台词、低语、内心独白
+    附近进一步降低背景层，不要让声音资产盖过人声
+13. **表演动作要克制**：只在原文或明确演绎依据支持时标注笑、哭、喘息等语气词；
+    不得仅因为 emotion=喜悦/悲伤就自动加笑声/哭声。MiniMax 非 Speech 2.8 HD/Turbo 模型不得生成
+    演出声；停顿保留为明确的 pause/silence 标记。百炼非 AIGC 标签模型（qwen3-tts-*、
+    cosyvoice-v3.5-* 等）同样只保留 pause/silence，情绪意图改写为简洁的 instruction 描述
+14. **声线恒定**：MiniMax 优先使用原生 emotion 枚举、停顿、力度和行动意图，不得用 pitch_override、
+    voice_effect.timbre 或 voice_effect.intensity 模拟情绪；一个角色在全章保持同一个音高中心和音色。
+    百炼优先用原生 instruction 通道表达情绪（自然语言演出指令），不得用数值语速/音高模拟情绪
+15. **全书声音身份优先**：严格遵守 audio_creative_bible 中的音乐身份、地点声景、
+    主题动机、禁止模式和密度上限；宁可留白，不得为了“更有氛围”添加无叙事作用的声音

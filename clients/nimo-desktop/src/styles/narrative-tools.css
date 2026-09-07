@@ -1,0 +1,272 @@
+/*
+ * Source-mapped secondary workbenches. Kept separate from the application
+ * shell so relationship, humanize, and revision surfaces evolve together.
+ */
+.narrative-tools-notice {
+  margin: 0;
+  padding: 8px 10px;
+  border-left: 3px solid var(--nf-accent-primary);
+  color: var(--nf-text-secondary);
+  background: color-mix(in srgb, var(--nf-bg-control) 34%, var(--nf-bg-surface));
+  font-size: var(--nf-font-ui);
+  line-height: 1.5;
+}
+
+.relationship-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.relationship-filters button {
+  min-height: 29px;
+  padding: 0 9px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 18%, transparent);
+  border-radius: 999px;
+  color: var(--nf-text-muted);
+  background: var(--nf-bg-surface);
+  font-size: var(--nf-font-micro);
+  font-weight: 700;
+}
+
+.relationship-filters button.is-active,
+.relationship-map button.is-active {
+  border-color: color-mix(in srgb, var(--nf-accent-primary) 48%, transparent);
+  color: var(--nf-accent-primary-pressed);
+  background: color-mix(in srgb, var(--nf-accent-primary) 10%, var(--nf-bg-surface));
+}
+
+.relationship-map button {
+  padding: 7px 10px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  color: var(--nf-accent-primary-pressed);
+  background: var(--nf-bg-surface);
+  box-shadow: 0 2px 5px color-mix(in srgb, var(--nf-shadow) 9%, transparent);
+  font-size: var(--nf-font-body);
+  font-weight: 700;
+}
+
+.humanize-workbench > header {
+  align-items: center;
+}
+
+.humanize-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.humanize-actions .button {
+  min-height: 30px;
+  padding-inline: 9px;
+  font-size: var(--nf-font-micro);
+}
+
+.humanize-filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(100px, auto)) minmax(150px, 1fr);
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 15%, transparent);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--nf-bg-control) 23%, var(--nf-bg-surface));
+}
+
+.humanize-filters label {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 5px;
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-micro);
+  font-weight: 700;
+}
+
+.humanize-filters select,
+.humanize-filters input {
+  width: 100%;
+  min-width: 0;
+  height: 29px;
+  padding: 0 7px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 22%, transparent);
+  border-radius: 6px;
+  outline: none;
+  color: var(--nf-text-secondary);
+  background: var(--nf-bg-input);
+  font-size: var(--nf-font-micro);
+}
+
+.humanize-filters .humanize-search {
+  display: block;
+}
+
+.humanize-table {
+  overflow: auto;
+}
+
+.humanize-table > div {
+  grid-template-columns: minmax(112px, 1fr) minmax(116px, 1.2fr) 48px minmax(72px, .85fr) 48px 43px 58px 38px;
+  gap: 7px;
+  min-width: 760px;
+  min-height: 29px;
+  padding-inline: 10px;
+}
+
+.humanize-table > div > span,
+.humanize-row-select {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.humanize-row-select {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  color: var(--nf-text-secondary);
+  background: transparent;
+  font: inherit;
+  text-align: left;
+}
+
+.humanize-row-id {
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-micro);
+}
+
+.humanize-row-name {
+  color: var(--nf-text-heading);
+  font-weight: 700;
+}
+
+.humanize-table > div.is-selected {
+  background: color-mix(in srgb, var(--nf-accent-primary) 8%, var(--nf-bg-surface));
+}
+
+.humanize-table > div.is-selected .humanize-row-select {
+  color: var(--nf-accent-primary-pressed);
+}
+
+.humanize-table > div > input {
+  justify-self: center;
+}
+
+.humanize-selection-hint {
+  margin: 0;
+  padding: 7px 10px;
+  color: var(--nf-text-muted);
+  background: color-mix(in srgb, var(--nf-bg-control) 23%, var(--nf-bg-surface));
+  font-size: var(--nf-font-micro);
+}
+
+.humanize-row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 10px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 14%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--nf-bg-control) 19%, var(--nf-bg-surface));
+}
+
+.humanize-row-actions > span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.humanize-row-actions strong {
+  overflow: hidden;
+  color: var(--nf-text-heading);
+  font-size: var(--nf-font-ui);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.humanize-row-actions small {
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-xs);
+}
+
+.humanize-row-actions > div {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 5px;
+}
+
+.humanize-row-actions .button {
+  min-height: 27px;
+  padding-inline: 7px;
+  font-size: var(--nf-font-micro);
+}
+
+.humanize-duplicates {
+  display: grid;
+  gap: 7px;
+}
+
+.humanize-duplicates > p,
+.humanize-hit-examples p {
+  margin: 0;
+  color: var(--nf-text-secondary);
+  font-size: var(--nf-font-ui);
+  line-height: 1.55;
+}
+
+.humanize-duplicates article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 9px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 14%, transparent);
+  border-radius: 7px;
+  color: var(--nf-text-secondary);
+  font-size: var(--nf-font-ui);
+}
+
+.humanize-duplicates strong {
+  overflow: hidden;
+  color: var(--nf-text-heading);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.humanize-duplicates small {
+  color: var(--nf-accent-primary-pressed);
+  font-size: var(--nf-font-micro);
+  font-weight: 700;
+}
+
+.humanize-hit-examples {
+  display: grid;
+  gap: 6px;
+}
+
+.narrative-empty {
+  margin: 0;
+  padding: 14px;
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-body);
+  text-align: center;
+}
+
+@media (max-width: 1260px) {
+  .humanize-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .humanize-row-actions {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .humanize-row-actions > div {
+    justify-content: flex-start;
+  }
+}

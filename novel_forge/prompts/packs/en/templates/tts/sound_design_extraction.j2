@@ -1,0 +1,245 @@
+{# source_template_hash: c5bdef6f1d1909712d0c7b904c3bd364e58da6f609969726a864275520ee2ded #}
+{#
+================================================================================
+[NOTES]
+================================================================================
+Prompt: sound_design_extraction.j2
+Service Step: TTS_SOUND_DESIGN (sound-design extraction)
+Purpose: After the performance script is finalized, independently extract a
+         sound-design cue sheet (SFX, BGM needs, soundscapes, and scene
+         transitions) without changing actor-performance direction.
+Upstream Input:
+  - segment_summaries: finalized segment summaries
+  - bible: project audio identity (AudioCreativeBible)
+  - bgm_assets: reusable BGM asset list
+  - story_context: work-level context
+Downstream Output:
+  - sfx_cues, bgm_needs, soundscapes, scene_transitions
+================================================================================
+#}
+
+{%- set cards = stage_cards | default({}) -%}
+{%- set chapter_number = cards.chapter_number | default(1) -%}
+{%- set segment_summaries = cards.segment_summaries | default([]) -%}
+{%- set segment_count = cards.segment_count | default(0) -%}
+{%- set existing_sfx_count = cards.existing_sfx_count | default(0) -%}
+{%- set existing_bgm_count = cards.existing_bgm_count | default(0) -%}
+{%- set existing_soundscape_count = cards.existing_soundscape_count | default(0) -%}
+{%- set scene_transitions = cards.scene_transitions | default([]) -%}
+{%- set bgm_assets = cards.bgm_assets | default([]) -%}
+{%- set bible = cards.bible | default({}) -%}
+{%- set story_context = cards.story_context | default({}) -%}
+{%- set scene_intents = cards.scene_intents | default([]) -%}
+{%- set location_sound_seeds = cards.location_sound_seeds | default([]) -%}
+{%- set reference_style = cards.reference_dubbing_style | default({}) -%}
+
+# Role
+
+You are a professional audiobook sound designer. Design a precise sound cue
+sheet for the finalized dubbing script. You handle sound design only (effects,
+music needs, environmental beds, and transitions), never performer direction.
+
+## Task
+
+Create a sound cue sheet for chapter {{ chapter_number }} across four dimensions:
+
+## 1. Diegetic sound effects (SFX)
+
+Scan narration for explicitly described, instantaneous sound events:
+
+- action sounds: knocking, opening or closing doors, breaking glass, footsteps,
+  keyboard taps, page turns, pouring water
+- object sounds: keys, drawers, furniture movement, paper rustling
+- instantaneous environmental sounds: thunder, gunshots, bells, alarms
+- body sounds: applause, a fist striking a table
+
+**Restraint rule:** Create SFX only for sound events explicitly described in the
+source text. Do not turn every action into an effect. Continuous rain, wind, or
+crowd ambience belongs in a soundscape rather than SFX.
+
+## 2. BGM needs (`bgm_needs`)
+
+Analyze the emotional arc and mark passages that need music:
+
+- several consecutive segments with the same high-intensity emotion → underscore
+- a sharp emotional shift (calm → tense) → tension
+- after a scene transition → transition
+- climax or resolution → climax / resolution
+
+**Output `mood_tags`:** Use stable, reusable tags (for example, tense, warm,
+mysterious, sad, stirring, calm, cheerful, nostalgic).
+**Library first:** If a matching asset appears in the reusable BGM list below,
+place its asset_id in `reuse_hint`.
+
+## 3. Environmental beds (soundscapes)
+
+Design one continuous bed for each scene with a distinct auditory space:
+
+- interiors: HVAC hum, clock ticks, distant exterior ambience
+- outdoor nature: wind, birds, water, insects
+- outdoor city: traffic, crowds, distant construction
+- special spaces: hospital corridors, cafés, bars
+
+Use searchable keywords in `asset_hint`.
+**Seed priority**: if the "Location ambient-sound seeds" section below defines a scene's
+ambient layers, inherit those exact sound sources as the bed (volume/density may be tuned,
+sources must not be replaced); script-based inference only applies to unseeded scenes.
+
+## 4. Scene transitions
+
+When the script already contains transition markers, confirm and supplement
+them. Otherwise add transitions based on meaningful scene changes.
+
+# Dubbing-script segment summaries
+
+There are {{ segment_count }} segments.{% if existing_sfx_count %} {{ existing_sfx_count }} SFX cues already exist.{% endif %}{% if existing_bgm_count %} {{ existing_bgm_count }} BGM cues already exist.{% endif %}{% if existing_soundscape_count %} {{ existing_soundscape_count }} soundscapes already exist.{% endif %}
+
+{% for seg in segment_summaries %}
+- [{{ seg.index }}] {{ seg.type }}{% if seg.scene_context %} | Scene: {{ seg.scene_context[:40] }}{% endif %} | Emotion: {{ seg.emotion }} | {{ seg.text_preview }}
+{% endfor %}
+
+{% if scene_transitions %}
+# Existing scene transitions
+
+{% for tr in scene_transitions %}
+- {{ tr.transition_type }}: {{ tr.label }} ({{ tr.from_context }} → {{ tr.to_context }})
+{% endfor %}
+{% endif %}
+
+# Project audio identity
+
+{% if bible %}
+- Genre: {{ bible.genre | default("narrative fiction") }}
+- Sound aesthetic: {{ bible.overall_aesthetic | join(", ") }}
+- Musical identity: {{ bible.music_identity | join("; ") }}
+{% if bible.location_sound_signatures %}
+- Location sound signatures:
+{% for location, descriptors in bible.location_sound_signatures.items() %}
+  · {{ location }}: {{ descriptors | join(", ") }}
+{% endfor %}
+{% endif %}
+{% if bible.motif_directions %}
+- Thematic motif directions:
+{% for theme, direction in bible.motif_directions.items() %}
+  · {{ theme }}: {{ direction }}
+{% endfor %}
+{% endif %}
+{% else %}
+(No project audio identity is available; keep the sound design restrained.)
+{% endif %}
+
+# Reusable BGM assets
+
+{% if bgm_assets %}
+These assets are approved for the library. Prefer referencing them through
+`reuse_hint`:
+{% for asset in bgm_assets %}
+- {{ asset.asset_id }}: {{ asset.display_name }} [tags: {{ asset.tags | join(", ") }}]
+{% endfor %}
+{% else %}
+(The project library has no approved BGM assets. Mark every BGM need as a gap
+for the user to supply later.)
+{% endif %}
+
+# Work context
+
+{% if story_context.get("title") %}- Work: {{ story_context.title }}{% endif %}
+{% if story_context.get("genre") %}- Genre: {{ story_context.genre }}{% endif %}
+{% if story_context.get("tone") %}- Tone: {{ story_context.tone }}{% endif %}
+{% if story_context.get("era") %}- Era / world: {{ story_context.era }}{% endif %}
+
+{% if scene_intents %}
+# Scene plan
+
+These scene intents provide location, time, emotion, and sensory anchors for
+soundscape design and environmental-sound placement:
+{% for scene in scene_intents %}
+- {{ scene.scene_id | default("unknown scene") }}: location={{ scene.location | default("unknown") }}; time={{ scene.time_marker | default("unknown") }}; emotion={{ scene.emotional_beat | default("neutral") }}{% if scene.sensory_notes %}; sensory notes={{ scene.sensory_notes }}{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if location_sound_seeds %}
+# Location ambient-sound seeds (from story-bible initialization; inherit first)
+
+{% for seed in location_sound_seeds %}
+- {{ seed.name }}: {{ seed.ambient_sound | join(", ") }}
+{% endfor %}
+{% endif %}
+
+{% if reference_style %}
+# Reference sound-design style (strength {{ reference_style.strength | default(0.65) }})
+
+Transfer only these abstract staging rules: {{ reference_style.sound_design_rules | default([]) | tojson }}. Never introduce plot, characters, places, signature sounds, or music from the reference. This chapter's evidence, AudioCreativeBible, and location sound seeds take priority.
+{% endif %}
+
+# Output requirements
+
+Return JSON with exactly these top-level keys: sfx_cues, bgm_needs,
+soundscapes, scene_transitions.
+
+{# Historical handwritten example retained only for template-maintenance reference.
+   It is never rendered; the injected schema is the sole runtime output contract.
+```json
+{
+  "sfx_cues": [
+    {
+      "effect_name": "stable searchable effect label",
+      "description": "clear description of source, space, distance, and strength",
+      "trigger_segment_index": 5,
+      "offset_ms": 200,
+      "duration_ms": 1200,
+      "volume": 0.4,
+      "allow_dialogue_overlap": true,
+      "maximum_timing_shift_ms": 1500,
+      "narrative_priority": 85
+    }
+  ],
+  "bgm_needs": [
+    {
+      "mood_tags": ["tense", "mysterious"],
+      "narrative_role": "tension",
+      "mood_description": "fast, plucked strings for a chase or urgent scene",
+      "start_segment_index": 10,
+      "end_segment_index": 25,
+      "estimated_duration_ms": 45000,
+      "reuse_hint": ""
+    }
+  ],
+  "soundscapes": [
+    {
+      "name": "interior rainy-night ambience bed",
+      "description": "fine rain against the window, a low indoor bed, loopable and unobtrusive",
+      "asset_hint": "rain_indoor_night",
+      "start_segment_index": 0,
+      "end_segment_index": 30,
+      "volume": 0.14,
+      "ducking_db": 8.0,
+      "density": 0.25
+    }
+  ],
+  "scene_transitions": [
+    {
+      "transition_type": "location_change",
+      "label": "from study to living room",
+      "gap_ms": 1500,
+      "from_context": "nighttime conversation in the study",
+      "to_context": "argument in the living room"
+    }
+  ]
+}
+```
+#}
+
+# Constraints
+
+1. **Anchor every cue:** Every cue must use a segment_index anchor (`trigger_segment_index` or `start_segment_index`).
+2. **Keep SFX restrained:** Use no more than 12 SFX cues in a chapter, and only for clearly instantaneous events.
+3. **Keep BGM labels stable:** Use reusable `mood_tags`; name the same emotional intent consistently across chapters.
+4. **Prefer the library:** Reference an existing asset through `reuse_hint` before creating a new need.
+5. **Keep soundscapes continuous:** A soundscape is a sustained bed, not a one-off effect; use `asset_hint` to support asset matching.
+6. **Do not direct performers:** Output only post-production sound design, never acting direction.
+7. **Keep generated audio safe:** Asset descriptions must not include vocals, lyrics, or identifiable dialogue.
+
+# Output
+
+Return JSON only, with no additional explanation.

@@ -1,0 +1,61 @@
+{#- ============================================================================
+    质量校准 + 交付前核验 共享宏（修复/审计/顾问/抽取变体）
+    ============================================================================
+    消除 checking/ 目录下 25+ 模板中重复的"质量校准"和"交付前核验"段落。
+    4 个角色变体：
+      repair   — 修复编辑（continuity_repair, causal_repair, repair_reading_power,
+                 guardrail_repair, repair_adjudicated_issue, repair_semantic_verify）
+      audit    — 质量审校员（check_chapter, continuity_eval, evaluate_reading_power,
+                 macro_guard_audit, knowledge_boundary_audit, critic_*, element_progress_arbiter）
+      consult  — 写作顾问（derive_editorial_*, style_profile_derive, structure_profile_derive）
+      extract  — 事实抽取员（extract_init_coherence_claims, extract_expression_observations,
+                 extract_blueprint_holistic_claims）
+    使用方式：
+      {%- from "_base/_repair_quality_calibration.j2" import render_repair_quality_calibration, render_repair_pre_delivery_checklist -%}
+      {{ render_repair_quality_calibration("repair") }}
+      {{ render_repair_pre_delivery_checklist("repair") }}
+    ============================================================================ -#}
+
+{#- ── 质量校准 ── -#}
+{%- macro render_repair_quality_calibration(role="repair") -%}
+## 质量校准
+{%- if role == "repair" %}
+- 工作身份：你是一位谨慎的小说修复编辑，擅长在保留已验证文本的前提下完成最小必要修复。
+- 修复路径：先定位必须修的证据点，再确认允许改动范围，最后用最小文本变化恢复连贯、因果或表达质量。
+- 字段级质量示例（非输出格式）：平弱="整体重写"；高质量="只改冲突句/缺口段，并保留已验证的人物、事件和语气"。
+- 可操作路径：修复必须服务于原问题和下游验证，不扩写新剧情，不改变未被授权的章节事实。
+{%- elif role == "audit" %}
+- 工作身份：你是一位严谨的小说质量审校员，擅长用短证据、明确边界和下游可执行建议定位问题。
+- 审校路径：先确认输入证据，再判断问题类型、影响范围和修复边界，最后给下游可执行的定位信息。
+- 字段级质量示例（非输出格式）：平弱="这里不连贯"；高质量="指出哪两处证据冲突、风险等级、可验证问题"。
+- 可操作路径：每条判断都要能支持复核或修复，低置信度内容降级为待验证问题。
+{%- elif role == "consult" %}
+- 工作身份：你是一位项目特异性写作顾问，擅长从梗概、角色、世界规则和已选叙事要素中推导可执行的风格/结构契约。
+- 推导路径：先识别本项目的核心卖点、冲突机制和表达风险，再把结论映射到字段级参数或编辑契约。
+- 字段级质量示例（非输出格式）：平弱="风格冷峻"；高质量="说明冷峻来自何种场景压力、证据细节、对白比例或信息密度"。
+- 可操作路径：每条规则都要能被正文生成、编辑检查或后续审计复用，避免泛化成所有项目都适用的空话。
+{%- elif role == "extract" %}
+- 工作身份：你是一位证据优先的叙事事实抽取员，擅长从正文和上游锚点中提取可追溯、可合并的状态信息。
+- 抽取路径：先找正文中的明确事实，再对照共享锚点与已知状态，最后只保留能被后续合并器消费的信息。
+- 证据校准：同一事实已有上游分片确认时保持一致；证据不足时用保守字段值表达未知或待确认。
+- 字段级质量示例（非输出格式）：平弱="事实模糊"；高质量="保留可追溯证据链，用保守字段值标记不确定信息"。
+- 可操作路径：每条信息都服务于 canon、memory、state 或审计链路，避免把语气、比喻、猜测当作事实。
+{%- endif %}
+{%- endmacro -%}
+
+{#- ── 交付前核验 ── -#}
+{%- macro render_repair_pre_delivery_checklist(check_type="repair") -%}
+## 交付前核验
+- P0/P1/P2 优先级是否被保持，且没有让弱参考覆盖硬约束。
+- 是否能把关键判断回指到输入证据、上游契约或已批准计划。
+- 是否避免新增未授权的人物、地点、世界规则、未来 payoff 或格式协议。
+{%- if check_type == "repair" %}
+- 是否保持修复范围最小，且修复后文本仍能通过原问题复核。
+{%- elif check_type == "audit" %}
+- 是否给出短证据、风险等级、定位信息和下游可验证的问题。
+{%- elif check_type == "consult" %}
+- 是否把项目特异性依据映射到具体字段/规则，而不是复用通用写作口诀。
+{%- elif check_type == "extract" %}
+- 是否保留后续合并/检索需要的事实边界，且没有把推测写成既定事实。
+{%- endif %}
+{%- endmacro -%}

@@ -1,0 +1,71 @@
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：extract_character_state_deltas.j2
+服务步骤：EXTRACT_CHARACTER_STATE_DELTAS（Canon 分片：角色状态变化）
+作用简述：只提取本章明确角色状态变化，避免与关系/情节线分片互相污染。
+上游输入：chapter_number/chapter_text/summary_exit/prior_character_snapshots/known_characters
+下游输出：JSON：{"character_state_deltas": [...]}
+下游消费者：EXTRACT_CANON 本地合并器、NarrativeState
+消费链优先级：P0 = gender 权威不漂移；P1 = 只写变化；P2 = 控制数量
+================================================================================
+#}
+{#- 指导层 -#}
+请只提取角色状态变化。没有明确变化时返回空数组。
+
+## 事实来源边界（P0）
+- 只从 FinalArtifact 对应的最终正文 / `chapter_text` 提取角色状态变化。
+- 前态快照、权威性别和 summary_exit 只用于对照，不是新增状态来源。
+- 没有正文证据的位置、身份、情绪、物品、知识或生死状态不得写入。
+
+## 输出字段说明
+- `character_state_deltas`：角色状态变化列表，每条包含角色名、变化维度（alive/location/emotional_state/inventory/knowledge/social_status）、前态值、后态值、正文证据。
+
+{% if shared_evidence_anchor %}
+## 共享证据锚点
+{{ shared_evidence_anchor | tojson(indent=2) }}
+请以此作为本次分片的共同依据；维度特需信息只能补充，不得覆盖锚点事实。
+{% endif %}
+
+## 章节锚点
+- 第 {{ chapter_number }} 章
+{% if summary_exit %}{{ summary_exit | tojson(indent=2) }}{% endif %}
+
+## 已知角色
+{% for name in known_characters %}- {{ name }}{% endfor %}
+
+{% if authoritative_character_genders %}
+## 角色权威性别（最高优先级）
+{% for name, gender in authoritative_character_genders.items() %}
+- {{ name }}：{{ gender }}
+{% endfor %}
+{% endif %}
+
+{% if prior_character_snapshots %}
+## 前态角色状态（只输出本章变化）
+{% for cs in prior_character_snapshots %}
+- {{ cs.name }}：位置={{ cs.location }}，情绪={{ cs.emotional_state }}{% if cs.social_status %}，身份={{ cs.social_status }}{% endif %}
+{% endfor %}
+{% endif %}
+
+## 正文
+{{ chapter_text }}
+
+## 要求
+- 最多 {{ max_character_state_deltas | default(8) }} 条。
+- 只有 alive/location/emotional_state/inventory/knowledge/social_status 等确有变化时输出。
+
+## 质量校准
+- 工作身份：你是一位证据优先的叙事事实抽取员，擅长从正文和上游锚点中提取可追溯、可合并的状态信息。
+- 抽取路径：先找正文中的明确事实，再对照共享锚点与已知状态，最后只保留能被后续合并器消费的信息。
+- 证据校准：同一事实已有上游分片确认时保持一致；证据不足时用保守字段值表达未知或待确认。
+- 可操作路径：每条信息都服务于 canon、memory、state 或审计链路，避免把语气、比喻、猜测当作事实。
+
+## 交付前核验
+- P0/P1/P2 优先级是否被保持，且没有让弱参考覆盖硬约束。
+- 是否能把关键判断回指到输入证据、上游契约或已批准计划。
+- 是否避免新增未授权的人物、地点、世界规则、未来 payoff 或格式协议。
+- 是否保留后续合并/检索需要的事实边界，且没有把推测写成既定事实。
+
+{#- 格式层 -#}

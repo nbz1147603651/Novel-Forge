@@ -1,0 +1,213 @@
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：_base/_quality_standards.j2
+类型：宏模块（不被直接渲染，仅供其他模板 import）
+作用简述：定义通用写作质量标准宏，包括系统痕迹禁止、代词一致性、
+         感官多样性、对话格式、说明腔禁止、意象复用禁止等约束。
+         这些宏被写作模板和检查模板共享，确保质量标准统一。
+定义宏：
+  - forbidden_system_markers(...): 禁止系统标记和规划术语混入正文
+  - pronoun_consistency(canonical_characters): 强制角色代词一致性
+  - self_reference_context_awareness(...): 角色自称语境意识
+  - sensory_diversity(weak_senses=[], ...): 感官多样性要求
+  - dialogue_density(min_pct, max_pct): 对话密度控制
+  - dialogue_format(): 中文引号对话格式规范
+  - anti_exposition_rules(...): 说明腔禁止
+  - anti_meta_narrative_rules(...): 章尾元叙事禁止
+  - creative_specificity_rules(...): 创造性具体化与反机械句式
+  - webnovel_pacing_rules(...): 网文节奏约束
+  - imagery_repetition_ban(...): 意象复用禁止
+  - phrase_blacklist(...): 模板化短语黑名单
+  - paragraph_uniqueness(...): 段落唯一性约束
+  - emotional_craft_rules(...): 情感工艺（反差、留白、情绪表达多样性）
+使用方式：
+  {%- from "_quality_standards.j2" import forbidden_system_markers, pronoun_consistency -%}
+  被调用方：writing/*.j2, checking/*.j2
+================================================================================
+#}
+
+{#- 通用质量标准片段 - base 模块 -#}
+{#- 此文件从 _quality_standards.j2 迁移而来，保持向后兼容 -#}
+{#- 禁用系统标记和规划术语 -#}
+{% macro forbidden_system_markers(
+    context="正文",
+    include_meta_examples=true,
+    emphasize=true,
+    planning_intro="严禁在正文中使用任何规划层标记，包括但不限于",
+    planning_tail="这些都是规划层概念，不能出现在小说正文中。"
+) %}
+{% if include_meta_examples %}
+禁止在{{ context }}中出现任何系统/提示词痕迹，例如 `【...】`、`预期扰动路径`、`系统响应`、`A方案/B方案`、`Success` 等元叙事文本。
+{% endif %}
+{% if planning_intro %}
+{% if emphasize %}**特别强调**：{% endif %}{{ planning_intro }} `opening_contract`、`closing_contract`、`scene_intent`、`bridge_summary`、`time_marker`、`location`、`pov`、`required_outcome`、`exit_target_state` 等。{% if planning_tail %}{{ planning_tail }}{% endif %}
+{% endif %}
+{% endmacro %}
+
+{#- 时间表达策略与传统时辰刻度约束 -#}
+{% macro traditional_time_marker_rules(title="### 时间表达策略") %}
+{% if title %}{{ title }}{% endif %}
+- `time_marker` 是连续性锚点，不是每场开头模板；不要机械地用“某时某刻/某地”开启每个场景。
+- 只有发生换日、换更、倒叙、并行线切换、长距离移动，或读者可能迷失时，才显式点出时间。
+- 普通转场优先用动作接力、光线变化、铜漏/更鼓/风声等环境细节、人物疲惫或伤势推进来暗示时间流逝。
+- 如果确需使用中国传统时辰表达，`子/丑/寅/卯/辰/巳/午/未/申/酉/戌/亥` 每个时辰只能写一至四刻。
+- 严禁写 `五刻`、`六刻`、`七刻`、`八刻` 等超界刻度；需要表达更晚时，改用 `某时末`、`夜更深`、`将近换更` 等模糊时间锚点。
+- 不要把 `time_marker` 字段名写入正文；只把时间感转化为叙事细节。
+{% endmacro %}
+
+{#- 代词一致性要求 -#}
+{% macro pronoun_consistency(canonical_characters) %}
+【角色代词强制规范 - 必须严格遵守】
+{% for name, state in canonical_characters.items() %}
+{% if state.gender == "女" %}- {{ name }}：性别=女，代词必须使用"她"，严禁使用"他"
+{% elif state.gender == "男" %}- {{ name }}：性别=男，代词必须使用"他"，严禁使用"她"
+{% endif %}
+{% endfor %}
+⚠️ 代词混用是严重错误，必须避免！
+{% endmacro %}
+
+{#- 自称语境意识 -#}
+{#- 基于项目世界观和人物身份信息，由LLM根据场景自行判断自称 -#}
+{% macro self_reference_context_awareness(
+    story_world_context=None,
+    character_context=None,
+    address_rules=None,
+    title="### 自称语境意识"
+) %}
+{{ title }}
+角色自称需符合其身份、场景、对话对象，具体用词由上下文决定，而非固定不变。同一角色在不同场景中应自然切换自称。
+
+**判断依据**：
+- 角色身份与地位 → 参考角色档案中的身份、职业、社会层级
+- 场景正式程度 → {{ address_rules or "正式场合 vs 私下/日常/独处" }}
+- 对话对象关系 → 上级/平级/下级，亲疏远近
+- 世界观设定 → 参考项目世界观中的社会结构、礼仪规范、价值观念
+
+**核心原则**：自称随场景变化，LLM应根据当前场景的权力关系、社交距离、正式程度，结合角色身份与世界观设定，自然选择合适自称，避免全篇统一使用同一自称。
+{% if story_world_context %}
+
+**当前项目世界观参考**：
+{{ story_world_context }}
+{% endif %}
+{% if character_context %}
+
+**当前角色身份参考**：
+{% for char in character_context %}
+- {{ char.get('name', '') }}：{{ char.get('identity', '') }}{% if char.get('social_status') %}（{{ char.get('social_status') }}）{% endif %}
+{% endfor %}
+{% endif %}
+{% endmacro %}
+
+{#- 感官多样性要求 -#}
+{% macro sensory_diversity(weak_senses=[], title="### 感官多样性") %}
+{% if title %}{{ title }}{% endif %}
+- 感官只服务冲突、动作、转场和情绪判断；不要为覆盖率硬补。
+- 每场从 `sensory_notes` 选 1-2 个有效锚点，同段主导感官不超过 2 种。
+- 若视觉过密，优先换成声音、触感、气味、温度、对白停顿、动作选择或场面调度。
+{% if weak_senses %}
+- 当前弱项：{{ weak_senses | join('、') }}；只在关键场景补 1 处有效描写。
+{% endif %}
+{% endmacro %}
+
+{#- 对话密度要求 -#}
+{% macro dialogue_density(min_pct=None, max_pct=None) %}
+{%- set _dlg_min = min_pct -%}
+{%- set _dlg_max = max_pct -%}
+{%- if _dlg_min is none -%}
+{%- set _dlg_min = 30 -%}
+{%- set _dlg_max = 45 -%}
+{%- endif -%}
+### 对话密度要求
+- 对话内容建议占全文字数 {{ _dlg_min }}-{{ _dlg_max }}%，高张力场景可适当提高上限。
+- 检查对话占比：若对话内容（含引号内的直接引语）低于全文 {{ _dlg_min }}%，需增加有效对话场景。
+- 检查对话质量：确保至少有 2-3 段对话真正推动信息、关系或决策变化。
+- 避免连续 3 段以上"问答式"对话，应穿插动作、停顿、眼神交流、环境反应等。
+{% endmacro %}
+
+{#- 对话格式规范 -#}
+{% macro dialogue_format() %}
+### 对话格式规范
+- 直接引语用中文双引号，嵌套引用用中文单引号。
+- 对话标签、动作、停顿、环境反应交替使用；高张力对峙可短暂连续纯对话。
+- 不要连续复用同一种“说/问/道/低声”等标签。
+{% endmacro %}
+
+{#- 说明腔禁止 -#}
+{% macro anti_exposition_rules(
+    title="### 说明腔禁止",
+    opening_intro="禁止使用说明腔开头，例如",
+    planning_label_rule="不输出任何规划标签，不要把 scene/contract 原样写进正文。",
+    opening_narrative_rule="开篇必须让读者自然感到\"谁在这、发生了什么、为什么接着上一章\"，但不能用说明句替代叙事。",
+    dramatization_rule="purpose、conflict、required_outcome、dramatic_question 是幕后设计意图。正文必须让读者通过角色的动作选择、对白潜台词、感官发现和环境阻力来自行发现这些意图，禁止叙述者直接告知结论。例：\u2717\u2018她已识破了酒中的双重试探\u2019 \u2190 叙述者告知结果；\u2713\u2018她端起杯，鼻尖微蹙\u2014\u2014不止一种异味\u2019 \u2190 读者从行动推断发现。revelation_level=seed 时只允许感官暗示和角色微反应，禁止编号式总结或完整解读。"
+) %}
+{% if title %}{{ title }}{% endif %}
+- 禁止用"承接上章""延续上章""POV""情绪标签""本章/上一章"等元语言替代叙事。
+- {{ planning_label_rule }}
+- {{ opening_narrative_rule }}
+- {{ dramatization_rule }}
+{% endmacro %}
+
+{% macro anti_meta_narrative_rules(title="### 章尾与悬念洁净") %}
+{% if title %}{{ title }}{% endif %}
+- 悬念用动作、异象、对白留白或新阻力呈现；不要作者点评“线索/伏笔”。
+- 最后 3 段避免“暗示/意味着/未决/拉开序幕/终将回收”等元叙事总结。
+{% endmacro %}
+
+{% macro creative_specificity_rules(title="### 创造性具体化与反机械句式") %}
+{% if title %}{{ title }}{% endif %}
+- 具体化落到角色选择、动作后果、对白潜台词、环境阻力或场面调度。
+- 不使用“不是……而是……”这类定义式否定转折来自证描写品质；除非角色正在辩驳、事实纠偏、时间纠偏或形成关键悬置。此规则禁止的是叙述者为描写质量做自我注解（如“不是冷，而是刺骨的寒”这类自我证明描写高级的写法），不禁止角色在剧情中做出真实区分、事实纠正或推动情节的否定转折。
+- 抽象判断句只在辩驳、事实纠偏、时间纠偏或关键悬置中保留。
+- 必达事件或旧意象需要保留时，只保留叙事功能，换触发点、动作链或观察角度。
+- 同构句式反复承担同一功能时，只留真正改变读者认知的一处，其余改成反应、误判、成本、留白或外部变化。
+{% endmacro %}
+
+{% macro webnovel_pacing_rules(title="### 网文节奏约束") %}
+{% if title %}{{ title }}{% endif %}
+- 前 200-300 字内必须出现动作、对话、冲突或异常事件中的至少一种，不要先报时再铺景。
+- 环境/心理铺陈合计尽量控制在全文约 20%-25%；连续两段铺景后，下一段必须推进事件。
+- 每个场景都要带来可观察推进：线索增加、决策变化、关系位移或阻力升级。
+{% endmacro %}
+
+{#- 意象复用禁止（跨章节） -#}
+{% macro imagery_repetition_ban(forbidden_imagery=[], title="### ⚠️ 意象复用禁止（★ 硬约束）") %}
+{% if title %}{{ title }}{% endif %}
+{% if forbidden_imagery %}
+以下意象/比喻已在前面章节中使用过，**本章全文禁止使用任何近似表达**：
+{% for item in forbidden_imagery %}
+- **{{ item }}**：禁止范围包括所有语义等价、近义替换、换喻表达的写法。
+{% endfor %}
+{% endif %}
+- 自检规则：若某比喻/意象在本书已出现 ≥2 次，即使未列入上述清单，也须主动换用全新表达。
+{#- 静态陈词滥调黑名单已由 PROFILE_STYLE 动态管理，此处不再重复以节省 prompt tokens -#}
+{% endmacro %}
+
+{#- 模板化短语黑名单 -#}
+{% macro phrase_blacklist(banned_phrases=None, title="### ⚠️ 模板化短语黑名单") %}
+{%- set _phrases = banned_phrases or ["深吸一口气", "目光坚定", "声音低沉", "心中一震", "微微一怔", "嘴角微扬", "眉头微皱"] -%}
+{%- if _phrases %}
+{% if title %}{{ title }}{% endif %}
+- 禁止在情绪转折处重复使用以下模板化短语超过 2 次：
+{%- for phrase in _phrases %}
+  - "{{ phrase }}"
+{%- endfor %}
+{%- endif -%}
+{% endmacro %}
+
+{#- 段落唯一性约束 -#}
+{% macro paragraph_uniqueness(title="### ⚠️ 段落唯一性（★ 硬约束）", banned_phrases=None) %}
+{% if title %}{{ title }}{% endif %}
+- **禁止连续两段或间隔一段后使用相同/近似的核心句子**。
+- 自检：若某句在已生成内容中出现 ≥2 次，必须删除重复项。
+{{ phrase_blacklist(banned_phrases=banned_phrases, title="") }}
+{% endmacro %}
+
+{#- 情感工艺：反差、留白、情绪表达多样性 -#}
+{% macro emotional_craft_rules(title="### 情感工艺") %}
+{% if title %}{{ title }}{% endif %}
+- **反差出情感**：高强度情绪场景中，用一个不协调的日常细节、温柔动作或冷静观察来放大情感冲击，而非堆叠同强度的描写。轻松场景中可埋一个不和谐音符来制造不安。
+- **留白即表达**：角色最痛苦或最震撼的时刻，允许用沉默、动作中断、话题转移或环境白描来替代直接描写。不是所有情绪都需要被命名——读者从角色的行为选择中自行推断的情感，比被告知的更有力。
+- **情绪不叠加同构**：同一场景中同一情绪只用一种表达通道展开（动作/对白/身体/环境/沉默），不重复使用同一通道。
+{% endmacro %}

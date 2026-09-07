@@ -1,0 +1,464 @@
+/*
+ * 卷帙纸本渲染
+ * -----------
+ * A shared folio shell for every reader workbench.  Artifact-specific views
+ * keep their data structure while inheriting a coherent paper, tab and type
+ * hierarchy.
+ */
+
+.reader-page {
+  /* Folio colours must stay semantic.  The former fixed white/sepia palette
+     overrode dark themes after the shared document styles had loaded, which
+     produced pale cards with pale text.  These local aliases retain the paper
+     metaphor while following every theme's own surface, ink and accent scale. */
+  --folio-paper: color-mix(in srgb, var(--nf-bg-surface) 92%, var(--nf-bg-input-soft));
+  --folio-paper-muted: color-mix(in srgb, var(--nf-bg-control) 42%, var(--folio-paper));
+  --folio-paper-raised: color-mix(in srgb, var(--nf-bg-input) 68%, var(--folio-paper));
+  --folio-ink: var(--nf-text-heading-deep);
+  --folio-copy: var(--nf-text-primary);
+  --folio-muted: var(--nf-text-muted);
+  --folio-accent: var(--nf-accent-primary);
+  --folio-rule: color-mix(in srgb, var(--nf-border-default) 30%, transparent);
+  gap: 10px;
+}
+
+.reader-page .reader-header {
+  min-height: 52px;
+  padding: 10px 12px;
+  border: 1px solid var(--folio-rule);
+  border-radius: 11px;
+  background: linear-gradient(90deg, var(--folio-paper-raised), var(--folio-paper-muted));
+}
+
+.reader-page .reader-header select {
+  min-height: 35px;
+  border-color: var(--folio-rule);
+  border-radius: 7px;
+  color: var(--nf-text-body);
+  background: var(--folio-paper-raised);
+  font-family: var(--nf-font-ui);
+  font-size: var(--nf-type-label, 14px);
+}
+
+.reader-page .reader-project-title {
+  color: var(--folio-ink);
+  font-size: var(--nf-type-section, 17px);
+  letter-spacing: 0.05em;
+}
+
+.reader-page .reader-content {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--folio-rule);
+  border-radius: 13px;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent 0 31px,
+      color-mix(in srgb, var(--nf-border-warm) 5%, transparent) 32px
+    ),
+    var(--folio-paper);
+  box-shadow: 0 9px 22px color-mix(in srgb, var(--nf-shadow) 10%, transparent);
+}
+
+/* The former inner folio ruler overlapped the container border and nested tab
+   edges, leaving two or three vertical lines at the very left of the reader.
+   Keep the single panel boundary; the paper texture supplies enough character
+   without competing with navigation. */
+.reader-page .reader-content::before {
+  display: none;
+}
+
+.reader-page .reader-tabs {
+  position: relative;
+  z-index: 3;
+  min-height: 43px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--folio-rule);
+  background: color-mix(in srgb, var(--folio-paper-muted) 76%, transparent);
+}
+
+/* Reader navigation is intentionally one step larger than ordinary chrome.
+   The compact PySide parity scale made volume labels difficult to scan on
+   high-density displays, especially inside the large artifact dialog. */
+.reader-page .reader-tabs button {
+  font-size: var(--nf-font-subsection);
+  line-height: 1.2;
+}
+
+.reader-page .reader-tab {
+  min-height: 43px;
+  padding: 8px 16px 7px;
+  border: 0;
+  border-right: 1px solid transparent;
+  border-left: 1px solid transparent;
+  border-radius: 7px 7px 0 0;
+  background: transparent;
+  color: var(--folio-muted);
+  font-size: var(--nf-type-label, 14px);
+}
+
+.reader-page .reader-tab:hover {
+  background: color-mix(in srgb, var(--nf-bg-hover-secondary) 72%, var(--folio-paper));
+  color: var(--folio-ink);
+}
+
+.reader-page .reader-tab.is-active {
+  border-right-color: var(--folio-rule);
+  border-bottom-color: var(--folio-paper);
+  border-left-color: var(--folio-rule);
+  background: var(--folio-paper);
+  color: var(--folio-accent);
+  font-weight: 700;
+  box-shadow: inset 0 3px var(--folio-accent);
+}
+
+.reader-page .reader-inner-tabs {
+  min-height: 39px;
+  padding-left: 18px;
+  background: color-mix(in srgb, var(--nf-bg-input-soft) 54%, transparent);
+}
+
+.reader-page .reader-inner-tabs .reader-tab {
+  min-height: 39px;
+  font-size: var(--nf-type-meta, 12px);
+}
+
+.reader-page .reader-document,
+.reader-page .reader-source-body,
+.reader-page .reader-document-body,
+.reader-page .doc-rich {
+  width: 100%;
+  max-width: none;
+}
+
+.reader-page .reader-source-body,
+.reader-page .reader-document-body {
+  padding: 10px 12px 14px;
+}
+
+.reader-page .reader-source-toolbar strong {
+  font-size: var(--nf-font-label);
+}
+
+.reader-page .reader-source-toolbar button {
+  font-size: var(--nf-font-ui);
+}
+
+.reader-page .reader-source-status {
+  font-size: var(--nf-font-ui);
+}
+
+.reader-page .reader-source-body > h1 {
+  margin-bottom: 8px;
+  font-size: var(--nf-font-section);
+  line-height: 1.5;
+}
+
+.reader-page .doc-rich {
+  font-size: var(--nf-font-section-sm);
+  line-height: 1.6;
+}
+
+/* Data documents share a compact reading surface in both 卷帙 and 产出文件. */
+.reader-page .reader-source-body .doc-section,
+.reader-page .reader-source-body .doc-mini-card {
+  margin: 6px 0;
+  padding: 6px 8px;
+}
+.reader-page .reader-source-body .doc-table th,
+.reader-page .reader-source-body .doc-table td { padding: 6px 10px; }
+.reader-page .reader-source-body .doc-h2 { margin-top: 12px; }
+.reader-page .reader-source-body .doc-h3 { margin: 8px 0 4px; }
+.reader-page.artifact-reader { display: flex; flex-direction: column; gap: 0; margin: 0; height: 100%; }
+.reader-page:has(> .reader-sync-error) { grid-template-rows: auto 52px minmax(0, 1fr); }
+.reader-source-toolbar { gap: 5px; }
+.reader-source-actions { flex-wrap: wrap; }
+.reader-source-status { flex-wrap: wrap; gap: 4px 12px; }
+
+.reader-page .reader-source-body.is-character-document { display: flex; padding: 0; overflow: hidden; }
+.character-document { display: flex; flex: 1; flex-direction: column; min-width: 0; min-height: 0; container: character-reader / inline-size; }
+.character-document > header { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px 14px; padding: 12px 14px; border-bottom: 1px solid var(--folio-rule); }
+.character-document > header span, .character-document > header small { color: var(--folio-muted); font-size: var(--nf-font-ui); }
+.character-document > header small { margin-left: auto; }
+.character-document-grid { display: grid; flex: 1; grid-template-columns: 164px minmax(300px, 1fr) minmax(320px, .9fr); min-height: 0; min-width: 0; }
+.character-document-switch { display: none; align-items: center; gap: 4px; padding: 6px 10px; border-bottom: 1px solid var(--folio-rule); }
+.character-document-switch button { padding: 5px 12px; border: 1px solid transparent; border-radius: 5px; background: transparent; color: var(--folio-copy); font-size: var(--nf-font-ui); }
+.character-document-switch button[aria-pressed="true"] { border-color: var(--folio-rule); background: var(--folio-paper-muted); color: var(--folio-accent); }
+.character-document-roster { display: flex; flex-direction: column; min-height: 0; padding: 10px; border-right: 1px solid var(--folio-rule); background: var(--folio-paper-muted); }
+.character-document-roster input { width: 100%; min-height: 32px; padding: 6px 8px; margin-bottom: 8px; border: 1px solid var(--folio-rule); border-radius: 6px; background: var(--folio-paper-raised); color: var(--folio-copy); }
+.character-document-roster > div { overflow: auto; }
+.character-document-roster button { display: grid; gap: 3px; width: 100%; padding: 9px 8px; border: 0; border-radius: 6px; text-align: left; background: transparent; color: var(--folio-copy); }
+.character-document-roster button[aria-pressed="true"] { background: color-mix(in srgb, var(--folio-accent) 10%, var(--folio-paper)); box-shadow: inset 3px 0 var(--folio-accent); }
+.character-document-roster small { color: var(--folio-muted); font-size: var(--nf-font-ui); }
+.character-document-graph { min-width: 0; min-height: 0; }
+.character-document-graph .relationship-graph-renderer { height: 100%; min-height: 0; border: 0; border-radius: 0; }
+.character-document-profile { min-width: 0; min-height: 0; overflow: auto; padding: 12px 14px; border-left: 1px solid var(--folio-rule); overflow-wrap: anywhere; }
+.character-document-profile > h2 { margin: 0 0 12px; color: var(--folio-ink); font-size: var(--nf-font-section); }
+.character-document-profile > h2 small { display: block; margin-top: 5px; color: var(--folio-muted); font-size: var(--nf-font-ui); font-weight: 400; }
+.character-document-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0 0 12px; padding-bottom: 10px; border-bottom: 1px solid var(--folio-rule); font-size: var(--nf-font-ui); }
+.character-document-facts dt { color: var(--folio-muted); }
+.character-document-facts dd { margin: 4px 0 0; color: var(--folio-copy); }
+.character-document-profile .doc-kv-table,
+.character-document-profile .doc-kv-table tbody,
+.character-document-profile .doc-kv-table tr { display: block; width: 100%; }
+.reader-page .character-document-profile .doc-kv-table th { display: block; width: auto; min-width: 0; padding: 6px 0 2px; border: 0; background: transparent; color: var(--folio-muted); font-size: var(--nf-font-ui); text-align: left; }
+.reader-page .character-document-profile .doc-kv-table td { display: block; padding: 0 0 10px; border: 0; background: transparent; }
+.reader-sync-error { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 8px 12px; color: var(--nf-status-warning); font-size: var(--nf-font-ui); }
+.doc-expand-items { margin: 6px 0; padding: 5px 10px; border: 1px solid var(--folio-rule, var(--nf-border-default)); border-radius: 5px; background: var(--nf-bg-surface); color: var(--nf-accent-primary); }
+
+/* Adapt to the actual reading surface, not the screen behind a dialog. */
+@container character-reader (max-width: 960px) {
+  .character-document-switch { display: flex; }
+  .character-document-grid { grid-template-columns: 150px minmax(0, 1fr); }
+  .character-document-grid[data-compact-view="graph"] .character-document-profile,
+  .character-document-grid[data-compact-view="profile"] .character-document-graph { display: none; }
+  .character-document-profile { border-left: 0; }
+  .character-document > header small { display: none; }
+}
+@container character-reader (max-width: 540px) {
+  .character-document-grid { grid-template-columns: 120px minmax(0, 1fr); }
+  .character-document-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.reader-page .reader-document-heading {
+  padding: 14px 22px 13px 28px;
+  border-bottom: 1px solid var(--folio-rule);
+  background: color-mix(in srgb, var(--folio-paper-raised) 68%, transparent);
+}
+
+.reader-page .reader-document-heading h2,
+.reader-page .reader-document-heading h3 {
+  margin: 0;
+  color: var(--folio-ink);
+  font-size: var(--nf-type-section-lg, 18px);
+  letter-spacing: 0.05em;
+}
+
+.reader-page .doc-section,
+.reader-page .doc-card,
+.reader-page .doc-kv-table,
+.reader-page .report-card {
+  border-color: var(--folio-rule);
+  background: var(--folio-paper-raised);
+  box-shadow: none;
+}
+
+.reader-page .doc-section {
+  margin-block: 10px;
+  padding: 13px 16px;
+  border: 1px solid var(--folio-rule);
+  border-radius: 8px;
+}
+
+.reader-page .doc-section h3,
+.reader-page .doc-card h3,
+.reader-page .report-card h3 {
+  color: var(--folio-ink);
+  font-size: var(--nf-font-section);
+  line-height: 1.45;
+}
+
+.reader-page .doc-section p,
+.reader-page .doc-card p,
+.reader-page .report-card p,
+.reader-page .doc-kv-table {
+  font-size: var(--nf-font-subsection);
+  line-height: 1.82;
+}
+
+/* The previous 850px cap created the blank strip highlighted by the user. */
+.reader-page .reader-prose-read,
+.reader-page .reader-prose-read > div,
+.reader-page .reader-chapter-document,
+.reader-page .reader-final-revision {
+  width: 100%;
+  max-width: none;
+}
+
+.reader-page .reader-prose-read > div {
+  padding: 22px clamp(24px, 3.2vw, 52px) 34px;
+}
+
+.reader-page .reader-prose-read > div p {
+  max-width: none;
+  color: var(--folio-copy);
+  font-size: var(--nf-type-section-sm, 16px);
+  line-height: 1.95;
+}
+
+/* Outline prose keeps its beats and supporting constraints separate. */
+.reader-page .reader-outline-content > article,
+.reader-page .reader-outline-content > article > p {
+  width: 100%;
+  max-width: none;
+}
+
+.reader-page .reader-outline-content > article > p {
+  padding: 22px clamp(24px, 3.2vw, 52px) 34px;
+  color: var(--folio-copy);
+  font-family: var(--nf-font-reading-family);
+  font-size: var(--nf-type-section-sm, 16px);
+  line-height: 1.95;
+  letter-spacing: 0.025em;
+}
+
+.reader-page .reader-outline-content > article header,
+.reader-page .reader-outline-content > article footer {
+  padding-inline: clamp(24px, 3.2vw, 52px);
+}
+
+.outline-reading {
+  display: grid;
+  align-content: start;
+  gap: 22px;
+  padding: 24px clamp(20px, 3vw, 44px) 32px;
+  min-width: 0;
+  max-width: 1080px;
+  color: var(--nf-text-body);
+  font-family: var(--nf-font-reading-family);
+  line-height: 1.85;
+  overflow-wrap: anywhere;
+}
+.outline-reading h3 { margin: 0 0 10px; color: var(--nf-text-heading); font: 600 var(--nf-font-body)/1.5 var(--nf-font-ui-family); }
+.outline-reading h3 span { margin-left: 8px; color: var(--nf-text-muted); font-size: var(--nf-font-meta); font-weight: 400; }
+.outline-reading p { margin: 0; white-space: pre-wrap; }
+.outline-reading-facts { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 0; font: var(--nf-font-ui)/1.6 var(--nf-font-ui-family); }
+.outline-reading-facts div { display: flex; gap: 8px; min-width: 0; }
+.outline-reading-facts dt { flex: 0 0 auto; color: var(--nf-text-muted); }
+.outline-reading-facts dd { margin: 0; }
+.outline-reading-goal { border-left: 3px solid var(--nf-accent-primary); padding: 4px 0 4px 16px; }
+.outline-reading-beats ol { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+.outline-reading-beats li { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 12px; padding: 15px 0; border-top: 1px solid color-mix(in srgb, var(--nf-border-default) 18%, transparent); }
+.outline-beat-index { color: var(--nf-accent-primary); font: 600 var(--nf-font-meta)/1.9 var(--nf-font-ui-family); }
+.outline-reading-support { display: grid; gap: 8px; }
+.outline-reading-support details { border: 1px solid color-mix(in srgb, var(--nf-border-default) 20%, transparent); border-radius: 8px; }
+.outline-reading-support summary { padding: 10px 14px; cursor: pointer; color: var(--nf-text-heading); font: 500 var(--nf-font-body)/1.6 var(--nf-font-ui-family); }
+.outline-reading-support summary span { float: right; color: var(--nf-text-muted); font-size: var(--nf-font-meta); }
+.outline-reading-support ul { display: grid; gap: 10px; margin: 0; padding: 4px 24px 16px 36px; }
+.outline-reading-support li { white-space: pre-wrap; }
+
+/* Narrative blueprint: keep lanes readable instead of shrinking the SVG text. */
+.reader-page .narrative-timeline-renderer {
+  margin: 0;
+  padding: 6px 12px 10px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.reader-page .narrative-timeline-scroll {
+  padding: 5px 6px 2px;
+  overflow-x: hidden;
+  overflow-y: hidden;
+  border: 1px solid var(--folio-rule);
+  border-radius: 9px;
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--nf-bg-input) 36%, transparent),
+      transparent
+    ),
+    color-mix(in srgb, var(--folio-paper-raised) 78%, transparent);
+  scrollbar-color: color-mix(in srgb, var(--folio-accent) 58%, transparent) transparent;
+  scrollbar-width: thin;
+}
+
+.reader-page .narrative-timeline-scroll svg {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: auto;
+}
+
+/* Let the folio own vertical scrolling.  The previous flex shrink created a
+   second, clipped timeline viewport whose bottom scrollbar appeared before
+   the final subplot and character-arc lanes. */
+.reader-page .reader-narrative-tools {
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.reader-page .reader-narrative-tools .narrative-tools,
+.reader-page .reader-narrative-tools .narrative-timeline-renderer {
+  flex: 0 0 auto;
+  min-height: max-content;
+}
+
+.reader-page .timeline-grid text {
+  font-size: 14px;
+}
+
+.reader-page .timeline-section-label,
+.reader-page .timeline-lane-label {
+  font-size: 16px;
+}
+
+.reader-page .timeline-phase text {
+  font-size: 16px;
+}
+
+.reader-page .timeline-phase-summary {
+  font-size: 14px !important;
+}
+
+.reader-page .timeline-total-chapters rect {
+  fill: color-mix(in srgb, var(--folio-accent) 11%, transparent);
+}
+
+.reader-page .timeline-total-chapters text {
+  fill: var(--folio-accent);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.reader-page .timeline-mainline-label,
+.reader-page .timeline-arc-label {
+  font-size: 16px;
+}
+
+.reader-page .timeline-feedback-label,
+.reader-page .timeline-milestone-index {
+  font-size: 13px;
+}
+
+.reader-page .narrative-timeline-renderer > footer {
+  min-height: 46px;
+  margin-top: 7px;
+  padding: 10px 14px;
+  border: 1px solid var(--folio-rule);
+  border-left: 3px solid var(--folio-accent);
+  border-radius: 3px 8px 8px 3px;
+  background: color-mix(in srgb, var(--folio-accent) 8%, var(--folio-paper));
+}
+
+.reader-page .narrative-timeline-renderer > footer > div {
+  color: var(--nf-text-body);
+  font-size: var(--nf-type-body, 14px);
+}
+
+.timeline-controls { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; }
+.timeline-controls > div { display: flex; flex-wrap: wrap; gap: 4px; }
+.timeline-controls button, .timeline-controls select { min-height: 32px; padding: 5px 10px; border: 1px solid color-mix(in srgb, var(--nf-border-default) 25%, transparent); border-radius: 6px; background: var(--nf-bg-surface); color: var(--nf-text-secondary); font: var(--nf-font-ui)/1.4 var(--nf-font-ui-family); }
+.timeline-controls button[aria-pressed="true"] { color: var(--nf-accent-primary); background: color-mix(in srgb, var(--nf-accent-primary) 9%, var(--nf-bg-surface)); border-color: var(--nf-accent-primary); }
+.timeline-controls label { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; color: var(--nf-text-muted); font-size: var(--nf-font-ui); }
+.timeline-controls select { max-width: min(340px, 100%); }
+.timeline-lane-name { cursor: pointer; }
+.timeline-lane-name:focus-visible, .timeline-arc-milestone:focus-visible { outline: 2px solid var(--nf-accent-primary); outline-offset: 4px; }
+.narrative-timeline-renderer > footer strong { display: block; color: var(--nf-text-heading); font-weight: 600; overflow-wrap: anywhere; }
+.narrative-timeline-renderer > footer small { color: var(--nf-text-muted); }
+.narrative-timeline-renderer > footer p { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin: 5px 0 0; }
+.narrative-detail-dialog-copy p { white-space: pre-wrap; }
+.narrative-timeline-tooltip > p { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+
+@media (max-width: 1180px) {
+  .reader-page .reader-source-body,
+  .reader-page .reader-document-body {
+    padding-right: 16px;
+    padding-left: 22px;
+  }
+
+  .reader-page .reader-prose-read > div {
+    padding-inline: 24px;
+  }
+}

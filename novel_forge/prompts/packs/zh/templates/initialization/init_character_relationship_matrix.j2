@@ -1,0 +1,135 @@
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：init_character_relationship_matrix.j2
+服务步骤：INIT_CHARACTER_RELATIONSHIP_MATRIX（角色圣经分片：关系网）
+作用简述：基于同一 roster 生成角色间关系矩阵，避免档案分片彼此割裂。
+上游输入：premise/story_bible/character_roster/character_profiles/character_arcs/relationship_seed_matrix/relationship_candidate_evidence
+下游输出：JSON：{"relationship_matrix": [{"character_a","character_b","relation_type","description","confidence"}]}
+下游消费者：INIT_CHARACTER_BIBLE 本地合并器
+消费链优先级：P0 = 只写 roster 内人物关系；P1 = 关系含冲突/利益/情感张力；P2 = 去重
+================================================================================
+#}
+{%- from "_base/_shared_evidence_anchor.j2" import render_shared_evidence_anchor -%}
+
+{#- 指导层 -#}
+请只生成角色与角色之间的关系矩阵。不要写道具、组织、概念关系；不要新增角色。
+
+## 链路边界
+本模板只产出 typed relationship matrix，不产出完整 CharacterBible，也不补写角色档案。
+{% set phase = relationship_generation_phase | default("final") %}
+{% if phase == "seed" %}
+当前阶段：关系种子矩阵。你只负责从完整角色档案中提取明显的叙事有效关系，供人物弧线参考；本结果不会直接投影给 CharacterBible。
+{% elif phase == "repair" %}
+当前阶段：关系完整性定向修复。只输出与“本轮目标角色”直接相连、且能由档案或候选证据支持的关系；不要重写上一版完整矩阵。端点必须逐字来自固定角色清单，尤其不得继续使用修复原因里的错误称呼。
+{% else %}
+当前阶段：最终关系矩阵。你消费档案、弧线、关系种子与候选证据，必须输出后续 CharacterSystem、CharacterBible、Canon 和蓝图共同使用的权威人物关系图。
+{% endif %}
+{% if character_generation_mode == "split_v2" %}
+当前链路：split_v2。你消费的是 roster 与 profile_batch 的本地合并结果；必须服从固定名单，关系会被本地合并器投影回 CharacterBible。
+{% elif character_generation_mode %}
+当前链路：{{ character_generation_mode }}。该值只用于缓存隔离和链路说明，不要写入关系字段。
+{% endif %}
+
+## Canonical entity 规则
+- `character_a` / `character_b` 只能使用 roster canonical name；关系矩阵不是旧名、别名、组织或道具的注册入口。
+- 旧名、误称、前世名、称号如果确实影响关系，只能作为 `description` 中的短证据，不得进入关系端点。
+- `identity_link` 只描述两个 roster 实体之间的身份链接；同一实体的别名不要输出成两个人物关系。
+- 下游 CharacterSystem 会把本分片投影成关系边；因此每条边必须可被章节提示词局部消费，不得包含人物大包。
+
+## 固定角色清单（最高优先级；关系端点只能逐字复制这里的名字）
+{{ character_roster | tojson(indent=2) }}
+
+{% if target_character_roster | default([]) %}
+## 本轮目标角色（每个角色必须至少获得一条有证据的有效关系）
+{{ target_character_roster | tojson(indent=2) }}
+{% endif %}
+
+{{ render_shared_evidence_anchor(shared_evidence_anchor) }}
+
+## 故事前提
+{{ premise }}
+
+## 世界观锚点
+{{ story_bible | tojson(indent=2) if story_bible is mapping else story_bible }}
+
+{% if character_profiles %}
+## 已生成档案摘要
+{{ character_profiles | tojson(indent=2) }}
+{% endif %}
+
+{% if character_arcs | default([]) %}
+## 已合并人物弧线
+{{ character_arcs | tojson(indent=2) }}
+{% endif %}
+
+{% if relationship_seed_matrix | default([]) %}
+## 关系种子矩阵
+{{ relationship_seed_matrix | tojson(indent=2) }}
+{% endif %}
+
+{% if relationship_candidate_evidence | default([]) %}
+## 本地候选证据
+以下条目表示某个角色档案字段中提到了另一个 roster 人物。它们不是强制关系，但最终矩阵必须审阅这些证据，保留真正会影响动机、情感、冲突、阵营、支线或正文互动的关系。
+{{ relationship_candidate_evidence | tojson(indent=2) }}
+{% endif %}
+
+{% if previous_relationship_matrix | default([]) %}
+## 上一版关系矩阵
+{{ previous_relationship_matrix | tojson(indent=2) }}
+{% endif %}
+
+{% if relationship_retry_reasons | default([]) %}
+## 本次修复原因
+{{ relationship_retry_reasons | tojson(indent=2) }}
+{% endif %}
+
+## 字段内容约束
+- 每个关系对象只允许 `character_a`、`character_b`、`relation_type`、`identity_link_type`、`description`、`confidence`。
+- 字段名只使用上方列出的英文 `snake_case` key；所有判断写进 `description`。
+
+## 要求
+- `character_a` 与 `character_b` 都必须来自固定角色清单。
+- `character_a` / `character_b` 必须逐字使用固定角色清单里的规范名。旧名、别名、前世名、误称、阶段称呼只能写在 `description`，不能放入这两个字段。
+- 如果已生成档案摘要里出现了与固定清单不一致的近似名、旧草稿名或误称，本步骤必须统一改回固定清单规范名；除非是用户明确设定的正式别名，否则不要把漂移名继续写入 `description`。
+- 如果固定角色清单中的名字带括号限定（如现代/过去/回忆），`character_a` / `character_b` 必须完整照抄括号限定，不得省略为未限定姓名。
+- 关系矩阵是“叙事有效关系”的选择结果，不是全角色两两配对表。不要补全所有人物两两关系。
+- 只输出会在正文中产生互动、冲突、信息转移、情感变化、行动协作、阻碍或长期张力的关系。
+- 若两人只是“听说过 / 间接知道 / 无直接关系 / 可能未来关联 / 同在一个社区但不会相互作用”，请直接省略这对关系，禁止写成 `relationship`。
+- 回忆层、已故或仅背景存在的人物，只在其关系会持续驱动角色弧线、创伤、承诺、传承或关键回忆场景时输出关系；否则省略。
+- 每对关系只输出一次。优先输出主角关系、反派/压力源关系、会引发转折的配角关系；弱口碑关系和纯生态关系宁缺毋滥。
+- `relation_type` 必须从下列英文枚举中选择一个，不得输出中文类型或自造类型：
+  - `romantic_tension`：CP、暧昧、情感拉扯、伴侣走向
+  - `family`：亲缘、祖孙、父母子女、兄弟姐妹、家族义务
+  - `mentor_student`：师生、师徒、导师学生、前辈后辈
+  - `professional`：同事、同门合伙、医患、诊疗、科研协作、职业分工
+  - `alliance`：明确同盟、共同目标、互相支援
+  - `rivalry`：竞争、较劲、价值观拉扯但不是敌对
+  - `antagonism`：敌对、伤害、背叛、阻挠、主要对抗
+  - `community`：邻里、群体、公众评价、社会生态关系
+  - `identity_link`：同一灵魂、转世、误认、别名、前世/今生身份映射；普通社会关系、恋人/CP/命定伴侣不要用此项
+  - `relationship`：以上都不准确时使用的中性关系
+- `identity_link_type` 只在 `relation_type` 为 `identity_link` 时填写，可取 `reincarnation_of`、`mistaken_as`、`alias_of`、`related_to`；其他关系填空字符串。
+- 只有当 `character_a` 与 `character_b` 本身是同一灵魂/转世/别名/误认对象时，才可使用 `identity_link`。如果描述是“两人前世相爱、今生重逢、宿命CP”，关系类型应为 `romantic_tension`，前世信息写入 `description`。
+- `description` 要写出社会关系、情感倾向和潜在冲突，但不要让第三方剧情词污染 `relation_type`。
+- `description` 不能以“无直接关系”“间接认识”“可能产生关联”作为关系本体；这类条目应被省略。
+- 若某个 supporting/antagonist 会推动主线、支线或证据链，应至少连接到直接互动对象、上级/下级、盟友、敌手或情感对象之一；不要让关键活跃人物只在档案里存在而在关系矩阵中完全孤立。
+- 最终阶段必须审阅人物弧线与候选证据：如果一对人物在 backstory/arc/notes 中已经形成亏欠、保护、利用、旧识、盟友、敌手、亲缘、师承、职业协作或情感牵连，应显式输出为一条关系边。
+- `description` 必须同时写清：社会/身份关系、情感倾向、叙事功能或潜在冲突。不要只写“认识”“有关联”。
+- 关系选择要服务旧版 CharacterBible 的整体自洽效果：优先保留能解释角色动机、阵营分层、主冲突推进、反转证据链或情感线变化的边；不要为了让图更满而添加弱连接。
+- `confidence` 输出 0 到 1 的小数；不确定时用 0.7。
+
+## 质量校准
+- 工作身份：你是一位长篇叙事架构师，擅长把故事资产拆成可承接、可验证、不过度剧透的执行计划。
+- 规划推断路径：先锁定 P0 硬约束，再分配 P1 推进节奏，最后用 P2 风格/主题补足表现层。
+- 字段级质量示例（非输出格式）：平弱=“推进关系”；高质量=“写清谁因何行动、关系如何变化、下一环如何承接”。
+- 可操作路径：计划项要能被后续写作/审计直接检查，避免只给抽象愿望或主题口号。
+
+## 交付前核验
+- P0/P1/P2 优先级是否被保持，且没有让弱参考覆盖硬约束。
+- 是否能把关键判断回指到输入证据、上游契约或已批准计划。
+- 是否避免新增未授权的人物、地点、世界规则、未来 payoff 或格式协议。
+- 是否把抽象目标转化为可观察的行动、冲突、状态变化或章节承接点。
+
+{#- 格式层 -#}

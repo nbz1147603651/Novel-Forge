@@ -1,0 +1,35 @@
+.engine-runtime-status {
+  display: inline-flex;
+  flex: 0 1 auto;
+  align-items: center;
+  box-sizing: border-box;
+  max-width: 100%;
+  height: 20px;
+  min-height: 0;
+  gap: 5px;
+  padding: 0 8px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 25%, transparent);
+  border-radius: 999px;
+  color: var(--nf-text-topbar-meta);
+  background: color-mix(in srgb, var(--nf-bg-input) 58%, transparent);
+  font-size: var(--nf-font-micro);
+  font-weight: 700;
+  line-height: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.engine-runtime-status-dot { flex: 0 0 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--nf-status-success); }
+.engine-runtime-status small { overflow: hidden; color: inherit; font-size: inherit; font-weight: 600; opacity: .78; text-overflow: ellipsis; white-space: nowrap; }
+.engine-runtime-status.is-checking .engine-runtime-status-dot { background: var(--nf-status-warning); }
+.engine-runtime-status.is-restartrequired, .engine-runtime-status.is-unsupported { color: var(--nf-status-warning); border-color: color-mix(in srgb, var(--nf-status-warning) 48%, transparent); background: color-mix(in srgb, var(--nf-status-warning) 12%, var(--nf-bg-surface)); }
+.engine-runtime-status.is-restartrequired .engine-runtime-status-dot, .engine-runtime-status.is-unsupported .engine-runtime-status-dot { background: var(--nf-status-warning); }
+.engine-runtime-status.is-unavailable { color: var(--nf-status-error); border-color: color-mix(in srgb, var(--nf-status-error) 38%, transparent); background: color-mix(in srgb, var(--nf-status-error) 10%, var(--nf-bg-surface)); }
+.engine-runtime-status.is-unavailable .engine-runtime-status-dot { background: var(--nf-status-error); }
+
+.engine-runtime-details { display: grid; gap: 7px; margin: 0; }
+.engine-runtime-details > div { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 12px; padding: 7px 0; border-bottom: 1px solid color-mix(in srgb, var(--nf-border-default) 13%, transparent); }
+.engine-runtime-details dt { color: var(--nf-text-muted); font-size: var(--nf-font-ui); }
+.engine-runtime-details dd { min-width: 0; margin: 0; color: var(--nf-text-body); font-family: var(--nf-type-family-code); font-size: var(--nf-font-ui); overflow-wrap: anywhere; }
+.engine-runtime-next-action { margin: 14px 0 0; color: var(--nf-status-warning); font-size: var(--nf-font-label); line-height: 1.65; }

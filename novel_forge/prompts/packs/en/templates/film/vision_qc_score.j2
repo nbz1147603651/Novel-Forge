@@ -1,0 +1,65 @@
+{# source_template_hash: 6e045f9e8a793a2e3df3d24047a75af1b14a2b7b37c929589bde9a49aa35eb85 #}
+{#
+================================================================================
+[NOTES]
+================================================================================
+Prompt: vision_qc_score.j2
+Task: VISION_QC_SCORE (multi-dimension visual quality scoring for film shots)
+Purpose: Scores one shot's generation prompt and shot language across 6 visual
+         quality dimensions, acting as the semantic soft gate on top of the
+         signal-level QC (file / duration / black frames).
+Upstream inputs:
+  - shot_context: shot context (shot_id/title/prompt/language/anchors)
+  - style_context: film-wide style lock (thesis/color/lighting/rules/negatives)
+  - dimensions: scoring dimension list (id/name/description)
+Downstream outputs:
+  - JSON (FULL_OBJECT): {"dimensions":[{"id":...,"score":...,"note":...}],
+    "overall_score": ..., "summary": "..."}
+  - Downstream consumers:
+    * FilmVisionQcEngine.evaluate: two-level gate (signal hard + vision soft)
+    * Retry policy: below threshold or any dimension below floor triggers a
+      reshoot (max 2 retries)
+Consumption priorities:
+  P0 = dimension ids must come from the input list; score is a 0-10 number
+  P1 = note must name the concrete defect and an actionable fix
+  P2 = overall_score must stay consistent with the dimension scores
+================================================================================
+#}
+{#- ---------------------------------------------------------------------------
+    Guidance layer: task and inputs
+    --------------------------------------------------------------------------- -#}
+
+You are a film visual QA expert performing semantic-level visual quality assessment of shot designs before/after generation.
+Signal-level checks (file integrity, duration, resolution, black frames) are already handled by a deterministic engine; you only assess whether the image design is consistent with the film-wide style lock.
+
+## Shot context
+{{ shot_context | tojson(ensure_ascii=False) }}
+
+## Film-wide style lock
+{{ style_context | tojson(ensure_ascii=False) }}
+
+## Scoring dimensions (score each one)
+{% for item in dimensions %}
+- {{ item.id }} ({{ item.name }}): {{ item.description }}
+{% endfor %}
+
+{#- ---------------------------------------------------------------------------
+    Constraint layer: quality and boundaries
+    --------------------------------------------------------------------------- -#}
+
+## Scoring constraints
+1. Dimension ids must come from the list above; do not add or remove dimensions.
+2. score is a number between 0 and 10 with one decimal; 7.0 is the delivery line and 5.0 is the hard floor.
+3. note must name the concrete defect and an actionable fix (light motivation, axis correction, color script alignment); no vague comments.
+4. overall_score is the weighted holistic judgment and must not exceed the lowest dimension score.
+5. identity_consistency must verify that character identity locks and the cross-volume state timeline are covered by the prompt.
+6. summary states in one sentence whether the shot can proceed and what the biggest shortfall is.
+
+{#- ---------------------------------------------------------------------------
+    Output layer: format contract
+    --------------------------------------------------------------------------- -#}
+
+## Output requirements
+- Output only a complete JSON object matching the schema; the top level must contain the `dimensions` (array), `overall_score` (number) and `summary` (string) keys.
+- Each dimensions item contains `id`, `score`, `note`.
+- Do not output Markdown, comments or ellipses.

@@ -1,0 +1,144 @@
+请根据以下故事规格与已完成片段，生成叙事蓝图的指定片段。
+
+## 故事规格
+- 体裁：mystery｜主题：truth and trust｜基调：tense
+- 目标字数：120000｜语言：简体中文（zh-Hans）
+- 角色：Lin Wan and Zhou Lin investigate a hidden terminal.
+- 世界观：An underground hangar stores forbidden signal records.
+- 核心冲突：The archive proves one ally has hidden evidence.
+- 叙事视角：limited third-person
+- 开篇风格样张（仅供笔法参考，不得逐句复刻到第1章）：start with a concrete action
+- 收束风格样张（仅供笔法参考，不得逐句复刻到末章）：close on a new decision
+
+## 世界与主题锚点
+- 核心前提：A signal archive exposes buried choices in an underground city.
+- 时代背景：near future
+- 主要场域：underground hangar district
+- 社会文化：technical guilds trade access for silence
+- 异质系统：signal forensics
+
+- 不可违背的世界规则：Signal records cannot be forged without a checksum trace.
+
+- 主题线：trust；cost of truth
+
+## 核心角色锚点
+以下角色弧线与人物关系应直接进入蓝图设计，不要只停留在类型标签：
+
+- Lin Wan（protagonist）：性格=alert and precise；弧线=learns to trust evidence without abandoning empathy；关系=Zhou Lin：uneasy ally
+
+- Zhou Lin（ally）：性格=calm and evasive；弧线=admits the cost of earlier silence；关系=Lin Wan：protects her from partial truth
+
+## 初始化角色关系总览
+以下关系来自最终 CharacterSystem，端点名必须保留，蓝图不得与其矛盾：
+
+- {'source': 'Lin Wan', 'target': 'Zhou Lin', 'relation': 'uneasy ally', 'tension': 'withheld evidence'}
+
+## 叙事要素选择器注入
+
+- 执行约束：Keep motif evidence tied to decisions.
+
+- 必要项（必须全部体现）：
+
+  - Causal clarity（causal_clarity）：Keep major reveals causally actionable.
+    提示词：Every major reveal must change a later choice.
+
+- 扩展项（按本作机制优先级）：
+
+  - Archive motif（archive_motif / motif）
+    优先级：0.9｜来源：snapshot
+
+    适配题材：mystery
+    选用原因：Fits the premise.
+    提示词：Use signal fragments as recurring pressure.
+
+## 项目风格规范注入
+- 风格概述：Tense, concrete, low exposition.
+
+- 对话占比：balanced
+- 节奏模式：moderate
+- 情绪风格：restrained
+
+- 钩子偏好：mystery
+- 强度基准：medium
+
+- 爽点模式：evidence reversal
+
+- 三线节奏：Quest≤3章,
+            Fire≤2章断档,
+            Constellation≤4章断档
+
+## 创作导演包（用于增强创作性，不改变 JSON 字段结构）
+请优先把以下内容转化为情节选择、场景张力和支线交织，而不是生硬复述：
+- 情感引擎：trust tested by incomplete evidence
+- 主题承诺：truth has a personal cost
+- 关系张力：Lin Wan doubts Zhou Lin
+- 反套路约束：Do not solve distrust with one confession.
+- 关键场面潜力：silent terminal room
+
+## 已完成蓝图片段
+这些片段已经通过本地缓存/校验，本次内容必须与其保持一致，不要重复处理未要求字段：
+
+当前提供的是压缩后的因果锚点快照；被省略的细节不代表可以改写。请优先继承 anchors 中的主线转折、支线触发/反哺/收束、角色变化和悬念兑现关系。
+
+```json
+{"anchors": {"key_turning_points": [{"chapter": 8, "event": "Lin Wan proves the archive was edited."}]}, "snapshot_mode": "causal_anchors"}
+```
+
+## 本次片段任务
+- 片段：Subplot weave（subplot_plan）
+- 只允许输出字段：subplot_plan
+
+- 本次是 quality_first 模式的串行扩展：只能输出本片段字段，但必须继承已完成骨架和前序片段的因果锚点。
+- 不要改写已确定的主线转折、支线反哺或收束目标；如需细化，请把细节写入本片段允许字段。
+
+- Bind every subplot to a main-turning-point consequence.
+
+## 蓝图要求
+生成可用于“分批章节大纲生成”的叙事蓝图（Narrative Blueprint）。本项目为长篇结构化写作，请使用 **章节编号区间**（不是百分比）来划分阶段与转折点。
+
+已知规划：
+- 总章节数：24
+- 分卷模式：开启
+
+### 全局章节引用约束
+- 所有结构化章节字段必须使用真实章节号，且不得越过 1..24。
+- 任何文本字段中若显式写出“第N章”，N 必须落在该字段所属结构的章节区间内：分卷文本必须落在该卷 start_chapter/end_chapter，叙事阶段文本必须落在该阶段 chapter_start/chapter_end，角色弧光里程碑文本必须落在该 milestone 区间。
+- 若只想表达相对节奏，请写“本卷前段/本阶段后段/中段反转”等相对位置，不要硬写超出所属范围的章节号。
+- 结构化字段必须写成 JSON key；禁止把 `.chapter_start: 19`、`.chapter_end: 36`、`field=value` 这类字段尾注塞进 `description` 或其他文本字段。
+
+## 项目特异性引导
+- 不按题材标签套固定桥段。先从 `spec`、`story_bible`、`character_bible`、已选叙事要素中提取本作真正的冲突机制、信息差、关系压力、世界规则和兑现承诺。
+- 如果某类题材惯例与本作输入冲突，以本作输入为准；若输入没有支持，不要为了“像某题材”而新增谜团、能力体系、历史事件、恋爱障碍或其他外部模板。
+- 所有特色设计都要落回可验证的章节节点、角色变化、支线反哺或悬念兑现，不写泛泛的类型口号。
+
+## 质量与意图不变量
+- 按“用户明确意图/locked 选择 > 已确认事实 > 已验证外部事实 > 创意方向 > 风格灵感”裁决冲突。
+- 先锁定 P0 硬约束，再安排 P1 因果推进，最后用 P2 风格与主题补表现层。
+- 每项计划必须落到可观察的行动、冲突、状态变化或章节承接，并可回指输入证据或已批准计划。
+- 禁止新增未授权的人物身份、关系、世界规则、终局、谜底、高潮、POV 或 payoff。
+
+## 本次片段字段要求
+
+## 重要约束
+1. 本次蓝图片段需覆盖：`subplot_plan`
+2. 内容必须与“已完成蓝图片段”保持因果、角色、章节编号一致
+3. 所有章节编号必须在 1..24 内
+
+## 统一格式契约（系统注入）
+- contract_id: `planning:plan_outline_subplot_plan`
+- contract_mode: `fragment_object`
+- 输出必须是单一 JSON 对象，可被 `json.loads` 直接解析。
+- 禁止 Markdown 代码块、注释、解释性前后缀文本。
+- 字段名和字符串必须使用英文双引号；禁止 Python dict、单引号和省略号。
+- 字符串内容引用台词、术语或标题时，使用中文引号「」或转义 `\"`，禁止裸英文双引号。
+- 数组元素和对象字段之间必须使用英文逗号，禁止用换行直接连接相邻字符串。
+- 禁止把结构字段泄漏到文本字段中；不要在 `description`、`notes` 等字符串里写 `.field: value`、`field=value` 来替代 JSON key。
+- 本任务要求片段对象：只输出当前子任务负责的结构片段，不要补全整份上游 artifact。
+- 顶层必须包含字段：`subplot_plan`。缺失会触发解析重试。
+- 顶层只允许字段：`subplot_plan`。不要新增其他顶层 key。
+- 下方 JSON Schema 仅供理解校验规则，不是输出样例；其中 `$schema`、`type`、`properties`、`items`、`required`、`additionalProperties`、`minItems`、`maxItems` 等 schema 元字段绝不能作为最终输出 JSON 的 key。
+- JSON Schema（顶层约束，运行时会按此验证）：
+{"description": "全局叙事蓝图 — 在分批生成章节大纲前，先做高层战略规划.", "properties": {"subplot_plan": {"items": {"$ref": "#/$defs/SubplotPlan"}, "title": "Subplot Plan"}}, "title": "NarrativeBlueprint", "$defs": {"SubplotChapterEvent": {"description": "One chapter-level beat for a subplot lane.", "properties": {"chapter_number": {"default": 1, "description": "Chapter number where this subplot beat happens", "minimum": 1, "title": "Chapter Number", "type": "integer"}, "event": {"default": "", "description": "What happens to this subplot at this chapter", "title": "Event", "type": "string"}, "weave_notes": {"default": "", "description": "本章节点的交织说明：如何与主线或其他支线互动", "title": "Weave Notes", "type": "string"}, "depends_on": {"description": "依赖的前置支线节点，格式：'支线名:章节号'，如 ['复仇线:5', '身世线:8']", "items": {"type": "string"}, "title": "Depends On"}}, "title": "SubplotChapterEvent"}, "SubplotPlan": {"description": "支线规划.\n\n``chapter_events`` is normalized to cover every ``involved_chapters`` entry.\nAuto-synthesized entries use empty ``event`` text plus a provenance marker in\n``weave_notes`` so renderers can show the timeline node without pretending a\nmajor event was authored there.", "properties": {"name": {"default": "", "description": "支线名称", "title": "Name", "type": "string"}, "description": {"default": "", "title": "Description", "type": "string"}, "involved_chapters": {"items": {"type": "integer"}, "title": "Involved Chapters"}, "chapter_events": {"description": "支线在各章节的节点事件，用于时间线逐节点展示；验证时会为缺失节点的 involved_chapters 自动补空事件。", "items": {"$ref": "#/$defs/SubplotChapterEvent"}, "title": "Chapter Events"}, "weave_links": {"description": "该支线与其他线索的交织关系", "items": {"$ref": "#/$defs/SubplotWeaveLink"}, "title": "Weave Links"}, "priority": {"default": "normal", "description": "支线优先级：'primary'（准主线级）/ 'normal'（常规）/ 'background'（背景点缀）", "title": "Priority", "type": "string"}, "resolution_chapter": {"default": 0, "description": "支线收束章节号（0=未规划）", "minimum": 0, "title": "Resolution Chapter", "type": "integer"}, "resolution_target": {"default": "", "description": "收束目标：'main_turning_point:N'（主线第N转折）/ 'theme_echo'（主题呼应）/ 'character_fate:角色名'（角色命运）", "title": "Resolution Target", "type": "string"}, "resolution_type": {"default": "", "description": "收束类型：'resolve'（问题解决）/ 'reveal'（悬念揭示）/ 'ascend'（价值升华）/ 'merge'（并入主线）", "title": "Resolution Type", "type": "string"}}, "title": "SubplotPlan"}, "SubplotWeaveLink": {"description": "支线之间的交织关系，或主线对支线的触发关系。", "properties": {"source_type": {"default": "", "description": "触发源类型：'main_plot'（主线事件）/ 'subplot'（另一支线）/ 'turning_point'（关键转折）", "title": "Source Type", "type": "string"}, "source_ref": {"default": "", "description": "触发源引用：主线事件描述 / 支线名称 / 转折点描述", "title": "Source Ref", "type": "string"}, "target_subplot": {"default": "", "description": "被影响的支线名称", "title": "Target Subplot", "type": "string"}, "trigger_chapter": {"default": 0, "description": "触发发生的章节号（0=全书级别，不绑定具体章节）", "minimum": 0, "title": "Trigger Chapter", "type": "integer"}, "link_type": {"default": "", "description": "\n关系类型：\n【源触发目标（单向）】\n- trigger_start: 源触发支线启动\n- trigger_turn: 源触发支线转折\n- constrain: 源约束支线走向\n- enable: 源为支线提供条件\n- conflict: 源为支线制造冲突\n【目标回馈源（双向）】\n- feed_main: 支线结果反哺主线（推动主线转折）\n- reveal_key: 支线揭露关键信息（改变主线认知）\n- create_tension: 支线为主线制造张力（增加压力）\n- theme_echo: 支线呼应主题（升华故事内核）\n", "title": "Link Type", "type": "string"}, "description": {"default": "", "description": "交织关系的具体描述，说明源如何影响目标支线", "title": "Description", "type": "string"}}, "title": "SubplotWeaveLink"}}}
+
+## 语言文字硬约束
+- 输出语言：简体中文（zh-Hans）。中文内容必须统一使用简体字，禁止输出繁体字、异体字或繁简混排；专有名词和必要英文术语可保留原文。

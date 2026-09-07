@@ -1,0 +1,4953 @@
+/* Voice Studio Main Page Styles
+ *
+ * These rules intentionally refine the base Voice Studio shell rather than
+ * introducing a second page frame.  The source page keeps the team workbench
+ * visible down to the status bar; the React surface follows that compact
+ * proportion while all radii remain token-owned by the shared shell.
+ */
+
+.voice-frame {
+  min-height: 500px;
+}
+
+.voice-team,
+.voice-script,
+.voice-room,
+.voice-post,
+.voice-settings {
+  min-height: 460px;
+}
+
+/* Search wrapper with clear button */
+.voice-search-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.voice-search-wrapper input {
+  width: 100%;
+  min-height: 35px;
+  padding: 6px 32px 6px 10px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 26%, transparent);
+  border-radius: 10px;
+  color: var(--nf-text-body);
+  background: var(--nf-bg-input-soft);
+  font: inherit;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.voice-search-wrapper input:focus {
+  outline: 0;
+  border-color: var(--nf-accent-primary);
+  background: color-mix(in srgb, var(--nf-bg-input) 96%, var(--nf-bg-surface));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--nf-accent-primary) 12%, transparent);
+}
+
+.voice-search-clear {
+  position: absolute;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 50%;
+  color: var(--nf-text-muted);
+  background: color-mix(in srgb, var(--nf-bg-control) 60%, transparent);
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.voice-search-clear:hover {
+  color: var(--nf-text-heading);
+  background: color-mix(in srgb, var(--nf-bg-control-hover) 80%, transparent);
+}
+
+.voice-search-clear:active {
+  transform: scale(0.92);
+}
+
+/* Cast list */
+.voice-cast-list {
+  display: grid;
+  gap: 3px;
+  margin-bottom: 12px;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.voice-cast-list button {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 6px;
+  align-items: center;
+  width: 100%;
+  min-height: 43px;
+  padding: 6px 9px;
+  border: 1px solid transparent;
+  border-radius: var(--nf-radius-control);
+  color: var(--nf-text-body);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms cubic-bezier(.22, .61, .36, 1);
+}
+
+.voice-cast-list button:hover {
+  border-color: color-mix(in srgb, var(--nf-accent-primary) 28%, transparent);
+  background: color-mix(in srgb, var(--nf-bg-hover-secondary) 68%, var(--nf-bg-surface));
+  transform: translateX(1px);
+}
+
+.voice-cast-list button.is-active {
+  border-color: color-mix(in srgb, var(--nf-accent-primary) 48%, transparent);
+  background: color-mix(in srgb, var(--nf-accent-primary) 8%, var(--nf-bg-surface));
+  box-shadow: none;
+}
+
+.voice-cast-list button strong {
+  color: var(--nf-text-heading);
+  font-size: var(--nf-font-label);
+  font-weight: 600;
+}
+
+.voice-cast-list button small {
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-ui);
+}
+
+/* Status badges */
+.voice-status-badge {
+  display: inline-flex;
+  align-items: center;
+  min-width: 42px;
+  padding: 3px 6px;
+  border-radius: 6px;
+  font-size: var(--nf-font-micro);
+  font-weight: 700;
+  text-align: center;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.voice-status-badge.is-configured {
+  color: var(--nf-status-success, #2e7d32);
+  background: var(--nf-status-success-bg, #e8f5e9);
+}
+
+.voice-status-badge.is-pending {
+  color: var(--nf-accent-primary-pressed, #a34a2a);
+  background: color-mix(in srgb, var(--nf-status-warning-bg, #fff3e0) 76%, var(--nf-bg-surface));
+}
+
+/* The source pane exposes a compact property list instead of a second card
+ * hierarchy. Values are derived from VoiceStudioView, so transport clients
+ * can later enrich the same fields without the page acquiring mock-only data.
+ */
+.voice-detail-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 14px;
+  margin: 0;
+  padding: 2px 0;
+  border-block: 1px solid color-mix(in srgb, var(--nf-border-default) 14%, transparent);
+}
+
+.voice-detail-facts > div {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 7px;
+  align-items: baseline;
+  min-height: 29px;
+  padding: 5px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--nf-border-default) 10%, transparent);
+}
+
+.voice-detail-facts > div:last-child {
+  grid-column: 1 / -1;
+}
+
+.voice-detail-facts dt {
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-micro);
+}
+
+.voice-detail-facts dd {
+  min-width: 0;
+  margin: 0;
+  color: var(--nf-text-secondary);
+  font-size: var(--nf-font-ui);
+  line-height: 1.45;
+}
+
+/* Voice detail pane keeps preview and performance controls visible while the
+ * main detail lane remains scrollable at compact desktop heights. */
+.voice-detail {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.voice-profile {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.voice-profile > div {
+  min-width: 0;
+}
+
+.voice-profile .button {
+  flex: 0 0 auto;
+  min-height: 28px;
+  padding-inline: 8px;
+  font-size: var(--nf-font-caption);
+}
+
+.voice-catalog-error {
+  margin: -7px 0 0;
+  color: var(--nf-status-warning, var(--nf-accent-primary-pressed));
+  font-size: var(--nf-font-caption);
+  line-height: 1.35;
+}
+
+/* The room shows the review boundary next to the player instead of hiding
+ * directing data in the editor.  It is deliberately compact so the active
+ * segment, review state and candidate controls remain visible at 900px high.
+ */
+.voice-room-guidance {
+  display: grid;
+  gap: 5px;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--nf-accent-primary) 18%, transparent);
+  border-radius: var(--nf-radius-control);
+  background: color-mix(in srgb, var(--nf-accent-primary) 4%, var(--nf-bg-surface));
+}
+
+.voice-room-guidance header {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.voice-room-guidance header > span,
+.voice-room-guidance small {
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-micro);
+}
+
+.voice-room-guidance header > strong {
+  color: var(--nf-text-secondary);
+  font-size: var(--nf-font-ui);
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.voice-room-guidance ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.voice-room-guidance li {
+  padding: 2px 5px;
+  border-radius: 5px;
+  color: var(--nf-accent-primary-pressed);
+  background: color-mix(in srgb, var(--nf-accent-primary) 8%, transparent);
+  font-size: var(--nf-font-micro);
+  line-height: 1.35;
+}
+
+.voice-room-actions {
+  gap: 7px;
+  margin-top: 2px;
+}
+
+.voice-room-actions .button {
+  min-height: 32px;
+  padding-inline: 10px;
+  font-size: var(--nf-font-ui);
+}
+
+@media (max-width: 980px) {
+  .voice-detail-facts {
+    grid-template-columns: 1fr;
+  }
+
+  .voice-detail-facts > div:last-child {
+    grid-column: auto;
+  }
+
+}
+
+/* Empty state */
+.voice-empty-result {
+  padding: 24px 16px;
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-label);
+  text-align: center;
+}
+
+.voice-empty-state {
+  display: grid;
+  align-content: center;
+  gap: 8px;
+  color: var(--nf-text-secondary);
+}
+
+.voice-empty-state h2,
+.voice-empty-state p {
+  margin: 0;
+}
+
+.voice-empty-state p {
+  max-width: 34rem;
+  color: var(--nf-text-muted);
+  line-height: 1.65;
+}
+
+/* Durable voice-team task feedback */
+.voice-team-task-feedback {
+  display: grid;
+  gap: 7px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--nf-border-subtle);
+  border-left: 3px solid var(--nf-accent-primary);
+  border-radius: 8px;
+  color: var(--nf-text-secondary);
+  background: color-mix(in srgb, var(--nf-bg-control) 42%, var(--nf-bg-surface));
+  font-size: var(--nf-font-body);
+  line-height: 1.5;
+}
+
+.voice-team-task-feedback.is-completed { border-left-color: var(--nf-status-success); }
+.voice-team-task-feedback.is-failed { border-left-color: var(--nf-status-danger); }
+.voice-team-task-feedback > header { display: flex; gap: 8px; align-items: center; justify-content: space-between; }
+.voice-team-task-feedback > header > span { color: var(--nf-text-heading); font-weight: 700; }
+.voice-team-task-feedback code { overflow: hidden; max-width: 158px; color: var(--nf-text-muted); font-size: var(--nf-font-caption); text-overflow: ellipsis; white-space: nowrap; }
+.voice-team-task-feedback > strong { color: var(--nf-text-primary); font-size: var(--nf-font-ui); }
+.voice-team-task-feedback > p, .voice-team-task-feedback > small { margin: 0; }
+.voice-team-task-feedback > small { color: var(--nf-text-muted); font-size: var(--nf-font-caption); }
+.voice-team-task-feedback progress { width: 100%; height: 6px; accent-color: var(--nf-accent-primary); }
+
+/* Preview wave animation */
+.voice-preview-wave {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--nf-accent-primary) 6%, var(--nf-bg-surface));
+}
+
+.voice-preview-wave i {
+  display: block;
+  width: 3px;
+  height: 16px;
+  border-radius: 2px;
+  background: var(--nf-accent-primary);
+  animation: voice-wave 800ms ease-in-out infinite;
+}
+
+.voice-preview-wave i:nth-child(2) { animation-delay: 100ms; }
+.voice-preview-wave i:nth-child(3) { animation-delay: 200ms; }
+.voice-preview-wave i:nth-child(4) { animation-delay: 300ms; }
+.voice-preview-wave i:nth-child(5) { animation-delay: 400ms; }
+
+.voice-preview-wave span {
+  margin-left: 8px;
+  color: var(--nf-text-secondary);
+  font-size: var(--nf-font-body);
+}
+
+@keyframes voice-wave {
+  0%, 100% { height: 8px; opacity: 0.6; }
+  50% { height: 20px; opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .voice-preview-wave i {
+    animation: none;
+  }
+}
+
+/* Progress indicator for script generation/synthesis.
+ * Always in DOM (grid row 5); collapses when idle via is-hidden. */
+.voice-progress-indicator {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--nf-accent-primary) 8%, var(--nf-bg-surface));
+  animation: voice-progress-fade-in 200ms ease-out;
+  overflow: hidden;
+  transition: max-height 200ms ease, padding 200ms ease, opacity 200ms ease;
+}
+
+.voice-progress-indicator.is-hidden {
+  max-height: 0;
+  padding: 0;
+  margin: 0;
+  opacity: 0;
+  background: transparent;
+  pointer-events: none;
+}
+
+.voice-progress-indicator.is-active {
+  max-height: 40px;
+  opacity: 1;
+}
+
+.voice-progress-bar {
+  flex: 1;
+  min-width: 0;
+  height: 5px;
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  overflow: hidden;
+}
+
+.voice-progress-bar::-webkit-progress-bar {
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--nf-accent-primary) 20%, var(--nf-bg-control));
+}
+
+.voice-progress-bar::-webkit-progress-value {
+  border-radius: inherit;
+  background: var(--nf-accent-primary);
+}
+
+.voice-progress-bar::-moz-progress-bar {
+  border-radius: inherit;
+  background: var(--nf-accent-primary);
+}
+
+.voice-progress-indicator span {
+  min-width: 0;
+  color: var(--nf-text-secondary);
+  font-size: var(--nf-font-label);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.voice-progress-indicator small {
+  flex: 0 0 auto;
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-micro);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+@keyframes voice-progress-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .voice-progress-indicator {
+    animation: none;
+    transition: none;
+  }
+  .voice-page .voice-cast-list button {
+    transition: none;
+  }
+  .voice-page .voice-tabs > button:not(.voice-save) {
+    transition: none;
+  }
+}
+
+/* ============================================================
+ * Voice Studio visual parity — additional refinements
+ * ============================================================ */
+
+/* Cast list smooth selection transitions */
+.voice-page .voice-cast-list button {
+  transition: border-color 180ms ease,
+              background 180ms ease,
+              transform 150ms ease;
+}
+
+.voice-page .voice-cast-list button:hover {
+  transform: translateX(2px);
+}
+
+.voice-page .voice-cast-list button.is-active {
+  animation: voice-cast-select 200ms cubic-bezier(.22, .61, .36, 1);
+}
+
+@keyframes voice-cast-select {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.01); }
+  100% { transform: scale(1); }
+}
+
+/* Tab transitions */
+.voice-page .voice-tabs > button:not(.voice-save) {
+  transition: color 150ms ease, background 150ms ease;
+}
+
+/* Voice detail panel entrance */
+.voice-page .voice-detail {
+  animation: voice-detail-enter 220ms cubic-bezier(.22, .61, .36, 1) both;
+}
+
+@keyframes voice-detail-enter {
+  from { opacity: 0; transform: translateX(6px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* Script document segment transitions */
+.voice-page .voice-script-document button {
+  transition: border-color 180ms ease,
+              background 180ms ease,
+              transform 150ms ease;
+}
+
+.voice-page .voice-script-document button:hover {
+  transform: translateX(2px);
+}
+
+/* Room segment list hover */
+.voice-page .voice-room-segment-list button {
+  transition: border-color 150ms ease, background 150ms ease;
+}
+
+/* Status badge color transitions */
+.voice-page .voice-status-badge,
+.voice-page .voice-cast-list span {
+  transition: color 150ms ease, background 150ms ease;
+}
+
+/* Delivery steps progress visualization */
+.voice-page .voice-delivery-steps span {
+  transition: color 200ms ease, background 200ms ease;
+}
+
+/* Player progress bar smooth */
+.voice-page .voice-player > div i {
+  transition: width 300ms cubic-bezier(.22, .61, .36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .voice-page .voice-cast-list button { transition: none; }
+  .voice-page .voice-cast-list button:hover { transform: none; }
+  .voice-page .voice-cast-list button.is-active { animation: none; }
+  .voice-page .voice-tabs > button:not(.voice-save) { transition: none; }
+  .voice-page .voice-detail { animation: none; }
+  .voice-page .voice-script-document button { transition: none; }
+  .voice-page .voice-script-document button:hover { transform: none; }
+  .voice-page .voice-room-segment-list button { transition: none; }
+  .voice-page .voice-delivery-steps span { transition: none; }
+}
+
+/* Platform settings follows the source's Fire-style vertical category flow.
+ * It intentionally replaces the old centred form card so the persistent tab
+ * can carry the same dense configuration hierarchy as PySide6. */
+.voice-page .voice-settings {
+  display: grid;
+  align-content: start;
+  justify-items: stretch;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  min-height: 0;
+  max-height: 632px;
+  padding: 14px 18px 18px;
+  overflow: auto;
+  background: color-mix(in srgb, var(--nf-bg-surface) 88%, var(--nf-bg-panel));
+}
+
+.voice-settings-category {
+  display: grid;
+  gap: 7px;
+  width: 100%;
+}
+
+.voice-settings-category > header {
+  display: grid;
+  gap: 2px;
+  padding: 0 2px;
+}
+
+.voice-settings-category h2 {
+  margin: 0;
+  color: var(--nf-text-heading);
+  font-family: Georgia, "Songti SC", serif;
+  font-size: var(--nf-font-section);
+  font-weight: 600;
+  letter-spacing: .015em;
+}
+
+.voice-settings-category p {
+  margin: 0;
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-body);
+  line-height: 1.5;
+}
+
+.voice-settings-disclosure {
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 26%, transparent);
+  border-radius: var(--nf-radius-control);
+  background: color-mix(in srgb, var(--nf-bg-input) 44%, var(--nf-bg-surface));
+}
+
+.voice-settings-disclosure-toggle {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  min-height: 46px;
+  padding: 0 13px;
+  border: 0;
+  color: var(--nf-text-heading);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.voice-settings-disclosure-toggle:hover {
+  color: var(--nf-accent-primary-pressed);
+  background: color-mix(in srgb, var(--nf-accent-primary) 6%, var(--nf-bg-surface));
+}
+
+.voice-settings-disclosure-toggle > span {
+  width: 9px;
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-label);
+}
+
+.voice-settings-disclosure-toggle strong {
+  font-size: var(--nf-font-body);
+  font-weight: 700;
+}
+
+.voice-settings-disclosure-body {
+  display: grid;
+  gap: 4px;
+  padding: 0 13px 12px;
+  border-top: 1px solid color-mix(in srgb, var(--nf-border-default) 16%, transparent);
+  animation: voice-settings-open 170ms ease-out;
+}
+
+.voice-settings-intro {
+  margin: 9px 0 4px;
+  color: var(--nf-text-secondary);
+  font-size: var(--nf-font-ui);
+  line-height: 1.55;
+}
+
+.voice-settings-capability-hints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0 10px;
+  padding: 0;
+  list-style: none;
+}
+
+.voice-settings-capability-hints li {
+  padding: 2px 10px;
+  border: 1px solid var(--nf-border-soft);
+  border-radius: 999px;
+  color: var(--nf-text-secondary);
+  font-size: var(--nf-font-meta);
+  line-height: 1.6;
+  background: var(--nf-bg-surface);
+}
+
+.voice-provider-summary,
+.voice-provider-model-capabilities,
+.voice-provider-native-pending {
+  border: 1px solid var(--nf-border-soft);
+  border-radius: 12px;
+  margin: 10px 0;
+  padding: 12px 14px;
+}
+
+.voice-provider-summary {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.voice-provider-summary div,
+.voice-provider-model-capabilities {
+  display: grid;
+  gap: 4px;
+}
+
+.voice-provider-summary small,
+.voice-provider-native-pending small {
+  color: var(--nf-text-muted);
+}
+
+.voice-provider-model-capabilities span {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.voice-provider-model-capabilities span small {
+  background: var(--nf-bg-input-soft);
+  border-radius: 999px;
+  padding: 3px 8px;
+}
+
+.voice-provider-native-pending p {
+  display: grid;
+  gap: 2px;
+  margin: 8px 0 0;
+}
+
+.voice-commercial-readiness {
+  display: grid;
+  gap: 9px;
+  margin: 10px 0 7px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--nf-accent-primary) 30%, var(--nf-border-default));
+  border-radius: var(--nf-radius-control);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--nf-accent-primary) 8%, var(--nf-bg-surface)),
+    color-mix(in srgb, var(--nf-bg-panel) 62%, var(--nf-bg-surface))
+  );
+}
+
+.voice-commercial-readiness > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.voice-commercial-readiness > header > span,
+.voice-commercial-readiness li > span:last-child {
+  display: grid;
+  gap: 2px;
+}
+
+.voice-commercial-readiness strong {
+  color: var(--nf-text-heading);
+  font-size: var(--nf-font-ui);
+}
+
+.voice-commercial-readiness small,
+.voice-commercial-readiness p {
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-meta);
+  line-height: 1.45;
+}
+
+.voice-commercial-readiness ul {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.voice-commercial-readiness li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 7px;
+  padding: 7px 8px;
+  border-radius: var(--nf-radius-control);
+  background: color-mix(in srgb, var(--nf-bg-surface) 76%, transparent);
+}
+
+.voice-commercial-readiness li > span:first-child {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  border-radius: 50%;
+  font-size: var(--nf-font-meta);
+  font-weight: 800;
+}
+
+.voice-commercial-readiness li.is-ready > span:first-child {
+  color: var(--nf-status-success);
+  background: var(--nf-status-success-bg);
+}
+
+.voice-commercial-readiness li.is-pending > span:first-child {
+  color: var(--nf-status-warning);
+  background: var(--nf-status-warning-bg);
+}
+
+.voice-commercial-readiness > p {
+  margin: 0;
+}
+
+.voice-runtime-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0 2px;
+}
+
+.voice-runtime-summary > span,
+.voice-runtime-list em {
+  flex: 0 0 auto;
+  padding: 3px 6px;
+  border-radius: 999px;
+  color: var(--nf-status-success);
+  background: var(--nf-status-success-bg);
+  font-size: var(--nf-font-meta);
+  font-style: normal;
+  font-weight: 700;
+}
+
+.voice-runtime-summary p {
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-meta);
+  line-height: 1.45;
+}
+
+.voice-runtime-heading {
+  margin: 7px 0 0;
+  color: var(--nf-text-heading);
+  font-family: Georgia, "Songti SC", serif;
+  font-size: var(--nf-font-ui);
+  font-weight: 600;
+}
+
+.voice-runtime-list {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.voice-runtime-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 50px;
+  padding: 8px 10px;
+  border-radius: var(--nf-radius-control);
+  background: color-mix(in srgb, var(--nf-bg-control) 55%, var(--nf-bg-surface));
+}
+
+.voice-runtime-list li > span {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.voice-runtime-list strong {
+  color: var(--nf-text-heading);
+  font-size: var(--nf-font-ui);
+  font-weight: 600;
+}
+
+.voice-runtime-list small {
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-meta);
+}
+
+.voice-runtime-list em {
+  color: var(--nf-accent-primary-pressed);
+  background: color-mix(in srgb, var(--nf-accent-primary) 10%, var(--nf-bg-surface));
+}
+
+.voice-platform-setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  min-height: 55px;
+  padding: 8px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--nf-border-default) 14%, transparent);
+}
+
+.voice-platform-setting-row:last-child {
+  border-bottom: 0;
+}
+
+.voice-platform-setting-row > span {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.voice-platform-setting-row strong {
+  color: var(--nf-text-heading);
+  font-size: var(--nf-font-ui);
+  font-weight: 700;
+}
+
+.voice-platform-setting-row small,
+.voice-settings-action-row span {
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-meta);
+  line-height: 1.45;
+}
+
+.voice-platform-setting-row select,
+.voice-platform-setting-row input:not([type="checkbox"]) {
+  flex: 0 0 min(230px, 42%);
+  height: var(--nf-control-height);
+  padding: 0 28px 0 9px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 30%, transparent);
+  border-radius: var(--nf-radius-control);
+  color: var(--nf-text-body);
+  background: var(--nf-bg-input);
+  font-size: var(--nf-font-ui);
+}
+
+.voice-platform-setting-row input[type="checkbox"] {
+  inline-size: 18px;
+  block-size: 18px;
+  accent-color: var(--nf-accent-primary);
+}
+
+.voice-settings-subheading {
+  margin: 12px 0 0;
+  color: var(--nf-text-heading);
+  font-family: Georgia, "Songti SC", serif;
+  font-size: var(--nf-font-body);
+}
+
+.voice-settings-action-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 6px;
+}
+
+.voice-settings-action-row .button {
+  min-height: var(--nf-control-height);
+  padding-inline: 10px;
+  font-size: var(--nf-font-ui);
+}
+
+.voice-model-center {
+  display: grid;
+  gap: 10px;
+}
+
+.voice-model-center-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 58px;
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-ui);
+}
+
+.voice-model-repository {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-meta);
+  line-height: 1.45;
+}
+
+.voice-model-repository small {
+  overflow: hidden;
+  color: var(--nf-text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.voice-runtime-cards li,
+.voice-model-list li {
+  align-items: flex-start;
+}
+
+.voice-model-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.voice-model-card-actions .button {
+  min-height: 30px;
+  padding-inline: 9px;
+  font-size: var(--nf-font-meta);
+}
+
+.voice-runtime-list em,
+.voice-model-card-heading em {
+  padding: 3px 7px;
+  border-radius: 999px;
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-meta);
+  font-style: normal;
+  white-space: nowrap;
+}
+
+.voice-runtime-list em[data-tone="success"],
+.voice-model-card-heading em[data-tone="success"] {
+  color: var(--nf-status-success);
+  background: color-mix(in srgb, var(--nf-status-success) 12%, var(--nf-bg-surface));
+}
+
+.voice-runtime-list em[data-tone="warning"],
+.voice-model-card-heading em[data-tone="warning"] {
+  color: var(--nf-accent-primary-pressed);
+  background: color-mix(in srgb, var(--nf-accent-primary) 10%, var(--nf-bg-surface));
+}
+
+.voice-runtime-list em[data-tone="danger"],
+.voice-model-card-heading em[data-tone="danger"] {
+  color: var(--nf-status-danger);
+  background: color-mix(in srgb, var(--nf-status-danger) 10%, var(--nf-bg-surface));
+}
+
+.voice-model-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.voice-model-list li {
+  display: grid;
+  gap: 6px;
+  padding: 11px 12px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 30%, transparent);
+  border-radius: var(--nf-radius-control);
+  background: color-mix(in srgb, var(--nf-bg-control) 46%, var(--nf-bg-surface));
+}
+
+.voice-model-card-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+}
+
+.voice-model-card-heading strong {
+  margin-right: auto;
+  color: var(--nf-text-heading);
+  font-size: var(--nf-font-ui);
+}
+
+.voice-model-card-heading span {
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-meta);
+}
+
+.voice-model-list p,
+.voice-model-list small {
+  margin: 0;
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-meta);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.voice-model-error {
+  color: var(--nf-status-danger) !important;
+}
+
+.voice-model-license,
+.voice-model-token {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-meta);
+}
+
+.voice-model-license input {
+  inline-size: 16px;
+  block-size: 16px;
+  accent-color: var(--nf-accent-primary);
+}
+
+.voice-model-license a {
+  margin-left: 4px;
+  color: var(--nf-accent-primary-pressed);
+}
+
+.voice-model-token {
+  justify-content: space-between;
+  padding: 7px 0;
+  border-top: 1px solid color-mix(in srgb, var(--nf-border-default) 14%, transparent);
+}
+
+.voice-model-token > span {
+  display: grid;
+  gap: 2px;
+}
+
+.voice-model-token strong {
+  color: var(--nf-text-heading);
+}
+
+.voice-model-token input {
+  flex: 0 0 min(230px, 42%);
+  height: var(--nf-control-height);
+  padding: 0 9px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 30%, transparent);
+  border-radius: var(--nf-radius-control);
+  color: var(--nf-text-body);
+  background: var(--nf-bg-input);
+  font-size: var(--nf-font-ui);
+}
+
+.voice-model-progress {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+}
+
+.voice-model-progress small {
+  flex: 1 1 180px;
+}
+
+.voice-model-progress progress {
+  flex: 1 1 120px;
+  min-width: 120px;
+  height: 8px;
+  accent-color: var(--nf-accent-primary);
+}
+
+.voice-model-progress .button {
+  min-height: 28px;
+  padding-inline: 8px;
+  font-size: var(--nf-font-meta);
+}
+
+@keyframes voice-settings-open {
+  from { opacity: 0; transform: translateY(-3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 760px) {
+  .voice-page .voice-settings {
+    padding-inline: 11px;
+  }
+
+  .voice-platform-setting-row,
+  .voice-settings-action-row,
+  .voice-commercial-readiness > header,
+  .voice-model-token {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .voice-runtime-summary,
+  .voice-runtime-list li {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .voice-commercial-readiness ul {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .voice-platform-setting-row select,
+  .voice-platform-setting-row input:not([type="checkbox"]) {
+    flex-basis: auto;
+    width: 100%;
+  }
+
+  .voice-model-token input {
+    flex-basis: auto;
+    width: 100%;
+  }
+
+  .voice-runtime-cards li {
+    flex-direction: column;
+  }
+
+  .voice-model-card-actions {
+    justify-content: flex-start;
+  }
+}
+
+/* Right-hand dossier ------------------------------------------------------
+ * Keep the editing controls in one deliberate lane and use the former empty
+ * detail area for state that already exists in VoiceStudioView.  The sidebar
+ * does not invent listening history or quality scores: it exposes persisted
+ * voice facts, the current workflow state, and the actions that resolve it.
+ */
+.page-canvas.is-voice-canvas .voice-detail-workbench {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(232px, 0.8fr);
+  flex: 1 1 auto;
+  gap: 8px;
+  min-height: 0;
+}
+
+.voice-detail-main {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+  min-height: 0;
+  overflow: visible;
+}
+
+.voice-detail-sidebar {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 6px;
+  min-width: 0;
+  min-height: 0;
+}
+
+.voice-sidebar-card {
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 19%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--nf-bg-control) 35%, var(--nf-bg-surface));
+}
+
+.voice-sidebar-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.voice-sidebar-heading > div {
+  display: grid;
+  gap: 2px;
+}
+
+.voice-sidebar-heading strong {
+  color: var(--nf-text-heading);
+  font-size: var(--nf-font-ui);
+}
+
+.voice-sidebar-status {
+  flex: 0 0 auto;
+  padding: 3px 6px;
+  border-radius: 6px;
+  color: var(--nf-status-success);
+  background: var(--nf-status-success-bg);
+  font-size: var(--nf-font-micro);
+  font-weight: 700;
+}
+
+.voice-sidebar-facts .voice-detail-facts {
+  grid-template-columns: 1fr;
+  gap: 0;
+  margin-top: 5px;
+  border-bottom: 0;
+}
+
+.voice-sidebar-facts .voice-detail-facts > div,
+.voice-sidebar-facts .voice-detail-facts > div:last-child {
+  grid-column: auto;
+  min-height: 0;
+  padding: 3px 0;
+}
+
+.voice-sidebar-next-step {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  background: color-mix(in srgb, var(--nf-accent-primary) 4%, var(--nf-bg-surface));
+}
+
+.voice-next-step-list {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.voice-next-step-list li {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 6px;
+  align-items: start;
+}
+
+.voice-next-step-list li > span {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 35%, transparent);
+  border-radius: 50%;
+  color: var(--nf-text-muted);
+  background: var(--nf-bg-surface);
+  font-size: var(--nf-font-micro);
+  font-weight: 700;
+}
+
+.voice-next-step-list li.is-complete > span {
+  border-color: color-mix(in srgb, var(--nf-status-success) 40%, transparent);
+  color: var(--nf-status-success);
+  background: var(--nf-status-success-bg);
+}
+
+.voice-next-step-list li.is-active > span {
+  border-color: color-mix(in srgb, var(--nf-accent-primary) 46%, transparent);
+  color: var(--nf-accent-primary-pressed);
+  background: color-mix(in srgb, var(--nf-accent-primary) 10%, var(--nf-bg-surface));
+}
+
+.voice-next-step-list li > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.voice-next-step-list strong {
+  color: var(--nf-text-secondary);
+  font-size: var(--nf-font-caption);
+}
+
+.voice-next-step-list small {
+  overflow: hidden;
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-micro);
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.voice-sidebar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: auto;
+  padding-top: 0;
+}
+
+.voice-sidebar-actions .button {
+  min-height: 25px;
+  padding-inline: 8px;
+  font-size: var(--nf-font-caption);
+}
+
+.voice-main-evidence {
+  display: grid;
+  flex: 0 0 auto;
+  align-content: start;
+  gap: 8px;
+  min-height: 0;
+  overflow: visible;
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 19%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--nf-bg-control) 29%, var(--nf-bg-surface));
+}
+
+.voice-main-evidence > header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.voice-main-evidence > header > div {
+  display: grid;
+  gap: 2px;
+}
+
+.voice-main-evidence > header strong {
+  color: var(--nf-text-heading);
+  font-size: var(--nf-font-ui);
+}
+
+.voice-main-evidence .button {
+  flex: 0 0 auto;
+  min-height: 25px;
+  padding-inline: 8px;
+  font-size: var(--nf-font-caption);
+}
+
+.voice-evidence-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.voice-evidence-grid > div {
+  display: grid;
+  align-content: start;
+  gap: 3px;
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 13%, transparent);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--nf-bg-input) 56%, var(--nf-bg-surface));
+}
+
+.voice-evidence-grid span {
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-micro);
+}
+
+.voice-evidence-grid strong {
+  overflow: hidden;
+  color: var(--nf-text-secondary);
+  font-size: var(--nf-font-caption);
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.voice-main-evidence > p {
+  overflow: hidden;
+  display: -webkit-box;
+  max-block-size: calc(1.45em * 2);
+  margin: 0;
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-caption);
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+@media (max-width: 1180px) {
+  .page-canvas.is-voice-canvas .voice-detail-workbench {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .voice-detail-sidebar {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    grid-template-rows: auto;
+  }
+
+  .voice-main-evidence {
+    min-height: 118px;
+  }
+}
+
+@media (max-width: 760px) {
+  .voice-detail-sidebar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .voice-evidence-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Team voice summary -------------------------------------------------------
+ * Keep the daily assignment surface entirely visible. Detailed provenance,
+ * audition boundaries and role facts remain available through the full
+ * archive action. */
+.page-canvas.is-voice-canvas .voice-detail {
+  overflow: hidden;
+  scrollbar-gutter: auto;
+}
+
+.voice-capability-hint {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.voice-profile p {
+  -webkit-line-clamp: 1;
+}
+
+.voice-parameter-card .voice-sliders {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.voice-parameter-card .voice-sliders label {
+  grid-template-columns: 28px minmax(44px, 1fr) 42px;
+}
+
+.voice-detail-actions {
+  margin-top: auto;
+}
+
+/* Sound library dialog -----------------------------------------------------
+ * The library is one workbench, not a disclosure nested inside a generic
+ * dialog. The frame stays inside the viewport while list/detail own their
+ * respective reading lanes. */
+.app-dialog.sound-library-dialog {
+  box-sizing: border-box;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  width: min(1180px, calc(100vw - 48px));
+  height: min(760px, calc(100vh - 48px));
+  overflow: hidden;
+}
+
+.sound-library-dialog .app-dialog-content {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.sound-library-dialog .voice-library-panel {
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  overflow: hidden;
+  border: 0;
+  background: transparent;
+}
+
+.sound-library-dialog .voice-library-body {
+  box-sizing: border-box;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.sound-library-dialog .voice-library-intro {
+  align-items: center;
+  padding: 9px 10px;
+}
+
+.sound-library-dialog .voice-library-intro p {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.sound-library-dialog .voice-library-filters {
+  flex-wrap: nowrap;
+}
+
+.sound-library-dialog .voice-library-split {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.sound-library-dialog .voice-library-list-card,
+.sound-library-dialog .voice-library-detail-card {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.sound-library-dialog .voice-library-list-card {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.sound-library-dialog .voice-library-list {
+  min-height: 0;
+  max-height: none;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+.sound-library-dialog .voice-library-detail-card {
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+@media (max-width: 1080px) {
+  .sound-library-dialog .voice-library-filters {
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+
+  .sound-library-dialog .voice-library-import {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .sound-library-dialog .voice-library-import > input {
+    flex: 1;
+    width: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .voice-settings-disclosure-toggle { transition: none; }
+  .voice-settings-disclosure-body { animation: none; }
+}
+
+/* ============================================================
+ * Sound Library Panel (声音库)
+ * ============================================================ */
+.voice-library-panel {
+  grid-column: 1 / -1;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 20%, transparent);
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--nf-bg-panel) 50%, var(--nf-bg-surface));
+}
+
+.voice-library-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 16px;
+  border: 0;
+  background: transparent;
+  color: var(--nf-text-heading);
+  font-size: var(--nf-font-label);
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+}
+
+.voice-library-toggle span {
+  color: var(--nf-accent-primary);
+}
+
+.voice-library-body {
+  padding: 0 16px 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.voice-library-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.voice-library-list {
+  display: grid;
+  gap: 6px;
+}
+
+.voice-library-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 18%, transparent);
+  border-radius: 9px;
+  background: var(--nf-bg-control);
+}
+
+.voice-library-item > div {
+  flex: 1;
+  display: grid;
+  gap: 2px;
+}
+
+.voice-library-item strong {
+  font-size: var(--nf-font-body);
+}
+
+.voice-library-item small {
+  font-size: var(--nf-font-micro);
+  color: var(--nf-text-tertiary);
+}
+
+.voice-library-status {
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: var(--nf-font-micro);
+}
+
+.voice-library-status.is-approved {
+  color: var(--nf-status-success, #34d399);
+  background: color-mix(in srgb, var(--nf-status-success, #34d399) 12%, transparent);
+}
+
+.voice-library-status.is-pending {
+  color: var(--nf-status-warning, #fbbf24);
+  background: color-mix(in srgb, var(--nf-status-warning, #fbbf24) 12%, transparent);
+}
+
+.voice-library-approve {
+  min-height: 28px;
+  font-size: var(--nf-font-ui);
+  padding: 0 10px;
+}
+
+/* Sound Library Panel — extended layout (Segment 39-42) */
+.voice-library-intro {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 18%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--nf-bg-panel) 40%, var(--nf-bg-surface));
+}
+
+.voice-library-intro > div {
+  flex: 1;
+}
+
+.voice-library-intro h4 {
+  margin: 0 0 4px;
+  font-size: var(--nf-font-label);
+  color: var(--nf-text-heading);
+}
+
+.voice-library-intro p {
+  margin: 0;
+  font-size: var(--nf-font-ui);
+  color: var(--nf-text-muted-soft);
+  line-height: 1.5;
+}
+
+.voice-library-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--nf-bg-control) 80%, var(--nf-bg-surface));
+  color: var(--nf-text-secondary);
+  font-size: var(--nf-font-ui);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.voice-library-filters {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.voice-library-filters label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--nf-font-ui);
+  color: var(--nf-text-muted);
+}
+
+.voice-library-filters select {
+  min-width: 100px;
+  height: 32px;
+  padding: 0 28px 0 10px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 25%, transparent);
+  border-radius: 7px;
+  background: var(--nf-bg-input);
+  color: var(--nf-text-body);
+  font-size: var(--nf-font-body);
+}
+
+.voice-library-import {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.voice-library-import > input {
+  width: min(190px, 24vw);
+  height: 32px;
+  padding: 0 9px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 25%, transparent);
+  border-radius: 7px;
+  color: var(--nf-text-body);
+  background: var(--nf-bg-input);
+}
+
+.voice-library-import .is-disabled {
+  pointer-events: none;
+  opacity: 0.55;
+}
+
+.voice-library-split {
+  display: grid;
+  grid-template-columns: 2fr 3fr;
+  gap: 12px;
+  min-height: 320px;
+}
+
+.voice-library-list-card,
+.voice-library-detail-card {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 18%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--nf-bg-panel) 45%, var(--nf-bg-surface));
+}
+
+.voice-library-list-card h4,
+.voice-library-detail-card h4 {
+  margin: 0;
+  font-size: var(--nf-font-body);
+  color: var(--nf-text-heading);
+}
+
+.voice-library-list {
+  display: grid;
+  gap: 6px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.voice-library-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: var(--nf-bg-control);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.voice-library-item:hover {
+  background: color-mix(in srgb, var(--nf-bg-hover-secondary) 70%, transparent);
+}
+
+.voice-library-item.is-selected {
+  border-color: color-mix(in srgb, var(--nf-accent-primary) 45%, transparent);
+  background: color-mix(in srgb, var(--nf-accent-primary) 10%, var(--nf-bg-surface));
+}
+
+.voice-library-item-icon {
+  width: 20px;
+  text-align: center;
+  color: var(--nf-text-muted);
+}
+
+.voice-library-item-info {
+  flex: 1;
+  display: grid;
+  gap: 2px;
+}
+
+.voice-library-item-info strong {
+  font-size: var(--nf-font-body);
+  color: var(--nf-text-heading);
+}
+
+.voice-library-item-info small {
+  font-size: var(--nf-font-micro);
+  color: var(--nf-text-muted-soft);
+}
+
+.voice-library-empty {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.voice-library-empty h4 {
+  margin: 0;
+  font-size: var(--nf-font-label);
+  color: var(--nf-text-heading);
+}
+
+.voice-library-empty p {
+  margin: 0;
+  max-width: 280px;
+  font-size: var(--nf-font-ui);
+  color: var(--nf-text-muted-soft);
+  line-height: 1.5;
+}
+
+.voice-library-meta {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--nf-font-ui);
+}
+
+.voice-library-meta td {
+  padding: 6px 8px;
+  border-bottom: 1px solid color-mix(in srgb, var(--nf-border-default) 15%, transparent);
+}
+
+.voice-library-meta td:first-child {
+  width: 72px;
+  color: var(--nf-text-muted);
+}
+
+.voice-library-meta td:last-child {
+  color: var(--nf-text-body);
+}
+
+.voice-library-player {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 10px;
+  border: 1px dashed color-mix(in srgb, var(--nf-border-default) 30%, transparent);
+  border-radius: 8px;
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-ui);
+}
+
+.voice-library-player audio {
+  width: 100%;
+  height: 36px;
+}
+
+.voice-library-tags {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.voice-library-tags label {
+  flex: 1;
+  display: grid;
+  gap: 4px;
+  font-size: var(--nf-font-ui);
+  color: var(--nf-text-muted);
+}
+
+.voice-library-tags input {
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 25%, transparent);
+  border-radius: 7px;
+  background: var(--nf-bg-input);
+  color: var(--nf-text-body);
+  font-size: var(--nf-font-body);
+}
+
+.voice-library-rights {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.7fr) minmax(240px, 1.4fr) auto;
+  gap: 8px;
+  align-items: end;
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, var(--nf-status-warning) 35%, var(--nf-border-default));
+  border-radius: var(--nf-radius-control);
+  background: color-mix(in srgb, var(--nf-status-warning) 6%, transparent);
+}
+
+.voice-library-rights label {
+  display: grid;
+  gap: 5px;
+  color: var(--nf-text-muted);
+  font-size: 12px;
+}
+
+.voice-library-rights input,
+.voice-library-rights select {
+  min-width: 0;
+}
+
+.voice-library-rights small {
+  grid-column: 1 / -1;
+  color: var(--nf-text-muted);
+  line-height: 1.55;
+}
+
+@media (max-width: 1080px) {
+  .voice-library-rights {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+}
+
+.voice-library-decisions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid color-mix(in srgb, var(--nf-border-default) 15%, transparent);
+}
+
+.voice-library-decisions .button {
+  min-height: 32px;
+  font-size: var(--nf-font-body);
+}
+
+/* ============================================================
+ * Voice dropdown menus (导出/管理)
+ * ============================================================ */
+.voice-dropdown-menu {
+  position: relative;
+  display: inline-block;
+}
+
+.voice-dropdown-items {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 50;
+  min-width: 180px;
+  margin-top: 4px;
+  padding: 6px;
+  border: 1px solid var(--nf-border-default);
+  border-radius: 10px;
+  background: var(--nf-bg-surface);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--nf-shadow-color, #000) 14%, transparent);
+}
+
+.voice-dropdown-menu:hover .voice-dropdown-items,
+.voice-dropdown-menu:focus-within .voice-dropdown-items {
+  display: grid;
+  gap: 2px;
+}
+
+.voice-dropdown-items button {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--nf-text-secondary);
+  font-size: var(--nf-font-body);
+  text-align: left;
+  cursor: pointer;
+}
+
+.voice-dropdown-items button:hover {
+  background: color-mix(in srgb, var(--nf-accent-primary) 8%, var(--nf-bg-control));
+  color: var(--nf-accent-primary);
+}
+
+/* Automation mode selector */
+.voice-setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  min-height: 57px;
+  padding: 8px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--nf-border-default) 15%, transparent);
+}
+
+.voice-setting-row > span {
+  display: grid;
+  gap: 4px;
+}
+
+.voice-setting-row strong {
+  color: var(--nf-text-heading);
+  font-size: var(--nf-font-label);
+}
+
+.voice-setting-row small {
+  color: var(--nf-text-muted-soft);
+  font-size: var(--nf-font-ui);
+}
+
+/* The voice workbench owns its available canvas height.  This keeps the
+ * desktop page stable instead of giving the shell a second vertical scroll.
+ * At ordinary desktop sizes the team tab presents its complete control set
+ * without requiring the user to move the entire page. */
+.page-canvas.is-voice-canvas {
+  display: grid;
+  overflow: hidden;
+  padding: 6px 12px;
+}
+
+.page-canvas.is-voice-canvas > .voice-page {
+  grid-template-rows: minmax(0, 1fr);
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  max-width: none;
+}
+
+.page-canvas.is-voice-canvas .voice-frame {
+  height: 100%;
+  min-height: 0;
+}
+
+.voice-team,
+.voice-script,
+.voice-room,
+.voice-post,
+.voice-settings {
+  box-sizing: border-box;
+  height: calc(100% - 46px);
+  min-height: 0;
+}
+
+.voice-team {
+  display: grid;
+  grid-template-columns: minmax(235px, 0.78fr) minmax(0, 1.72fr);
+  gap: 6px;
+}
+
+.voice-cast,
+.voice-detail {
+  min-height: 0;
+  padding: 9px 10px;
+  overflow: hidden;
+}
+
+.voice-cast {
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+}
+
+.voice-team-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.voice-team-actions .button {
+  min-width: 0;
+  min-height: 31px;
+  padding-inline: 8px;
+  font-size: var(--nf-font-ui);
+}
+
+.voice-cast-list {
+  max-height: none;
+  min-height: 0;
+  margin-bottom: 4px;
+  overflow: visible;
+}
+
+.voice-cast-list button,
+.voice-search-wrapper input,
+.voice-select select,
+.voice-toolbar .button,
+.voice-room-segment-list button {
+  font-size: var(--nf-font-body);
+}
+
+.voice-cast h2,
+.voice-detail h2,
+.voice-script h2,
+.voice-room h2,
+.voice-post h2,
+.voice-settings h2 {
+  font-size: var(--nf-font-section-lg);
+}
+
+.voice-cast > div:first-child > p {
+  margin-top: 2px;
+  font-size: var(--nf-font-ui);
+}
+
+.voice-search-wrapper {
+  margin-bottom: 6px;
+}
+
+.voice-search-wrapper input {
+  min-height: 31px;
+  padding-block: 4px;
+}
+
+.voice-cast-list button {
+  min-height: 36px;
+  padding-block: 4px;
+}
+
+.voice-team-task-feedback {
+  gap: 4px;
+  margin-top: 5px;
+  padding: 7px 9px;
+  font-size: var(--nf-font-ui);
+  line-height: 1.35;
+}
+
+.voice-team-task-feedback progress {
+  height: 4px;
+}
+
+/* A short desktop window still keeps the entire team surface in one view.
+ * Roles retain their status and name in a compact two-column roster; selecting
+ * one continues to expose the complete role description in the detail pane. */
+@media (max-height: 900px) {
+  .page-canvas.is-voice-canvas {
+    padding: 8px 12px;
+  }
+
+  .voice-team {
+    padding: 4px;
+  }
+
+  .voice-cast,
+  .voice-detail {
+    gap: 5px;
+    padding: 6px 8px;
+  }
+
+  .voice-cast h2,
+  .voice-detail h2 {
+    font-size: var(--nf-font-section);
+  }
+
+  .voice-cast-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 2px;
+  }
+
+  .voice-cast-list button {
+    grid-template-columns: auto minmax(0, 1fr);
+    min-height: 29px;
+    gap: 4px;
+    padding: 3px 5px;
+  }
+
+  .voice-cast-list button small {
+    display: none;
+  }
+
+  .voice-cast-list button strong {
+    overflow: hidden;
+    font-size: var(--nf-font-ui);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .voice-status-badge {
+    min-width: 36px;
+    padding: 2px 4px;
+    font-size: var(--nf-font-caption);
+  }
+
+  .voice-team-task-feedback {
+    padding: 6px 7px;
+  }
+}
+
+.voice-script,
+.voice-room,
+.voice-settings {
+  overflow-y: auto;
+  padding: 8px 12px;
+  scrollbar-width: thin;
+}
+
+.voice-room {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 7px;
+  overflow: hidden;
+}
+
+.voice-script-document {
+  max-height: calc(100% - 112px);
+  overflow-y: auto;
+  padding: 8px 10px;
+}
+
+.voice-room-grid {
+  display: grid;
+  grid-template-columns: minmax(250px, 0.72fr) minmax(0, 1.28fr);
+  gap: 8px;
+  height: calc(100% - 58px);
+  min-height: 0;
+  margin-top: 10px;
+}
+
+.voice-room-grid aside,
+.voice-room-grid article {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.voice-room-grid article {
+  align-content: start;
+  padding: 12px 14px;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto auto minmax(80px, 1fr) auto auto;
+  gap: 6px;
+}
+
+.voice-room-grid article h3 {
+  font-size: var(--nf-font-section);
+  margin: 0;
+}
+
+.voice-room-grid article p {
+  font-size: var(--nf-font-ui);
+}
+
+.voice-post {
+  grid-template-columns: minmax(0, 1.25fr) minmax(300px, 0.75fr);
+  place-items: stretch;
+  align-items: start;
+  gap: 10px;
+  overflow-y: auto;
+  padding: 14px;
+  scrollbar-width: thin;
+}
+
+.voice-post article,
+.voice-settings article {
+  width: auto;
+  min-width: 0;
+  padding: 18px;
+}
+
+.voice-post > article:first-child {
+  align-self: stretch;
+  align-content: start;
+}
+
+.voice-post-status-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.voice-post-status-grid > div,
+.voice-post-task-status {
+  display: grid;
+  gap: 4px;
+  padding: 11px 12px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 16%, transparent);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--nf-bg-control) 45%, var(--nf-bg-surface));
+}
+
+.voice-post-status-grid span,
+.voice-post-task-status span {
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-ui);
+}
+
+.voice-post-status-grid strong,
+.voice-post-task-status strong {
+  color: var(--nf-text-heading);
+  font-size: var(--nf-font-body);
+}
+
+.voice-post-task-status {
+  margin-top: 8px;
+}
+
+.voice-post-task-status > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.voice-post-task-status p {
+  margin: 0;
+  font-size: var(--nf-font-body);
+  line-height: 1.55;
+}
+
+.voice-delivery-steps {
+  flex-wrap: wrap;
+  margin: 13px 0;
+}
+
+.voice-mix-manifest {
+  align-self: stretch;
+}
+
+.voice-library-panel {
+  min-height: 0;
+}
+
+.app-dialog .voice-library-panel {
+  width: min(980px, 78vw);
+  max-height: 64vh;
+  overflow-y: auto;
+}
+
+@media (max-width: 1080px) {
+  .voice-post {
+    grid-template-columns: 1fr;
+  }
+
+  .voice-library-split {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Post-production mirrors the PySide assembly desk: one compact command row,
+ * player on the left, transcript/subtitle/mix inspector on the right. */
+.voice-post {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: 33px auto minmax(0, 1fr);
+  gap: 7px;
+  place-items: stretch;
+  padding: 8px 10px 10px;
+  overflow: hidden;
+}
+
+.voice-post-subtabs {
+  display: flex;
+  align-items: end;
+  gap: 2px;
+  border-bottom: 1px solid color-mix(in srgb, var(--nf-border-default) 28%, transparent);
+}
+
+.voice-post-subtabs button {
+  height: 32px;
+  padding: 0 13px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--nf-text-muted);
+  background: transparent;
+  font-size: var(--nf-font-body);
+  cursor: pointer;
+}
+
+.voice-post-subtabs button:hover,
+.voice-post-subtabs button.is-active {
+  color: var(--nf-text-heading);
+  border-bottom-color: var(--nf-accent-primary);
+  background: color-mix(in srgb, var(--nf-accent-primary) 5%, transparent);
+}
+
+.voice-post-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: end;
+  min-height: 34px;
+}
+
+.voice-post-toolbar label {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  color: var(--nf-text-secondary);
+  font-size: var(--nf-font-ui);
+}
+
+.voice-post-toolbar select {
+  height: 30px;
+  min-width: 96px;
+  padding: 0 23px 0 8px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 32%, transparent);
+  border-radius: var(--nf-radius-control);
+  color: var(--nf-text-body);
+  background: var(--nf-bg-input-soft);
+  font-size: var(--nf-font-ui);
+}
+
+.voice-post-toolbar .button {
+  min-height: 30px;
+  padding: 5px 9px;
+  font-size: var(--nf-font-ui);
+}
+
+.voice-post-progress {
+  align-self: center;
+  margin-right: auto;
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-micro);
+}
+
+.voice-post-workbench {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(330px, 1fr);
+  gap: 6px;
+  min-height: 0;
+}
+
+.voice-post-workbench article {
+  width: auto;
+  min-width: 0;
+  min-height: 0;
+  padding: 8px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 25%, transparent);
+  border-radius: var(--nf-radius-control);
+  background: color-mix(in srgb, var(--nf-bg-surface) 97%, var(--nf-bg-control));
+}
+
+.voice-post-player {
+  display: grid;
+  grid-template-rows: minmax(132px, 1fr) 5px auto auto auto auto;
+  gap: 7px;
+}
+
+.voice-post-player-stage {
+  display: grid;
+  place-items: center;
+  min-height: 0;
+  border: 1px dashed color-mix(in srgb, var(--nf-border-default) 35%, transparent);
+  border-radius: var(--nf-radius-control);
+  color: var(--nf-text-muted);
+  background: color-mix(in srgb, var(--nf-bg-control) 55%, var(--nf-bg-surface));
+  font-size: var(--nf-font-body);
+}
+
+.voice-post-seek {
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--nf-border-default) 22%, transparent);
+}
+
+.voice-post-seek i {
+  display: block;
+  height: 100%;
+  background: var(--nf-accent-primary);
+}
+
+.voice-post-transport {
+  display: flex;
+  gap: 5px;
+  justify-content: center;
+}
+
+.voice-post-transport button {
+  min-height: 29px;
+  padding: 4px 8px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 30%, transparent);
+  border-radius: var(--nf-radius-control);
+  color: var(--nf-text-secondary);
+  background: var(--nf-bg-control);
+  font-size: var(--nf-font-ui);
+}
+
+.voice-post-transport button:disabled {
+  opacity: 0.45;
+}
+
+.voice-post-volume,
+.voice-post-output {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  color: var(--nf-text-secondary);
+  font-size: var(--nf-font-ui);
+}
+
+.voice-post-volume input {
+  flex: 1;
+  min-width: 70px;
+}
+
+.voice-post-output select {
+  flex: 1;
+  min-width: 0;
+  height: 29px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 27%, transparent);
+  border-radius: var(--nf-radius-control);
+  color: var(--nf-text-secondary);
+  background: var(--nf-bg-input-soft);
+  font-size: var(--nf-font-ui);
+}
+
+.voice-post-player-status {
+  margin: 0;
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-micro);
+  line-height: 1.45;
+}
+
+.voice-post-assets {
+  justify-self: start;
+  min-height: 29px;
+  font-size: var(--nf-font-ui);
+}
+
+.voice-post-inspector {
+  display: grid;
+  grid-template-rows: 31px minmax(0, 1fr);
+}
+
+.voice-post-inspector-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.voice-post-inspector-tabs button {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--nf-text-muted);
+  background: transparent;
+  font-size: var(--nf-font-ui);
+  cursor: pointer;
+}
+
+.voice-post-inspector-tabs button.is-active {
+  border-bottom-color: var(--nf-accent-primary);
+  color: var(--nf-text-heading);
+}
+
+.voice-post-inspector-body {
+  min-height: 0;
+  padding: 10px;
+  overflow-y: auto;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 18%, transparent);
+  border-radius: 0 0 var(--nf-radius-control) var(--nf-radius-control);
+  background: var(--nf-bg-input-soft);
+  scrollbar-width: thin;
+}
+
+.voice-post-inspector-body p {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 8px;
+  margin: 0 0 7px;
+  color: var(--nf-text-body);
+  font-size: var(--nf-font-body);
+  line-height: 1.55;
+}
+
+.voice-post-inspector-body strong {
+  color: var(--nf-accent-primary);
+  font-size: var(--nf-font-ui);
+}
+
+@media (max-width: 1080px) {
+  .voice-post {
+    overflow-y: auto;
+  }
+
+  .voice-post-workbench {
+    grid-template-columns: 1fr;
+    min-height: 560px;
+  }
+}
+
+/* ── Legacy PySide five-stage workbench parity ────────────────────────────
+ * The React page keeps the Engine-backed controls, but matches the original
+ * desktop desk: shallow stage tabs, compact mint work surfaces, and a single
+ * internal reader per dense area.  The page canvas never becomes a second
+ * scroll container. */
+.page-canvas.is-voice-canvas .voice-page {
+  gap: 7px;
+}
+
+.page-canvas.is-voice-canvas .voice-frame,
+.page-canvas.is-voice-canvas .voice-status {
+  border-color: color-mix(in srgb, var(--nf-accent-primary) 20%, var(--nf-border-default));
+  box-shadow: none;
+}
+
+.page-canvas.is-voice-canvas .voice-tabs {
+  min-height: 34px;
+  padding: 0 4px;
+  gap: 2px;
+  background: color-mix(in srgb, var(--nf-bg-control) 68%, var(--nf-bg-surface));
+}
+
+.page-canvas.is-voice-canvas .voice-tabs > button:not(.voice-save) {
+  flex: 1;
+  min-width: 0;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-bottom: 0;
+  border-radius: 8px 8px 0 0;
+  font-size: var(--nf-font-ui);
+}
+
+.page-canvas.is-voice-canvas .voice-tabs > button:not(.voice-save).is-active {
+  border-color: color-mix(in srgb, var(--nf-accent-primary) 35%, var(--nf-border-default));
+  color: var(--nf-accent-primary-pressed);
+  background: color-mix(in srgb, var(--nf-accent-primary) 8%, var(--nf-bg-surface));
+}
+
+.page-canvas.is-voice-canvas .voice-tabs > button:not(.voice-save).is-active::after {
+  display: none;
+}
+
+.page-canvas.is-voice-canvas .voice-save {
+  margin-left: 2px;
+}
+
+.page-canvas.is-voice-canvas .voice-team,
+.page-canvas.is-voice-canvas .voice-script,
+.page-canvas.is-voice-canvas .voice-room,
+.page-canvas.is-voice-canvas .voice-post,
+.page-canvas.is-voice-canvas .voice-settings,
+.page-canvas.is-voice-canvas .voice-platform-preparing {
+  height: calc(100% - 39px);
+}
+
+.page-canvas.is-voice-canvas .voice-team {
+  grid-template-columns: minmax(270px, .8fr) minmax(0, 1.2fr);
+  padding: 7px;
+}
+
+.page-canvas.is-voice-canvas .voice-cast,
+.page-canvas.is-voice-canvas .voice-detail {
+  gap: 7px;
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--nf-bg-panel) 70%, var(--nf-bg-surface));
+}
+
+.voice-cast-heading h2,
+.voice-detail-heading h2 {
+  font-size: var(--nf-font-section-lg);
+}
+
+.voice-cast-strategy {
+  margin: 4px 0 0 !important;
+  padding: 7px 9px;
+  border: 1px solid color-mix(in srgb, var(--nf-accent-primary) 24%, transparent);
+  border-radius: 8px;
+  color: var(--nf-text-secondary) !important;
+  background: color-mix(in srgb, var(--nf-accent-primary) 6%, var(--nf-bg-surface));
+  font-size: var(--nf-font-ui) !important;
+  line-height: 1.35;
+}
+
+.voice-cast-list {
+  align-content: start;
+  gap: 4px;
+  overflow: auto;
+}
+
+.voice-cast-list button {
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-height: 49px;
+  padding: 7px 9px;
+}
+
+.voice-cast-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.voice-cast-list button small {
+  overflow: hidden;
+  font-size: var(--nf-font-caption);
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.voice-team-primary-actions {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.voice-team-primary-actions .button:first-child {
+  width: 100%;
+}
+
+.voice-capability-hint {
+  margin: 0;
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-caption);
+  line-height: 1.25;
+}
+
+.voice-detail-heading {
+  align-items: center !important;
+}
+
+.voice-detail-heading-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.voice-match-badge {
+  padding: 4px 7px;
+  border: 1px solid color-mix(in srgb, var(--nf-accent-primary) 34%, transparent);
+  border-radius: 8px;
+  color: var(--nf-accent-primary-pressed);
+  background: color-mix(in srgb, var(--nf-accent-primary) 6%, transparent);
+  font-size: var(--nf-font-caption);
+  white-space: nowrap;
+}
+
+.voice-profile {
+  padding: 8px 10px;
+}
+
+.voice-profile strong {
+  font-size: var(--nf-font-label);
+}
+
+.voice-profile p {
+  overflow: hidden;
+  display: -webkit-box;
+  max-width: none;
+  margin-top: 3px;
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-caption);
+  line-height: 1.3;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.voice-detail-facts {
+  gap: 0 10px;
+}
+
+.voice-detail-facts > div {
+  grid-template-columns: 54px minmax(0, 1fr);
+  min-height: 23px;
+  padding: 3px 0;
+}
+
+.voice-detail-facts dt,
+.voice-detail-facts dd {
+  font-size: var(--nf-font-caption);
+  line-height: 1.25;
+}
+
+.voice-preview-strip {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 116px auto;
+  gap: 8px;
+  align-items: center;
+  padding: 7px 9px;
+  border: 1px solid color-mix(in srgb, var(--nf-accent-primary) 24%, transparent);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--nf-accent-primary) 5%, var(--nf-bg-surface));
+}
+
+.voice-preview-strip > div {
+  display: grid;
+  gap: 2px;
+}
+
+.voice-preview-strip strong {
+  color: var(--nf-text-heading);
+  font-size: var(--nf-font-ui);
+}
+
+.voice-preview-strip small {
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-caption);
+}
+
+.voice-preview-strip select {
+  height: 29px;
+  min-width: 0;
+  padding: 0 22px 0 7px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 26%, transparent);
+  border-radius: 7px;
+  color: var(--nf-text-secondary);
+  background: var(--nf-bg-input-soft);
+  font-size: var(--nf-font-caption);
+}
+
+.voice-preview-strip .button {
+  min-height: 29px;
+  padding-inline: 9px;
+  font-size: var(--nf-font-ui);
+}
+
+.voice-select span {
+  display: grid;
+  gap: 2px;
+}
+
+.voice-select small {
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-caption);
+}
+
+.voice-parameter-card {
+  display: grid;
+  gap: 5px;
+  padding: 7px 9px;
+  border: 1px solid color-mix(in srgb, var(--nf-accent-primary) 25%, var(--nf-border-default));
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--nf-accent-primary) 4%, var(--nf-bg-surface));
+}
+
+.voice-parameter-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+
+.voice-parameter-heading strong {
+  color: var(--nf-text-heading);
+  font-size: var(--nf-font-ui);
+}
+
+.voice-parameter-heading .button {
+  min-height: 25px;
+  padding: 2px 7px;
+  font-size: var(--nf-font-caption);
+}
+
+.voice-parameter-card > p {
+  margin: 0;
+  color: var(--nf-text-secondary);
+  font-size: var(--nf-font-caption);
+  line-height: 1.3;
+}
+
+.voice-parameter-card .voice-sliders {
+  grid-template-columns: 1fr;
+  gap: 3px;
+}
+
+.voice-parameter-card .voice-sliders label {
+  grid-template-columns: 30px minmax(0, 1fr) 44px;
+  font-size: var(--nf-font-caption);
+}
+
+.voice-parameter-card .voice-sliders strong {
+  font-size: var(--nf-font-caption);
+}
+
+.voice-detail-actions {
+  justify-content: flex-start;
+}
+
+.voice-detail-actions .button {
+  min-height: 28px;
+  padding-inline: 8px;
+  font-size: var(--nf-font-caption);
+}
+
+/* Script desk — compact layout matching PySide6 _create_script_tab:
+ * toolbar | progress(auto) | freshness | context | review | document(1fr) */
+.page-canvas.is-voice-canvas .voice-script {
+  display: grid;
+  grid-template-rows: auto auto auto auto auto auto minmax(0, 1fr);
+  gap: 4px;
+  padding: 6px 10px 6px;
+  overflow: hidden;
+}
+
+.voice-toolbar,
+.voice-room-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 31px;
+}
+
+.voice-toolbar-actions,
+.voice-room-header-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.voice-toolbar label,
+.voice-room-header label {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.voice-toolbar select,
+.voice-room-header select {
+  height: 29px;
+  min-width: 88px;
+  padding-block: 0;
+  font-size: var(--nf-font-ui);
+}
+
+.voice-toolbar .button,
+.voice-room-header .button {
+  min-height: 29px;
+  padding: 4px 9px;
+  font-size: var(--nf-font-ui);
+}
+
+.voice-toolbar-clear {
+  margin-left: auto;
+}
+
+.voice-lineage-banner {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 30px;
+  padding: 5px 10px;
+  border: 1px solid color-mix(in srgb, var(--nf-status-warning) 38%, transparent);
+  border-radius: 7px;
+  color: var(--nf-text-secondary);
+  background: color-mix(in srgb, var(--nf-status-warning-bg) 62%, var(--nf-bg-surface));
+  font-size: var(--nf-font-caption);
+}
+
+.voice-lineage-banner strong {
+  color: var(--nf-status-warning);
+  white-space: nowrap;
+}
+
+.voice-lineage-banner.is-danger,
+.voice-script-freshness.is-danger {
+  border-color: color-mix(in srgb, var(--nf-status-danger) 42%, transparent);
+  background: color-mix(in srgb, var(--nf-status-danger) 9%, var(--nf-bg-surface));
+}
+
+.voice-lineage-banner.is-danger strong,
+.voice-script-freshness.is-danger strong {
+  color: var(--nf-status-danger);
+}
+
+.voice-lineage-banner.is-success strong,
+.voice-script-freshness.is-success strong {
+  color: var(--nf-status-success);
+}
+
+.voice-lineage-banner span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.voice-script-freshness,
+.voice-speaker-review {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  min-height: 24px;
+  padding: 3px 8px;
+  border: 1px solid color-mix(in srgb, var(--nf-status-success) 36%, transparent);
+  border-radius: 6px;
+  color: var(--nf-text-secondary);
+  background: color-mix(in srgb, var(--nf-status-success-bg) 55%, var(--nf-bg-surface));
+  font-size: var(--nf-font-caption);
+  line-height: 1.3;
+}
+
+.voice-script-freshness strong,
+.voice-speaker-review strong {
+  color: var(--nf-status-success);
+  font-size: var(--nf-font-caption);
+  white-space: nowrap;
+}
+
+.voice-script-freshness span,
+.voice-speaker-review span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.voice-reference-style {
+  display: grid;
+  grid-template-columns: auto minmax(160px, 0.8fr) minmax(140px, 0.55fr) auto auto minmax(180px, 1fr);
+  gap: 7px;
+  align-items: center;
+  min-height: 32px;
+  padding: 3px 8px;
+  border: 1px solid color-mix(in srgb, var(--nf-accent-primary) 28%, var(--nf-border-default));
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--nf-accent-primary) 4%, var(--nf-bg-surface));
+}
+
+.voice-reference-style > strong {
+  color: var(--nf-text-heading);
+  font-size: var(--nf-font-ui);
+  white-space: nowrap;
+}
+
+.voice-reference-file {
+  position: relative;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.voice-reference-file > span {
+  display: block;
+  overflow: hidden;
+  padding: 4px 8px;
+  border: 1px dashed color-mix(in srgb, var(--nf-accent-primary) 42%, var(--nf-border-default));
+  border-radius: 6px;
+  color: var(--nf-text-secondary);
+  background: var(--nf-bg-input-soft);
+  font-size: var(--nf-font-caption);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.voice-reference-file > input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.voice-reference-strength {
+  display: grid;
+  grid-template-columns: auto minmax(72px, 1fr);
+  gap: 6px;
+  align-items: center;
+  color: var(--nf-text-secondary);
+  font-size: var(--nf-font-caption);
+  white-space: nowrap;
+}
+
+.voice-reference-strength input {
+  min-width: 72px;
+  accent-color: var(--nf-accent-primary);
+}
+
+.voice-reference-style .button {
+  min-height: 25px;
+  padding: 2px 7px;
+  font-size: var(--nf-font-caption);
+  white-space: nowrap;
+}
+
+.voice-reference-style > small {
+  overflow: hidden;
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-caption);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.voice-reference-style.is-ready {
+  border-color: color-mix(in srgb, var(--nf-status-success) 40%, var(--nf-border-default));
+  background: color-mix(in srgb, var(--nf-status-success-bg) 48%, var(--nf-bg-surface));
+}
+
+.voice-reference-style.is-error {
+  border-color: color-mix(in srgb, var(--nf-status-danger) 38%, var(--nf-border-default));
+}
+
+.voice-speaker-review:not(.is-ready) {
+  border-color: color-mix(in srgb, var(--nf-accent-primary) 38%, transparent);
+  background: color-mix(in srgb, var(--nf-accent-primary) 7%, var(--nf-bg-surface));
+}
+
+.voice-speaker-review:not(.is-ready) strong {
+  color: var(--nf-accent-primary-pressed);
+}
+
+.voice-speaker-review .button {
+  min-height: 25px;
+  margin-left: auto;
+  padding: 2px 7px;
+  font-size: var(--nf-font-caption);
+}
+
+.voice-script-context {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-height: 26px;
+}
+
+.voice-script-speakers,
+.voice-script-metrics {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.voice-script-speakers {
+  overflow-x: auto;
+  min-height: 26px;
+  padding: 0;
+  scrollbar-width: none;
+}
+
+.voice-script-speakers > span {
+  flex: none;
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-ui);
+}
+
+.voice-script-speakers button {
+  flex: none;
+  min-height: 22px;
+  padding: 2px 8px;
+  border: 1px solid color-mix(in srgb, var(--nf-accent-primary) 35%, var(--nf-border-default));
+  border-radius: 99px;
+  color: var(--nf-text-secondary);
+  background: var(--nf-bg-surface);
+  font-size: var(--nf-font-caption);
+}
+
+.voice-script-speakers button.is-active {
+  color: var(--nf-accent-primary-pressed);
+  background: color-mix(in srgb, var(--nf-accent-primary) 9%, var(--nf-bg-surface));
+}
+
+.voice-script-metrics {
+  justify-content: flex-end;
+}
+
+.voice-script-metrics span {
+  padding: 3px 7px;
+  border: 0;
+  border-radius: 99px;
+  color: var(--nf-text-muted);
+  background: color-mix(in srgb, var(--nf-bg-control) 72%, var(--nf-bg-surface));
+  font-size: var(--nf-font-caption);
+}
+
+.page-canvas.is-voice-canvas .voice-script-document {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  max-height: none;
+  min-height: 0;
+  margin-top: 0;
+  padding: 8px 10px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.voice-script-document > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.voice-script-document > div h2 {
+  margin: 0;
+  font-size: var(--nf-font-label);
+}
+
+.voice-script-document > div span {
+  color: var(--nf-status-success);
+  font-size: var(--nf-font-caption);
+}
+
+.voice-script-document button {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  gap: 5px;
+  min-height: 27px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+}
+
+.voice-script-document button span,
+.voice-script-document button small,
+.voice-script-document button p,
+.voice-script-document button strong {
+  grid-column: auto;
+  align-self: center;
+}
+
+.voice-script-document button span {
+  color: var(--nf-text-secondary);
+  font-size: var(--nf-font-ui);
+  font-weight: 600;
+}
+
+.voice-script-document button small {
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-caption);
+  white-space: nowrap;
+}
+
+.voice-script-document button p {
+  overflow: hidden;
+  display: block;
+  margin: 0;
+  color: var(--nf-text-secondary);
+  font-family: inherit;
+  font-size: var(--nf-font-ui);
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.voice-script-document button strong {
+  color: var(--nf-accent-primary-pressed);
+  font-size: var(--nf-font-caption);
+}
+
+.voice-script-document button:hover {
+  background: color-mix(in srgb, var(--nf-bg-hover-secondary) 50%, transparent);
+}
+
+.voice-script-document button.is-active {
+  border-color: color-mix(in srgb, var(--nf-accent-primary) 35%, transparent);
+  background: color-mix(in srgb, var(--nf-accent-primary) 8%, var(--nf-bg-surface));
+}
+
+/* Streaming script content — mirrors PySide6 _render_script_stream */
+.voice-script-stream {
+  padding: 6px 8px;
+  border-left: 3px solid var(--nf-accent-primary);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--nf-accent-primary) 5%, var(--nf-bg-surface));
+  font-family: var(--nf-font-body-family, inherit);
+  font-size: var(--nf-font-ui);
+  line-height: 1.5;
+  color: var(--nf-text-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-y: auto;
+  max-height: 100%;
+}
+
+.voice-script-stream-segment {
+  padding: 4px 6px;
+  margin: 3px 0;
+  border-left: 3px solid color-mix(in srgb, var(--nf-accent-primary) 40%, transparent);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--nf-accent-primary) 4%, var(--nf-bg-surface));
+}
+
+.voice-script-stream-segment header {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 2px;
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-caption);
+}
+
+.voice-script-stream-segment p {
+  margin: 0;
+  color: var(--nf-text-primary);
+  font-size: var(--nf-font-ui);
+  line-height: 1.45;
+}
+
+.voice-script-stream-placeholder {
+  padding: 16px 8px;
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-ui);
+  text-align: center;
+}
+
+/* Voice room */
+.page-canvas.is-voice-canvas .voice-room {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 7px;
+  padding: 8px 10px 10px;
+  overflow: hidden;
+}
+
+.voice-room-header > div:first-child p {
+  margin-top: 2px;
+  font-size: var(--nf-font-caption);
+}
+
+.page-canvas.is-voice-canvas .voice-room-grid {
+  grid-template-columns: minmax(250px, .72fr) minmax(0, 1.28fr);
+  height: 100%;
+  margin-top: 0;
+  min-height: 0;
+}
+
+.page-canvas.is-voice-canvas .voice-room-grid aside {
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.page-canvas.is-voice-canvas .voice-room-grid article {
+  overflow: hidden;
+  width: 100%;
+}
+
+.voice-room-segments {
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 5px !important;
+  overflow: hidden;
+}
+
+.voice-room-segment-list {
+  display: grid;
+  gap: 3px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  align-content: start;
+  scrollbar-width: thin;
+}
+
+.voice-room-segments h3 {
+  margin: 0;
+  color: var(--nf-text-heading);
+  font-size: var(--nf-font-label);
+}
+
+.voice-room-segment-list button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 6px;
+  align-items: center;
+  min-height: 29px !important;
+  padding: 4px 6px !important;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: var(--nf-bg-control);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.voice-room-segment-list button:hover {
+  background: color-mix(in srgb, var(--nf-bg-hover-secondary) 70%, transparent);
+}
+
+.voice-room-segment-list button.is-active {
+  border-color: color-mix(in srgb, var(--nf-accent-primary) 45%, transparent);
+  background: color-mix(in srgb, var(--nf-accent-primary) 10%, var(--nf-bg-surface));
+}
+
+.voice-room-segment-list button span {
+  padding: 0 !important;
+  color: var(--nf-text-muted) !important;
+  background: transparent !important;
+  font-size: var(--nf-font-caption) !important;
+}
+
+.voice-room-segment-list button strong {
+  overflow: hidden;
+  color: var(--nf-text-secondary);
+  font-size: var(--nf-font-ui);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.voice-room-segment-list button small {
+  display: none;
+}
+
+.page-canvas.is-voice-canvas .voice-room-editor {
+  display: grid;
+  grid-template-rows: auto auto minmax(80px, 1fr) auto auto;
+  gap: 6px;
+  padding: 8px 10px;
+  overflow: hidden;
+  min-height: 0;
+  justify-items: stretch;
+}
+
+.voice-room-segment-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+
+.voice-room-segment-heading h3 {
+  color: var(--nf-text-heading);
+  font-family: Georgia, "Songti SC", serif;
+  font-size: var(--nf-font-section);
+}
+
+.voice-room-segment-heading > span {
+  padding: 4px 8px;
+  border: 1px solid color-mix(in srgb, var(--nf-accent-primary) 25%, transparent);
+  border-radius: 8px;
+  color: var(--nf-accent-primary-pressed);
+  background: color-mix(in srgb, var(--nf-accent-primary) 6%, transparent);
+  font-size: var(--nf-font-caption);
+}
+
+.voice-room-reference > button {
+  width: 100%;
+  min-height: 29px;
+  padding: 4px 8px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 23%, transparent);
+  border-radius: 8px;
+  color: var(--nf-text-secondary);
+  background: color-mix(in srgb, var(--nf-bg-control) 50%, var(--nf-bg-surface));
+  text-align: left;
+  font-size: var(--nf-font-ui);
+  font-weight: 600;
+}
+
+.voice-room-reference .voice-room-guidance {
+  margin-top: 4px;
+}
+
+.voice-room-caption-stage {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+  padding: 7px 9px;
+  border: 1px solid color-mix(in srgb, var(--nf-accent-primary) 18%, var(--nf-border-default));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--nf-accent-primary) 4%, var(--nf-bg-surface));
+  overflow: hidden;
+}
+
+.voice-room-caption-stage > header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-caption);
+  flex: 0 0 auto;
+}
+
+.voice-room-caption-stage > header > span:first-child {
+  flex: 1 1 auto;
+}
+
+.voice-room-caption-stage > header strong {
+  color: var(--nf-text-secondary);
+}
+
+.voice-room-caption-stage > div {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 5px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--nf-bg-input-soft) 86%, var(--nf-bg-surface));
+  min-height: 0;
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+}
+
+.voice-room-caption-stage > div > strong {
+  color: var(--nf-accent-primary-pressed);
+  font-size: var(--nf-font-caption);
+  text-align: left;
+}
+
+.voice-room-caption-stage > div > p {
+  margin: 0;
+  color: var(--nf-text-heading);
+  font-family: Georgia, "Songti SC", serif;
+  font-size: clamp(13px, 1.05vw, 16px) !important;
+  font-weight: 600;
+  line-height: 1.6 !important;
+  text-align: left;
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+}
+
+.voice-room-caption-stage > div > small {
+  overflow: hidden;
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-caption);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.voice-room-actions {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px !important;
+  margin: 0;
+}
+
+.voice-room-actions .button {
+  min-height: 28px;
+  padding-inline: 5px;
+  font-size: var(--nf-font-caption);
+}
+
+.voice-room-player-panel {
+  display: grid;
+  gap: 5px;
+  padding: 6px 8px;
+  border: 1px solid color-mix(in srgb, var(--nf-accent-primary) 18%, transparent);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--nf-accent-primary) 4%, var(--nf-bg-surface));
+}
+
+.voice-room-player-panel .voice-player {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  background: transparent;
+}
+
+.voice-room-player-panel .voice-player > button {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: var(--nf-accent-primary);
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.voice-room-player-panel .voice-player > button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.voice-room-player-panel .voice-player > div {
+  flex: 1;
+  min-width: 0;
+  height: 4px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--nf-border-default) 30%, transparent);
+  overflow: hidden;
+}
+
+.voice-room-player-panel .voice-player > div > i {
+  display: block;
+  height: 100%;
+  background: var(--nf-accent-primary);
+  border-radius: inherit;
+  transition: width 300ms ease;
+}
+
+.voice-room-player-panel .voice-player > span {
+  flex: 0 0 auto;
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+.voice-room-transport {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.voice-room-transport button {
+  min-height: 25px;
+  padding: 2px 6px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 24%, transparent);
+  border-radius: 6px;
+  color: var(--nf-text-muted);
+  background: var(--nf-bg-control);
+  font-size: var(--nf-font-caption);
+}
+
+.voice-room-transport label {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  min-width: 0;
+  margin-left: auto;
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-caption);
+}
+
+.voice-room-transport input {
+  width: 70px;
+}
+
+.voice-room-transport strong {
+  color: var(--nf-text-secondary);
+  font-size: var(--nf-font-caption);
+}
+
+.voice-room-output {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  color: var(--nf-text-secondary);
+  font-size: var(--nf-font-caption);
+}
+
+.voice-room-output select {
+  flex: 1;
+  min-width: 0;
+  height: 27px;
+  font-size: var(--nf-font-caption);
+}
+
+/* Post-production assembly desk */
+.page-canvas.is-voice-canvas .voice-post {
+  grid-template-rows: 31px auto auto minmax(0, 1fr);
+  gap: 5px;
+  padding: 7px 9px 8px;
+}
+
+.voice-post-subtabs button {
+  height: 29px;
+  font-size: var(--nf-font-ui);
+}
+
+.voice-post-toolbar {
+  flex-wrap: nowrap;
+  min-height: 30px;
+}
+
+.voice-post-toolbar > label {
+  flex: none;
+}
+
+.voice-post-mode {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.voice-post-mode legend {
+  display: inline;
+  padding: 0;
+  color: var(--nf-text-secondary);
+  font-size: var(--nf-font-ui);
+}
+
+.voice-post-mode label {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+  color: var(--nf-text-secondary);
+  font-size: var(--nf-font-ui);
+  white-space: nowrap;
+}
+
+.voice-post-mode input {
+  margin: 0;
+  accent-color: var(--nf-accent-primary);
+}
+
+.voice-post-toolbar .button {
+  flex: none;
+}
+
+.voice-action-menu {
+  position: relative;
+  flex: none;
+}
+
+.voice-action-menu > .button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  cursor: pointer;
+}
+
+.voice-action-menu-popover {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 5px);
+  right: 0;
+  display: grid;
+  width: max-content;
+  min-width: 190px;
+  padding: 6px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 42%, transparent);
+  border-radius: var(--nf-radius-control);
+  background: var(--nf-bg-surface);
+  box-shadow: 0 14px 32px color-mix(in srgb, var(--nf-text-heading) 18%, transparent);
+}
+
+.voice-action-menu-popover button {
+  min-height: 31px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: calc(var(--nf-radius-control) - 2px);
+  color: var(--nf-text-body);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.voice-action-menu-popover button:hover,
+.voice-action-menu-popover button:focus-visible {
+  color: var(--nf-text-heading);
+  background: color-mix(in srgb, var(--nf-accent-primary) 9%, transparent);
+  outline: none;
+}
+
+.voice-post-status-row {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  min-height: 28px;
+  color: var(--nf-text-secondary);
+  font-size: var(--nf-font-caption);
+}
+
+.voice-post-status-row > strong {
+  color: var(--nf-text-heading);
+  font-size: var(--nf-font-ui);
+}
+
+.voice-post-status-row > span:nth-of-type(2) {
+  margin-right: auto;
+}
+
+.voice-post-status-row .button {
+  min-height: 25px;
+  padding: 2px 6px;
+  font-size: var(--nf-font-caption);
+}
+
+.voice-follow-reading {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.voice-follow-reading input {
+  margin: 0;
+  accent-color: var(--nf-accent-primary);
+}
+
+.page-canvas.is-voice-canvas .voice-post-workbench {
+  min-height: 0;
+}
+
+.page-canvas.is-voice-canvas .voice-post.is-library {
+  grid-template-rows: 31px minmax(0, 1fr);
+}
+
+.voice-post.is-library > .voice-library-panel {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.voice-post.is-library .voice-library-body {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.voice-post.is-library .voice-library-split {
+  min-height: 0;
+}
+
+.voice-post.is-library .voice-library-list-card,
+.voice-post.is-library .voice-library-detail-card {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.voice-post.is-library .voice-library-list-card {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.voice-post.is-library .voice-library-list,
+.voice-post.is-library .voice-library-detail-card {
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.voice-post-player {
+  grid-template-rows: minmax(75px, 1fr) 5px auto auto auto auto;
+}
+
+.voice-post-player-stage {
+  min-height: 75px;
+  font-size: var(--nf-font-ui);
+}
+
+.voice-post-transport button {
+  min-height: 25px;
+  padding: 2px 6px;
+  font-size: var(--nf-font-caption);
+}
+
+.voice-post-inspector-body {
+  padding: 8px;
+}
+
+.voice-post-inspector-body p {
+  font-size: var(--nf-font-ui);
+}
+
+.voice-platform-preparing {
+  display: grid;
+  place-items: center;
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-label);
+}
+
+@media (max-height: 900px) {
+  .page-canvas.is-voice-canvas .voice-team {
+    grid-template-columns: minmax(250px, .72fr) minmax(0, 1.28fr);
+    padding: 5px;
+  }
+
+  .voice-cast-list button {
+    min-height: 34px;
+    padding: 3px 5px;
+  }
+
+  .voice-cast-list button small {
+    display: block;
+  }
+
+  .voice-cast-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 2px;
+  }
+
+  .voice-cast-list button {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .voice-cast-list button small {
+    display: none;
+  }
+
+  .voice-cast-list button strong {
+    font-size: var(--nf-font-caption);
+  }
+
+  .voice-cast-strategy {
+    display: none;
+  }
+
+  .voice-capability-hint,
+  .voice-profile p {
+    display: none;
+  }
+
+  .voice-detail-facts > div {
+    min-height: 20px;
+    padding: 2px 0;
+  }
+
+  .voice-detail-facts > div:last-child {
+    display: none;
+  }
+
+  .voice-preview-strip {
+    padding: 5px 7px;
+  }
+
+  .voice-preview-strip small,
+  .voice-select small,
+  .voice-parameter-card > p {
+    display: none;
+  }
+
+  .voice-parameter-card {
+    gap: 3px;
+    padding: 5px 7px;
+  }
+
+  .voice-parameter-card .voice-sliders {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .voice-parameter-card .voice-sliders label {
+    grid-template-columns: 1fr;
+    gap: 1px;
+  }
+
+  .voice-parameter-card .voice-sliders label > span,
+  .voice-parameter-card .voice-sliders label > strong {
+    display: none;
+  }
+
+  .voice-detail-actions .button {
+    min-height: 25px;
+  }
+
+  .voice-script-freshness,
+  .voice-speaker-review {
+    min-height: 24px;
+    padding: 3px 7px;
+  }
+
+  .voice-script-context {
+    gap: 2px;
+  }
+
+  .voice-script-speakers {
+    min-height: 26px;
+  }
+
+  .voice-script-speakers button {
+    min-height: 24px;
+    padding: 2px 7px;
+  }
+
+  .page-canvas.is-voice-canvas .voice-room-editor {
+    grid-template-rows: auto auto minmax(78px, 1fr) auto auto;
+    gap: 5px;
+    padding: 6px 7px;
+  }
+
+  .voice-room-caption-stage > div {
+    gap: 3px;
+    padding: 3px 7px;
+  }
+
+  .voice-room-caption-stage > div > small {
+    display: none;
+  }
+
+  .voice-room-player-panel {
+    padding: 4px 6px;
+  }
+
+  .voice-room-transport button:nth-child(n + 2) {
+    display: none;
+  }
+
+  .voice-post-toolbar .button {
+    padding-inline: 5px;
+  }
+
+  .voice-post-status-row .button:first-of-type,
+  .voice-post-status-row > span:nth-of-type(2) {
+    display: none;
+  }
+}
+
+/* ============================================================
+ * Voice Status Footer — PySide6 parity: all task flow info
+ * displayed in the bottom status bar (voiceStudioStatusBar).
+ * ============================================================ */
+.voice-action-feedback {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 28px;
+  padding: 4px 10px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 74%, transparent);
+  border-radius: var(--nf-radius-control);
+  color: var(--nf-text-secondary);
+  background: color-mix(in srgb, var(--nf-bg-surface) 90%, var(--nf-bg-control));
+  font-size: var(--nf-font-ui);
+}
+
+.voice-action-feedback strong {
+  flex: 0 0 auto;
+  color: var(--nf-accent-primary-pressed);
+  font-size: var(--nf-font-micro);
+}
+
+.voice-action-feedback span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.voice-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 32px;
+  padding: 5px 12px;
+  border: 1px solid color-mix(in srgb, var(--nf-accent-primary) 20%, var(--nf-border-default));
+  border-radius: var(--nf-radius-control);
+  background: color-mix(in srgb, var(--nf-bg-surface) 92%, var(--nf-bg-control));
+  font-size: var(--nf-font-ui);
+  line-height: 1.4;
+}
+
+.voice-status-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.voice-status-content > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.voice-status-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.voice-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-size: var(--nf-font-micro);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.voice-status-badge.is-warning {
+  color: var(--nf-accent-primary-pressed, #a34a2a);
+  background: color-mix(in srgb, var(--nf-status-warning-bg, #fff3e0) 76%, var(--nf-bg-surface));
+}
+
+.voice-status-badge.is-success {
+  color: var(--nf-status-success, #2e7d32);
+  background: var(--nf-status-success-bg, #e8f5e9);
+}
+
+.voice-status-badge.is-danger {
+  color: var(--nf-status-danger, #c62828);
+  background: var(--nf-status-danger-bg, #ffebee);
+}
+
+.voice-status-step {
+  color: var(--nf-text-primary);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.voice-status-detail {
+  color: var(--nf-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.voice-status-progress {
+  flex: 0 0 120px;
+  height: 5px;
+  accent-color: var(--nf-accent-primary);
+  border-radius: 3px;
+}
+
+.voice-status-activity {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--nf-accent-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--nf-accent-primary) 12%, transparent);
+}
+
+/* Keep the author-facing voice evidence reachable after the compact
+ * Voice Studio rules above establish the workbench height. */
+.voice-page .voice-detail {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.voice-page .voice-profile {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.voice-page .voice-profile > div {
+  min-width: 0;
+}
+
+.voice-page .voice-profile .button {
+  flex: 0 0 auto;
+}
+
+.voice-room-state-summary {
+  display: grid;
+  justify-items: end;
+  gap: 1px;
+  min-width: 0;
+}
+
+.voice-room-state-summary > span {
+  color: var(--nf-accent-primary-pressed);
+  font-size: var(--nf-font-caption);
+  font-weight: 700;
+}
+
+.voice-room-state-summary > small {
+  max-width: 220px;
+  overflow: hidden;
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-caption);
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Team desk resilience ----------------------------------------------------
+ *
+ * The compact shell has a fixed workbench height.  Keep every detail inside
+ * that boundary and make the evidence area consume spare height instead of
+ * leaving an empty lower half.  Content that genuinely exceeds the workbench
+ * remains reachable through the detail pane's own vertical scroll, never by
+ * spilling past the canvas edge or being hidden at a short viewport height.
+ */
+.page-canvas.is-voice-canvas .voice-cast,
+.page-canvas.is-voice-canvas .voice-detail {
+  min-width: 0;
+}
+
+.page-canvas.is-voice-canvas .voice-detail {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-width: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+.voice-detail > *,
+.voice-detail-heading > *,
+.voice-detail-facts > div,
+.voice-select > span,
+.voice-preview-strip > div {
+  min-width: 0;
+}
+
+.voice-detail-heading,
+.voice-detail-heading-actions,
+.voice-detail-actions {
+  flex-wrap: wrap;
+}
+
+.voice-detail-heading-actions {
+  justify-content: flex-end;
+}
+
+.voice-profile strong,
+.voice-detail-facts dd {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.voice-select {
+  display: grid;
+  grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
+  width: 100%;
+}
+
+.voice-select select {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Retain a stable vertical scroll lane for a growing cast.  The list is the
+ * only scrolling region on the left, so the rebuild actions always stay
+ * reachable at the bottom of the pane. */
+.voice-cast-list {
+  min-width: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  overscroll-behavior: contain;
+}
+
+/* The previous short-window rule hid descriptions, fact rows and control
+ * labels.  Preserve the same compact dimensions, but let the detail pane
+ * scroll so an author can still inspect every field. */
+@media (max-height: 900px) {
+  .voice-capability-hint,
+  .voice-profile p,
+  .voice-preview-strip small,
+  .voice-select small,
+  .voice-parameter-card > p {
+    display: block;
+  }
+
+  .voice-detail-facts > div:last-child {
+    display: grid;
+  }
+
+  .voice-parameter-card .voice-sliders {
+    grid-template-columns: 1fr;
+  }
+
+  .voice-parameter-card .voice-sliders label {
+    grid-template-columns: 30px minmax(0, 1fr) 44px;
+    gap: 3px;
+  }
+
+  .voice-parameter-card .voice-sliders label > span,
+  .voice-parameter-card .voice-sliders label > strong {
+    display: block;
+  }
+}
+
+/* Cast and detail density repair -----------------------------------------
+ * Keep the cast scan-friendly at compact desktop heights, while large
+ * evidence payloads stay reachable in deliberate scroll lanes instead of
+ * compressing adjacent rows or clipping later controls. */
+.voice-cast {
+  container-type: inline-size;
+}
+
+.voice-cast-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: minmax(64px, auto);
+  gap: 6px;
+}
+
+.voice-cast-list button {
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto;
+  align-items: start;
+  min-height: 64px;
+  gap: 8px;
+  padding: 8px 10px;
+}
+
+.voice-cast-copy {
+  grid-template-rows: auto minmax(0, 1fr);
+  align-content: start;
+  gap: 4px;
+}
+
+.voice-cast-list button strong {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.voice-cast-list button small {
+  display: -webkit-box;
+  min-width: 0;
+  max-height: 2.7em;
+  overflow: hidden;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.voice-cast-list .voice-status-badge {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: start;
+  justify-self: end;
+  min-height: 22px;
+}
+
+@container (max-width: 560px) {
+  .voice-cast-list {
+    grid-template-columns: minmax(0, 1fr);
+    grid-auto-rows: minmax(62px, auto);
+  }
+}
+
+@media (max-height: 900px) {
+  .voice-cast-list {
+    gap: 5px;
+  }
+
+  .voice-cast-list button {
+    min-height: 62px;
+    padding: 7px 8px;
+  }
+
+  .voice-cast-list button small {
+    display: -webkit-box;
+  }
+}
+
+.voice-detail-facts {
+  align-content: start;
+  max-block-size: clamp(132px, 31vh, 260px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+}
+
+.voice-detail-facts:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--nf-accent-primary) 62%, transparent);
+  outline-offset: 2px;
+}
+
+/* Progressive voice dossier ------------------------------------------------
+ * The first four rows are the decision summary. Full provenance and audition
+ * evidence are disclosed deliberately, without a nested hidden scroll lane.
+ */
+.voice-dossier-toggle {
+  white-space: nowrap;
+}
+
+.voice-dossier-panel[hidden] {
+  display: none;
+}
+
+.voice-dossier-panel {
+  display: grid;
+  gap: 8px;
+}
+
+.voice-detail-facts {
+  max-block-size: none;
+  overflow: visible;
+  scrollbar-gutter: auto;
+}
+
+.voice-detail-facts.is-summary > div:last-child {
+  grid-column: auto;
+}
+
+.voice-parameter-heading-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 5px;
+}
+
+/* PySide-equivalent TTS text routing -------------------------------------- */
+.voice-text-route-list {
+  display: grid;
+  gap: 8px;
+  margin: 4px 0 8px;
+}
+
+.voice-text-route-card {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 20%, transparent);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--nf-bg-control) 42%, var(--nf-bg-surface));
+}
+
+.voice-text-route-card > header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+}
+
+.voice-text-route-card > header > div {
+  display: grid;
+  gap: 2px;
+}
+
+.voice-text-route-card > header strong {
+  color: var(--nf-text-heading);
+  font-size: var(--nf-font-ui);
+}
+
+.voice-text-route-card small,
+.voice-text-route-card label > span {
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-meta);
+  line-height: 1.4;
+}
+
+.voice-text-route-card > header label {
+  display: grid;
+  grid-template-columns: auto 76px;
+  gap: 7px;
+  align-items: center;
+}
+
+.voice-text-route-card input,
+.voice-text-route-card select {
+  box-sizing: border-box;
+  width: 100%;
+  height: var(--nf-control-height);
+  padding: 0 8px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 30%, transparent);
+  border-radius: var(--nf-radius-control);
+  color: var(--nf-text-body);
+  background: var(--nf-bg-input);
+  font: inherit;
+  font-size: var(--nf-font-ui);
+}
+
+.voice-text-route-controls {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.4fr) repeat(3, minmax(120px, 1fr));
+  gap: 7px;
+}
+
+.voice-text-route-controls label {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.voice-routing-empty {
+  margin: 6px 0 10px !important;
+  padding: 10px;
+  border-radius: 8px;
+  color: var(--nf-status-warning, var(--nf-accent-primary-pressed)) !important;
+  background: color-mix(in srgb, var(--nf-status-warning-bg, #fff3e0) 58%, var(--nf-bg-surface));
+}
+
+.settings-routing-transfer-note {
+  margin-top: 10px !important;
+  padding: 9px 11px;
+  border-left: 3px solid var(--nf-accent-primary);
+  border-radius: 0 8px 8px 0;
+  color: var(--nf-text-secondary) !important;
+  background: color-mix(in srgb, var(--nf-accent-primary) 6%, var(--nf-bg-surface));
+}
+
+@media (max-width: 1180px) {
+  .voice-reference-style {
+    grid-template-columns: auto minmax(150px, 1fr) minmax(140px, .7fr) auto auto;
+  }
+
+  .voice-reference-style > small {
+    grid-column: 1 / -1;
+  }
+
+  .voice-text-route-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Script document flow -----------------------------------------------------
+ * A generic legacy rule made every direct div a horizontal flex row. Keep the
+ * heading horizontal, while both persisted and streaming segments form one
+ * continuous top-to-bottom reading lane.
+ */
+.page-canvas.is-voice-canvas .voice-script-document {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  overflow: hidden;
+}
+
+.voice-script-document > .voice-script-document-heading {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.voice-script-document > .voice-script-list,
+.voice-script-document > .voice-script-stream {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 6px;
+  min-height: 0;
+  margin: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+.voice-script-document > .voice-script-list > button,
+.voice-script-document > .voice-script-stream > .voice-script-stream-segment {
+  flex: 0 0 auto;
+  width: 100%;
+}
+
+/* Synthesis progress highlight — mirrors PySide6 _render_segment_bg */
+.voice-script-document > .voice-script-list > button.is-synthesizing {
+  border-left: 3px solid var(--nf-status-info, #3b82f6);
+  background: color-mix(in srgb, var(--nf-status-info, #3b82f6) 12%, var(--nf-bg-surface));
+  animation: voice-synth-pulse 1.2s ease-in-out infinite;
+}
+
+.voice-script-document > .voice-script-list > button.is-completed {
+  border-left: 3px solid var(--nf-status-success, #22c55e);
+  background: color-mix(in srgb, var(--nf-status-success, #22c55e) 6%, var(--nf-bg-surface));
+}
+
+@keyframes voice-synth-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .voice-script-document > .voice-script-list > button.is-synthesizing {
+    animation: none;
+  }
+}
+
+.voice-script-document > .voice-script-stream {
+  max-height: none;
+}
+
+.voice-post-subtitle {
+  max-height: 360px;
+  margin: 0;
+  overflow: auto;
+  white-space: pre-wrap;
+  color: var(--nf-text-body);
+  font: inherit;
+  line-height: 1.65;
+}
+
+.voice-post-mix-summary {
+  display: grid;
+  gap: 6px;
+}
+
+.voice-post-mix-summary p {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+}
+
+.voice-post-mix-summary a {
+  color: var(--nf-accent-primary);
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.page-canvas.is-voice-canvas .voice-team > .voice-detail {
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.voice-cleanup-actions {
+  display: grid;
+  gap: 8px;
+  min-width: min(620px, calc(100vw - 80px));
+}
+
+.voice-cleanup-option {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 26%, transparent);
+  border-radius: 10px;
+  color: var(--nf-text-body);
+  background: var(--nf-bg-control);
+  text-align: left;
+  cursor: pointer;
+}
+
+.voice-cleanup-option:hover {
+  border-color: color-mix(in srgb, var(--nf-accent-primary) 45%, transparent);
+  background: color-mix(in srgb, var(--nf-accent-primary) 8%, var(--nf-bg-control));
+}
+
+.voice-cleanup-option strong {
+  color: var(--nf-text-heading);
+}
+
+.voice-cleanup-option span {
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-ui);
+}
+
+.voice-cleanup-group {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 26%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--nf-bg-control) 88%, transparent);
+}
+
+.voice-cleanup-group > header {
+  display: grid;
+  gap: 3px;
+}
+
+.voice-cleanup-group > header span {
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-ui);
+}
+
+.voice-cleanup-check-grid,
+.voice-cleanup-category-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px 12px;
+}
+
+.voice-cleanup-check-grid label,
+.voice-cleanup-category-list label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 6px 9px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 22%, transparent);
+  border-radius: 9px;
+  background: var(--nf-bg-control);
+}
+
+@media (max-width: 760px) {
+  .voice-reference-style {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .voice-reference-style > strong,
+  .voice-reference-strength,
+  .voice-reference-style > small {
+    grid-column: 1 / -1;
+  }
+
+  .voice-detail-facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .voice-detail-facts.is-summary > div:last-child {
+    grid-column: 1;
+  }
+
+  .voice-detail-heading-actions,
+  .voice-parameter-heading-actions {
+    justify-content: flex-start;
+  }
+}
+
+/* ---- VoicePreviewDialog：候选音色 A/B 对比 ----
+ * Shared multi-candidate audition surface (React counterpart of the
+ * PySide6 voice_preview_panel). All candidates share one sample text,
+ * speed and volume so the author can compare voices on identical input.
+ */
+.voice-preview-dialog {
+  display: grid;
+  grid-template-rows: auto auto auto auto minmax(0, 1fr) auto auto;
+  width: min(760px, calc(100vw - 48px));
+  height: min(680px, calc(100vh - 48px));
+  padding: 24px 26px 22px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-soft) 46%, transparent);
+  border-radius: 17px;
+  color: var(--nf-text-body);
+  background: var(--nf-bg-dialog);
+  box-shadow: 0 25px 65px color-mix(in srgb, var(--nf-shadow) 31%, transparent);
+  animation: dialog-rise-in 180ms cubic-bezier(.22, .61, .36, 1);
+}
+
+.voice-preview-dialog > header h2 {
+  margin: 0;
+  color: var(--nf-text-heading);
+  font-family: Georgia, "Songti SC", serif;
+  font-size: var(--nf-font-page-lg);
+}
+
+.voice-preview-text {
+  display: grid;
+  gap: 5px;
+  margin-top: 12px;
+}
+
+.voice-preview-text > span,
+.voice-preview-params label > span {
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-caption);
+}
+
+.voice-preview-text textarea {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 9px 10px;
+  resize: vertical;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 26%, transparent);
+  border-radius: 8px;
+  color: var(--nf-text-body);
+  background: var(--nf-bg-input-soft);
+  font: 13px/1.65 inherit;
+}
+
+.voice-preview-params {
+  display: flex;
+  align-items: end;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.voice-preview-params label {
+  display: grid;
+  gap: 4px;
+}
+
+.voice-preview-params input {
+  width: 88px;
+  padding: 6px 8px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 26%, transparent);
+  border-radius: 7px;
+  color: var(--nf-text-body);
+  background: var(--nf-bg-input-soft);
+  font: 13px/1.4 inherit;
+}
+
+.voice-preview-params .button {
+  margin-left: auto;
+}
+
+.voice-preview-candidates {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  overflow-y: auto;
+  min-height: 0;
+  margin-top: 14px;
+  padding-right: 4px;
+}
+
+.voice-preview-empty {
+  margin: 0;
+  padding: 26px 12px;
+  border-radius: 10px;
+  color: var(--nf-text-muted);
+  background: color-mix(in srgb, var(--nf-bg-control) 38%, var(--nf-bg-surface));
+  font-size: var(--nf-font-body);
+  text-align: center;
+}
+
+.voice-preview-candidate {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 7px 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 18%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--nf-bg-control) 34%, var(--nf-bg-surface));
+}
+
+.voice-preview-candidate.is-failed {
+  opacity: 0.62;
+}
+
+.voice-preview-candidate-select {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.voice-preview-candidate-select input[type="radio"] {
+  flex: none;
+  accent-color: var(--nf-accent-primary);
+}
+
+.voice-preview-candidate-select span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.voice-preview-candidate-select strong {
+  overflow: hidden;
+  color: var(--nf-text-heading);
+  font-size: var(--nf-font-body);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.voice-preview-candidate-select small {
+  overflow: hidden;
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-caption);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.voice-preview-candidate-desc,
+.voice-preview-candidate .voice-catalog-error {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--nf-text-secondary);
+  font-size: var(--nf-font-caption);
+  line-height: 1.5;
+}
+
+.voice-preview-candidate > .button {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.voice-preview-notice {
+  margin: 10px 0 0;
+  color: var(--nf-accent-primary-pressed);
+  font-size: var(--nf-font-body);
+}
+
+.voice-preview-dialog footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.voice-preview-dialog footer > span {
+  flex: 1;
+}
+
+@media (max-width: 640px) {
+  .voice-preview-dialog {
+    width: min(100%, calc(100vw - 24px));
+    height: calc(100vh - 24px);
+    padding: 20px;
+  }
+
+  .voice-preview-params {
+    flex-wrap: wrap;
+  }
+
+  .voice-preview-candidate {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .voice-preview-candidate > .button {
+    grid-column: 1;
+    grid-row: auto;
+  }
+}
+
+/* Voice Studio has three distinct vertical regions: the workbench, optional
+ * operation feedback, and the progress footer.  Keep those regions in their
+ * own grid rows so the workbench cannot consume the footer's space on a short
+ * desktop window.  The frame also includes the lineage banner, so its active
+ * tab needs the remaining grid row rather than a manually calculated height.
+ */
+.page-canvas.is-voice-canvas > .voice-page {
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+.page-canvas.is-voice-canvas .voice-frame {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  min-height: 0;
+}
+
+.page-canvas.is-voice-canvas .voice-frame > :is(
+  .voice-team,
+  .voice-script,
+  .voice-room,
+  .voice-post,
+  .voice-settings,
+  .voice-platform-preparing
+) {
+  height: auto;
+  min-height: 0;
+}
+
+.voice-status-stack {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}

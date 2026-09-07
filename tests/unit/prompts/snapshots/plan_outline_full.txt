@@ -1,0 +1,288 @@
+请根据以下故事规格，生成完整的叙事蓝图（Narrative Blueprint）。
+
+## 故事规格
+- 体裁：mystery｜主题：truth and trust｜基调：tense
+- 目标字数：120000｜语言：简体中文（zh-Hans）
+- 角色：Lin Wan and Zhou Lin investigate a hidden terminal.
+- 世界观：An underground hangar stores forbidden signal records.
+- 核心冲突：The archive proves one ally has hidden evidence.
+- 叙事视角：limited third-person
+- 开篇风格样张（仅供笔法参考，不得逐句复刻到第1章）：start with a concrete action
+- 收束风格样张（仅供笔法参考，不得逐句复刻到末章）：close on a new decision
+
+## 世界与主题锚点
+- 核心前提：A signal archive exposes buried choices in an underground city.
+- 时代背景：near future
+- 主要场域：underground hangar district
+- 社会文化：technical guilds trade access for silence
+- 异质系统：signal forensics
+
+- 不可违背的世界规则：Signal records cannot be forged without a checksum trace.
+
+- 主题线：trust；cost of truth
+
+## 核心角色锚点
+以下角色弧线与人物关系应直接进入蓝图设计，不要只停留在类型标签：
+
+- Lin Wan（protagonist）：性格=alert and precise；弧线=learns to trust evidence without abandoning empathy；关系=Zhou Lin：uneasy ally
+
+- Zhou Lin（ally）：性格=calm and evasive；弧线=admits the cost of earlier silence；关系=Lin Wan：protects her from partial truth
+
+## 初始化角色关系总览
+以下关系来自最终 CharacterSystem，端点名必须保留，蓝图不得与其矛盾：
+
+- {'source': 'Lin Wan', 'target': 'Zhou Lin', 'relation': 'uneasy ally', 'tension': 'withheld evidence'}
+
+## 叙事要素选择器注入
+
+- 执行约束：Keep motif evidence tied to decisions.
+
+- 必要项（必须全部体现）：
+
+  - Causal clarity（causal_clarity）：Keep major reveals causally actionable.
+    提示词：Every major reveal must change a later choice.
+
+- 扩展项（按本作机制优先级）：
+
+  - Archive motif（archive_motif / motif）
+    优先级：0.9｜来源：snapshot
+
+    适配题材：mystery
+    选用原因：Fits the premise.
+    提示词：Use signal fragments as recurring pressure.
+
+## 项目风格规范注入
+- 风格概述：Tense, concrete, low exposition.
+
+- 对话占比：balanced
+- 节奏模式：moderate
+- 情绪风格：restrained
+
+- 钩子偏好：mystery
+- 强度基准：medium
+
+- 爽点模式：evidence reversal
+
+- 三线节奏：Quest≤3章,
+            Fire≤2章断档,
+            Constellation≤4章断档
+
+## 创作导演包（用于增强创作性，不改变 JSON 字段结构）
+请优先把以下内容转化为情节选择、场景张力和支线交织，而不是生硬复述：
+- 情感引擎：trust tested by incomplete evidence
+- 主题承诺：truth has a personal cost
+- 关系张力：Lin Wan doubts Zhou Lin
+- 反套路约束：Do not solve distrust with one confession.
+- 关键场面潜力：silent terminal room
+
+## 蓝图要求
+生成可用于“分批章节大纲生成”的叙事蓝图（Narrative Blueprint）。本项目为长篇结构化写作，请使用 **章节编号区间**（不是百分比）来划分阶段与转折点。
+
+已知规划：
+- 总章节数：24
+- 分卷模式：开启
+
+### 全局章节引用约束
+- 所有结构化章节字段必须使用真实章节号，且不得越过 1..24。
+- 任何文本字段中若显式写出“第N章”，N 必须落在该字段所属结构的章节区间内：分卷文本必须落在该卷 start_chapter/end_chapter，叙事阶段文本必须落在该阶段 chapter_start/chapter_end，角色弧光里程碑文本必须落在该 milestone 区间。
+- 若只想表达相对节奏，请写“本卷前段/本阶段后段/中段反转”等相对位置，不要硬写超出所属范围的章节号。
+- 结构化字段必须写成 JSON key；禁止把 `.chapter_start: 19`、`.chapter_end: 36`、`field=value` 这类字段尾注塞进 `description` 或其他文本字段。
+
+### 1. 全书概述 (synopsis) ⚠️ 必填字段
+- **此字段为必需字段，不可省略、不可为空字符串**
+- 用2-4句话概括故事主线、核心冲突与结局方向
+- 语言风格与基调符合：tense（体裁：mystery）
+- 输出 JSON 时必须包含 `synopsis` 字段，值为非空字符串。
+
+### 2. 分卷规划（volume_mode / volumes）
+
+分卷模式已开启，请为每个卷填写以下 **全部字段**，不得留空：
+
+- **volume_number**：卷序号（1 开始，连续递增）
+- **title**：卷标题，体现本卷核心主题；必须来自本作意象、冲突或阶段功能，不套用外部题材词或模板化雅词。
+- **start_chapter** / **end_chapter**：章节区间（连续不重叠，覆盖 1..24）
+- **arc_goal**：本卷需要完成的叙事目标（一句话，写清本卷让哪条主线、关系或身份发生何种可验证变化）
+- **milestone_targets**：本卷必须达成的里程碑列表（2-4 条，每条为本作输入可推导的具体事件；若写“第N章”，N 必须落在本卷区间内）
+- **main_conflicts**：本卷核心冲突列表（1-3 条，直接来自本作主冲突、人物目标、世界规则或关系压力）
+- **climax_hint**：本卷高潮方向提示（描述卷末高潮场景的核心事件与冲突升级方式）
+- **resolution_hint**：本卷收束方式提示（描述卷末状态：谁获得了什么/失去了什么，什么悬念被解答，什么悬念被留下，下一卷的入口是什么）
+
+⚠️ 以上字段全部必填，不得使用空数组 [] 或空字符串 ""。
+
+### 3. 叙事阶段 (narrative_phases)
+- 3-6 个阶段
+- 每个阶段必须覆盖一个 **连续章节区间**：chapter_start / chapter_end
+- 同时给出该阶段的关键事件、时间锚点、主要场景与核心出场人物，用于降低漂移
+
+### 3.1 每章节奏曲线 (chapter_rhythm_curve)
+- 为 1..24 每章各输出一个对象，不得跳章、不得重复章节号。
+- 每个对象只包含：chapter_number、target_pacing、target_tension、beat_pattern、description。
+- target_pacing 为 1-5 整数：1=舒缓沉潜，2=偏慢铺垫，3=中速推进，4=偏快加压，5=急促高压。
+- target_tension 为 1-5 整数：1=低张力余波，2=轻压，3=中等压力，4=高压冲突，5=峰值/临界。
+- beat_pattern 用一个短字符串描述章内节拍，如“舒缓-窒息-释放”“钩子-追问-悬停”；不要写数组。
+- description 用一句话说明本章节奏安排如何服务主线、人物或悬念，不写泛泛气氛词。
+
+### 4. 关键转折 (key_turning_points)
+- 列出 3-8 个关键转折点，每个转折必须绑定到一个具体 chapter_number
+- 对每个转折给出发生场景 location 与参与角色 characters_involved
+- key_turning_points 同时是可视化界面的“主线骨架”：这些节点必须串成从开端到终局的因果链，description 要写清主线冲突在此处发生的状态变化，不要只写氛围、支线事件或角色日常
+- 建议包含开局触发点、至少一个中段反转/升级点、最终收束点；若总章数已知，最终收束点应靠近最后一章
+
+### 5. 角色弧光 (character_arcs) 与情感弧线 (emotional_arcs)
+- 2-6 条核心角色弧光
+- **概念边界：角色弧光聚焦"内在变化"，而非事件线**
+  - 内在变化包括：认知转变、情感起伏、价值观重塑、信念坚守/崩塌
+  - 弧光描述的是角色**内心**的成长或堕落，不包含独立的事件进程
+  - 若一条线索有自己的人物、事件、起承转合、收束，那是**支线**，不是角色弧光
+- milestones 需按章节区间给出多个里程碑（chapter_start/chapter_end），并描述该里程碑的具体变化/选择/代价
+- `character_arcs[].milestones[]` 每个对象只允许 3 个字段：`chapter_start`、`chapter_end`、`description`
+- milestone 的补充说明、心理变化、选择代价和阶段功能全部合并进 `description` 的一句中文描述；字段名只使用本节列出的英文 `snake_case` key
+- `description` 必须是纯文本字符串，禁止写成对象或带子字段的结构
+
+#### 5.1 情感弧线 (emotional_arcs)
+- 本片段**必须同时**输出 `character_arcs` 与 `emotional_arcs` 两个顶层字段，缺一会被契约拒绝。
+- 2-4 条情感弧线，跟踪整本书的情绪起伏曲线。
+- 每条情感弧线字段：arc_name（中文名）、emotion_type（紧张/温馨/悬疑/悲壮/欢快等）、peak_chapters（情感高峰章节号数组）、valley_chapters（情感低谷章节号数组）、description（1-2 句中文描述）、related_characters（相关角色名数组）、related_subplots（相关支线名数组）。
+- peak_chapters 与 valley_chapters 应覆盖全书范围并与 character_arcs 的里程碑章节对齐。
+- 写法上先写完 character_arcs，再写 emotional_arcs，不要把后者合并到前者的 description 里。
+
+### 6. 支线规划 (subplot_plan)
+- **概念边界：支线是"独立叙事线"，有自己的人物、事件、起承转合、收束**
+  - 支线区别于角色弧光：支线有外部事件进程，角色弧光是内在心理变化
+  - 支线区别于主线：支线服务于主线主题或角色，但有独立的故事弧
+- **复杂度引导**（按叙事复杂度推荐支线数量）：
+  根据叙事复杂度（标准），建议规划 **2-4 条支线**。
+  - **支线来源推导**：
+  根据本作品的体裁(mystery)、核心冲突(The archive proves one ally has hidden evidence.)、
+  角色阵容、世界规则与已选叙事要素，自主推导 2-6 条支线。推导方向只作为功能轴参考，不是题材模板：
+  - 情感/关系线（角色间的张力与变化）
+  - 谜团/探索线（信息不对称与揭示节奏）
+  - 势力/博弈线（派系冲突与权力动态）
+  - 成长/能力线（角色内在或外在能力的进阶）
+  - 世界观/规则线（设定揭示与验证）
+ - **密度约束**：每条支线至少 3-5 个 chapter_events（确保支线有足够叙事容量）
+ - **交织结构约束**（每条支线必须同时满足以下 3 项）：
+   ① 至少 1 条【主线→支线】link（link_type 必须为 trigger_start 或 trigger_turn）
+   ② 至少 1 条【支线→主线】link（link_type 必须为 feed_main 或 reveal_key）
+   ③ theme_echo / create_tension / constrain 为加分项，**不计入**上述最低要求
+  - 每条支线给出 involved_chapters（章节编号列表），避免后续大纲无法落地
+  - **交叉约束**：`weave_links` 中每个 `trigger_chapter` 必须包含在 `involved_chapters` 中。若支线在某章反哺主线，该章必须同时出现在 `involved_chapters` 和对应 weave_link 的 `trigger_chapter`
+  - 每条支线必须给出 chapter_events（逐章节节点事件），每个节点绑定 chapter_number 与 event，章节号需与 involved_chapters 对齐
+
+#### 支线交织关系（核心原则：环环相扣、最终收敛、服务于主线）
+ - **全局交织密度**：
+   - 全书层面：支线→主线的反哺关系（feed_main/reveal_key）总数 ≥ 支线数量
+   - 时间分布：交织触发章节应分散在不同叙事阶段，避免集中在单一阶段
+   - 主线转折关联：至少半数已规划关键转折应有支线 weave_link 指向
+ - **每条支线必须与主线形成闭环**：
+   - 主线触发支线启动（至少一个 link_type='trigger_start'，禁止仅用 trigger_turn 替代）
+   - 支线反哺主线推进（至少一个 link_type='feed_main' 或 'reveal_key'，**禁止使用 theme_echo 替代**）
+ - **支线间可形成因果链**：A 的结果触发 B 的启动，但最终都需收敛到主线
+ - **交织关系类型**（link_type）：
+   - 【主线→支线】trigger_start（触发启动）/ trigger_turn（触发转折）/ constrain（约束走向）/ enable（提供条件）/ conflict（制造冲突）
+   - 【支线→主线】feed_main（反哺主线转折）/ reveal_key（揭露关键信息）/ create_tension（制造主线张力）/ theme_echo（呼应主题升华）
+ - **收束路径规划**（每条支线必须明确）：
+   - resolution_chapter: 在哪一章收束
+   - resolution_target: 收束到哪里（**primary/normal 优先级必须为** 'main_turning_point:N' 或 'character_fate:角色名'；仅 background 优先级允许 'theme_echo'）
+   - resolution_type: 如何收束（'resolve'问题解决 / 'reveal'悬念揭示 / 'ascend'价值升华 / 'merge'并入主线）
+ - 对于 chapter_events 中的关键节点，若涉及与其他线索的互动，填入 weave_notes 说明
+ - 若某节点依赖前序支线结果，`depends_on` 必须填写为数组；单个依赖也写成 ["支线名:章节号"]，没有依赖写 []，禁止写成字符串
+ - `weave_links` 必须是对象数组；数组元素只能是 `{...}` 对象，禁止插入空字符串 `""`，禁止把 `"source_type": ...` 这类字段直接摊平在数组里
+ - 为每条支线标注 priority（primary/normal/background）
+
+### 7. 收束策略 (ending_strategy)
+- 说明如何回收主线悬念与伏笔、角色命运安排、主题呼应方式
+- `ending_strategy` 必须是一个字符串段落，禁止写成对象、数组或任何嵌套结构；如需包含人物结局/悬念回收/终局画面，请全部压缩进这个字符串。
+
+### 8. 悬念时间表 (suspense_schedule)
+
+为全书规划核心悬念节点，确保悬念铺设与兑现节奏可控：
+
+#### 悬念类型（必须从以下5种中选择）：
+- **mystery（谜团）**：读者与角色尚未获得的关键信息、真相或规则缺口。
+- **crisis（危机）**：迫近的外部威胁、损失风险或局势失控点。
+- **emotion（情感）**：关系变化、情绪冲击、信任裂缝或亲密张力。
+- **choice（抉择）**：会改变代价、阵营、关系或主线方向的选择。
+- **desire（渴望）**：角色强烈追求被阻断、延迟或重新定义。
+
+#### 悬念紧迫度（决定悬念持续张力）：
+- **critical（临界）**：悬念必须在当前章节立即解决
+- **high（高）**：悬念应在2-3章内兑现
+- **normal（正常）**：悬念可跨越5-10章后兑现
+- **low（低）**：悬念可作为全书伏笔，长线铺垫
+
+#### 规划要求：
+ - 每条悬念必须关联 **related_subplot**（支线名称），形成悬念-支线绑定
+ - `related_subplot` 只能写 `"主线"` 或已经存在的支线名称完整原文；禁止临时发明任何未在支线规划中建档的名字
+ - 若悬念属于角色弧光、主线反转或人物抉择，但没有对应独立支线，则 related_subplot="主线"
+ - 若确实需要独立支线，必须先在支线规划中建立同名支线，再在 `suspense_schedule` 精确引用该名称
+ - 每条悬念需规划 introduce_chapter（引入章节）与 resolve_chapter（计划兑现章节）
+ - 悬念总数建议 3-8 条，覆盖全书关键节点
+ - **strand_affinity**（追读力系统必需）：每条悬念需标注与三条情节线的关联度
+   - quest（主线推进）/ fire（情感爆发）/ constellation（伏笔编织）
+   - 值为 0-1 的浮点数，总和约等于 1.0；根据该悬念实际推动的功能估算，不要机械平均。
+
+### 9. 追读力边界
+- 本任务只规划全书级 `suspense_schedule`，不得输出 `chapter_hooks`。
+- 每章 `expected_hook` 与 `expected_payoffs` 由后续 PLAN_OUTLINE_BATCH / PLAN_OUTLINE_CONTINUE 负责生成，当前蓝图不得逐章展开。
+
+## 项目特异性引导
+- 不按题材标签套固定桥段。先从 `spec`、`story_bible`、`character_bible`、已选叙事要素中提取本作真正的冲突机制、信息差、关系压力、世界规则和兑现承诺。
+- 如果某类题材惯例与本作输入冲突，以本作输入为准；若输入没有支持，不要为了“像某题材”而新增谜团、能力体系、历史事件、恋爱障碍或其他外部模板。
+- 所有特色设计都要落回可验证的章节节点、角色变化、支线反哺或悬念兑现，不写泛泛的类型口号。
+
+## 质量与意图不变量
+- 按“用户明确意图/locked 选择 > 已确认事实 > 已验证外部事实 > 创意方向 > 风格灵感”裁决冲突。
+- 先锁定 P0 硬约束，再安排 P1 因果推进，最后用 P2 风格与主题补表现层。
+- 每项计划必须落到可观察的行动、冲突、状态变化或章节承接，并可回指输入证据或已批准计划。
+- 禁止新增未授权的人物身份、关系、世界规则、终局、谜底、高潮、POV 或 payoff。
+
+## 全量蓝图字段要求
+- `synopsis`：2-4 句话概括故事主线、核心冲突、情感/主题承诺与终局方向。
+- `volume_mode` 与当前卷模式一致；`volumes` 在卷模式下写卷号、标题、起止章节、卷目标、里程碑、主冲突、高潮方向和收束方式，非卷模式下为空数组。
+- `narrative_phases` 写完整阶段数组，每个阶段包含阶段名、起止章节、描述、关键事件、张力等级、时间语境、主要地点和关键角色。
+- `key_turning_points` 写全书关键转折，每项包含章节号、描述、地点和涉及角色。
+- `character_arcs` 写角色弧数组，每项包含角色名、弧光概述和 milestones；milestones 每项只包含 `chapter_start`、`chapter_end`、`description`。
+- `subplot_plan` 写支线计划，每条支线包含名称、描述、涉及章节、章节事件、交织链接、优先级、收束章节、收束目标和收束类型。
+- `suspense_schedule` 写 3-8 条核心悬念，每条包含稳定 ID、类型、引入章节、兑现章节、描述、紧迫度、关联支线和 `strand_affinity`；`related_subplot` 只能写 `"主线"` 或 `subplot_plan[].name` 的完整原文。
+- `ending_strategy` 说明主线、人物弧光、主题承诺和关键悬念如何在结尾落地。
+- `chapter_rhythm_curve` 写 1..24 每章的节奏目标，每项包含 chapter_number、target_pacing(1-5)、target_tension(1-5)、beat_pattern(字符串)、description。
+
+## 重要约束
+1. 确保各部分相互协调，形成统一的故事愿景
+2. 主线、支线、人物弧、悬念和结局必须互相校准，支线不得像独立轨道后贴上去。
+3. narrative_phases 的章节区间必须覆盖 1..24，且区间不重叠、不断档
+4. key_turning_points 与 character_arcs 的 milestones 必须落在有效章节编号内
+5. 保持与故事规格的一致性，禁止脱离体裁/基调/语言要求
+6. 蓝图必须可操作，能直接指导后续分批章节大纲生成
+7. `subplot_plan[].chapter_events` 中每个 `chapter_number` 必须属于对应 `involved_chapters`
+8. **支线密度约束**：`subplot_plan` 中每条支线的 `chapter_events` 数量 ≥ 3
+9. **支线交织结构约束**：
+   a. 每条支线 `weave_links` ≥ 2
+   b. 其中至少 1 条 `link_type` 为 `trigger_start` 或 `trigger_turn`（主线触发支线）
+   c. 其中至少 1 条 `link_type` 为 `feed_main` 或 `reveal_key`（支线反哺主线）
+   d. 禁止所有 `weave_links` 都是 `theme_echo`/`create_tension`/`constrain`
+10. **悬念 strand_affinity**：`suspense_schedule` 中每条悬念必须包含 `strand_affinity` 字段，key 为 quest/fire/constellation，值为 0-1 浮点数
+11. `subplot_plan[].chapter_events[].depends_on` 必须始终是 JSON 数组；单个依赖写成 ["支线名:章节号"]，没有依赖写 []
+12. `character_arcs[].milestones[]` 每个对象只允许 `chapter_start`、`chapter_end`、`description` 三个英文 `snake_case` 字段；补充说明必须写进 description
+13. `suspense_schedule[].related_subplot` 必须精确匹配 `"主线"` 或某条 `subplot_plan[].name`；如果是角色弧光节点且没有独立支线，写 `"主线"`，不要新造支线名
+14. `chapter_rhythm_curve` 必须覆盖 1..24，target_pacing 与 target_tension 必须是 1-5 整数，beat_pattern 必须是字符串。
+
+## 统一格式契约（系统注入）
+- contract_id: `planning:narrative_blueprint`
+- contract_mode: `full_object`
+- 输出必须是单一 JSON 对象，可被 `json.loads` 直接解析。
+- 禁止 Markdown 代码块、注释、解释性前后缀文本。
+- 字段名和字符串必须使用英文双引号；禁止 Python dict、单引号和省略号。
+- 字符串内容引用台词、术语或标题时，使用中文引号「」或转义 `\"`，禁止裸英文双引号。
+- 数组元素和对象字段之间必须使用英文逗号，禁止用换行直接连接相邻字符串。
+- 禁止把结构字段泄漏到文本字段中；不要在 `description`、`notes` 等字符串里写 `.field: value`、`field=value` 来替代 JSON key。
+- 本任务要求完整对象：必须一次性输出契约声明的全部顶层字段。
+- 顶层必须包含字段：`synopsis`、`volume_mode`、`volumes`、`narrative_phases`、`key_turning_points`、`character_arcs`、`subplot_plan`、`suspense_schedule`、`ending_strategy`、`emotional_arcs`、`causal_chains`、`subplot_collisions`、`subversion_points`、`chapter_rhythm_curve`。缺失会触发解析重试。
+- 顶层只允许字段：`synopsis`、`volume_mode`、`volumes`、`narrative_phases`、`key_turning_points`、`character_arcs`、`subplot_plan`、`suspense_schedule`、`ending_strategy`、`emotional_arcs`、`causal_chains`、`subplot_collisions`、`subversion_points`、`chapter_rhythm_curve`。不要新增其他顶层 key。
+- 下方 JSON Schema 仅供理解校验规则，不是输出样例；其中 `$schema`、`type`、`properties`、`items`、`required`、`additionalProperties`、`minItems`、`maxItems` 等 schema 元字段绝不能作为最终输出 JSON 的 key。
+- JSON Schema（顶层约束，运行时会按此验证）：
+{"description": "全局叙事蓝图 — 在分批生成章节大纲前，先做高层战略规划.", "properties": {"synopsis": {"default": "", "description": "全书概述", "title": "Synopsis", "type": "string"}, "volume_mode": {"default": false, "title": "Volume Mode", "type": "boolean"}, "volumes": {"items": {"$ref": "#/$defs/VolumeOutline"}, "title": "Volumes"}, "narrative_phases": {"items": {"$ref": "#/$defs/NarrativePhase"}, "title": "Narrative Phases"}, "key_turning_points": {"items": {"$ref": "#/$defs/TurningPoint"}, "title": "Key Turning Points"}, "character_arcs": {"items": {"$ref": "#/$defs/CharacterArcPlan"}, "title": "Character Arcs"}, "subplot_plan": {"items": {"$ref": "#/$defs/SubplotPlan"}, "title": "Subplot Plan"}, "suspense_schedule": {"description": "悬念时间表规划（用于追读力窗口系统初始化）", "items": {"$ref": "#/$defs/SuspenseScheduleItem"}, "title": "Suspense Schedule"}, "ending_strategy": {"default": "", "description": "最终收束策略", "title": "Ending Strategy", "type": "string"}, "emotional_arcs": {"description": "情感弧线规划", "items": {"$ref": "#/$defs/EmotionalArc"}, "title": "Emotional Arcs"}, "causal_chains": {"description": "因果链规划", "items": {"$ref": "#/$defs/CausalChain"}, "title": "Causal Chains"}, "subplot_collisions": {"description": "支线碰撞点规划", "items": {"$ref": "#/$defs/SubplotCollision"}, "title": "Subplot Collisions"}, "subversion_points": {"description": "反套路点规划", "items": {"$ref": "#/$defs/SubversionPoint"}, "title": "Subversion Points"}, "chapter_rhythm_curve": {"description": "每章节奏曲线规划（用于 quality_checks 节奏对比）", "items": {"$ref": "#/$defs/ChapterRhythmPoint"}, "title": "Chapter Rhythm Curve"}}, "title": "NarrativeBlueprint", "$defs": {"ArcMilestone": {"description": "角色弧光里程碑.", "properties": {"chapter_start": {"default": 1, "minimum": 1, "title": "Chapter Start", "type": "integer"}, "chapter_end": {"default": 1, "minimum": 1, "title": "Chapter End", "type": "integer"}, "description": {"default": "", "title": "Description", "type": "string"}}, "title": "ArcMilestone"}, "CausalChain": {"description": "因果链 — 规划一个事件如何触发后续一系列连锁反应。", "properties": {"chain_name": {"default": "", "description": "因果链名称", "title": "Chain Name", "type": "string"}, "trigger_chapter": {"default": 0, "description": "触发章节", "minimum": 0, "title": "Trigger Chapter", "type": "integer"}, "trigger_action": {"default": "", "description": "触发事件", "title": "Trigger Action", "type": "string"}, "intermediate_chapters": {"description": "中间发酵章节", "items": {"type": "integer"}, "title": "Intermediate Chapters"}, "payoff_chapter": {"default": 0, "description": "兑现章节", "minimum": 0, "title": "Payoff Chapter", "type": "integer"}, "payoff_event": {"default": "", "description": "兑现事件", "title": "Payoff Event", "type": "string"}, "escalation": {"default": "", "description": "如何升级", "title": "Escalation", "type": "string"}, "involved_subplots": {"description": "涉及的支线", "items": {"type": "string"}, "title": "Involved Subplots"}}, "title": "CausalChain"}, "ChapterRhythmPoint": {"description": "章节节奏点 — 规划单章的目标节奏与节拍模式.", "properties": {"chapter_number": {"default": 0, "description": "章节号", "minimum": 0, "title": "Chapter Number", "type": "integer"}, "target_pacing": {"default": 3, "description": "目标节奏 1-5：1=舒缓，3=中速，5=急促/高压。", "maximum": 5, "minimum": 1, "title": "Target Pacing", "type": "integer"}, "target_tension": {"default": 3, "description": "目标张力 1-5：1=低张力，3=中等，5=峰值。", "maximum": 5, "minimum": 1, "title": "Target Tension", "type": "integer"}, "beat_pattern": {"default": "", "description": "节拍模式（如 \"舒缓-窒息-释放\"）。", "title": "Beat Pattern", "type": "string"}, "description": {"default": "", "description": "本章节奏规划描述", "title": "Description", "type": "string"}}, "title": "ChapterRhythmPoint"}, "CharacterArcPlan": {"description": "角色弧光规划.", "properties": {"character": {"default": "", "description": "角色名", "title": "Character", "type": "string"}, "arc_summary": {"default": "", "description": "弧光概述", "title": "Arc Summary", "type": "string"}, "milestones": {"items": {"$ref": "#/$defs/ArcMilestone"}, "title": "Milestones"}}, "title": "CharacterArcPlan"}, "EmotionalArc": {"description": "情感弧线 — 跟踪整本书的情感起伏曲线。", "properties": {"arc_name": {"default": "", "description": "弧线名称", "title": "Arc Name", "type": "string"}, "emotion_type": {"default": "", "description": "情感类型: 紧张/温馨/悬疑/悲壮/欢快", "title": "Emotion Type", "type": "string"}, "peak_chapters": {"description": "情感高峰章节", "items": {"type": "integer"}, "title": "Peak Chapters"}, "valley_chapters": {"description": "情感低谷章节", "items": {"type": "integer"}, "title": "Valley Chapters"}, "description": {"default": "", "description": "情感变化描述", "title": "Description", "type": "string"}, "related_characters": {"description": "相关角色", "items": {"type": "string"}, "title": "Related Characters"}, "related_subplots": {"description": "相关支线", "items": {"type": "string"}, "title": "Related Subplots"}}, "title": "EmotionalArc"}, "NarrativePhase": {"description": "叙事阶段.", "properties": {"phase_name": {"default": "", "description": "阶段名称", "title": "Phase Name", "type": "string"}, "chapter_start": {"default": 1, "minimum": 1, "title": "Chapter Start", "type": "integer"}, "chapter_end": {"default": 1, "minimum": 1, "title": "Chapter End", "type": "integer"}, "description": {"default": "", "description": "本阶段核心叙事目标", "title": "Description", "type": "string"}, "key_events": {"description": "本阶段关键事件", "items": {"type": "string"}, "title": "Key Events"}, "tension_level": {"default": "", "description": "张力水平描述", "title": "Tension Level", "type": "string"}, "time_context": {"default": "", "description": "本阶段的时间段/时间锚点", "title": "Time Context", "type": "string"}, "primary_locations": {"description": "本阶段核心场景", "items": {"type": "string"}, "title": "Primary Locations"}, "key_characters": {"description": "本阶段核心出场人物", "items": {"type": "string"}, "title": "Key Characters"}}, "title": "NarrativePhase"}, "SubplotChapterEvent": {"description": "One chapter-level beat for a subplot lane.", "properties": {"chapter_number": {"default": 1, "description": "Chapter number where this subplot beat happens", "minimum": 1, "title": "Chapter Number", "type": "integer"}, "event": {"default": "", "description": "What happens to this subplot at this chapter", "title": "Event", "type": "string"}, "weave_notes": {"default": "", "description": "本章节点的交织说明：如何与主线或其他支线互动", "title": "Weave Notes", "type": "string"}, "depends_on": {"description": "依赖的前置支线节点，格式：'支线名:章节号'，如 ['复仇线:5', '身世线:8']", "items": {"type": "string"}, "title": "Depends On"}}, "title": "SubplotChapterEvent"}, "SubplotCollision": {"description": "支线碰撞点 — 描述多条支线在同一章节的交互。", "properties": {"collision_chapter": {"default": 0, "description": "碰撞章节", "minimum": 0, "title": "Collision Chapter", "type": "integer"}, "involved_subplots": {"description": "参与碰撞的支线（至少2条）", "items": {"type": "string"}, "title": "Involved Subplots"}, "collision_type": {"default": "", "description": "碰撞类型: 冲突/互助/误导/融合/竞争", "title": "Collision Type", "type": "string"}, "outcome": {"default": "", "description": "碰撞结果", "title": "Outcome", "type": "string"}, "ripple_effects": {"description": "对其他支线的影响", "items": {"type": "string"}, "title": "Ripple Effects"}, "setup_chapters": {"description": "铺垫章节", "items": {"type": "integer"}, "title": "Setup Chapters"}}, "title": "SubplotCollision"}, "SubplotPlan": {"description": "支线规划.\n\n``chapter_events`` is normalized to cover every ``involved_chapters`` entry.\nAuto-synthesized entries use empty ``event`` text plus a provenance marker in\n``weave_notes`` so renderers can show the timeline node without pretending a\nmajor event was authored there.", "properties": {"name": {"default": "", "description": "支线名称", "title": "Name", "type": "string"}, "description": {"default": "", "title": "Description", "type": "string"}, "involved_chapters": {"items": {"type": "integer"}, "title": "Involved Chapters"}, "chapter_events": {"description": "支线在各章节的节点事件，用于时间线逐节点展示；验证时会为缺失节点的 involved_chapters 自动补空事件。", "items": {"$ref": "#/$defs/SubplotChapterEvent"}, "title": "Chapter Events"}, "weave_links": {"description": "该支线与其他线索的交织关系", "items": {"$ref": "#/$defs/SubplotWeaveLink"}, "title": "Weave Links"}, "priority": {"default": "normal", "description": "支线优先级：'primary'（准主线级）/ 'normal'（常规）/ 'background'（背景点缀）", "title": "Priority", "type": "string"}, "resolution_chapter": {"default": 0, "description": "支线收束章节号（0=未规划）", "minimum": 0, "title": "Resolution Chapter", "type": "integer"}, "resolution_target": {"default": "", "description": "收束目标：'main_turning_point:N'（主线第N转折）/ 'theme_echo'（主题呼应）/ 'character_fate:角色名'（角色命运）", "title": "Resolution Target", "type": "string"}, "resolution_type": {"default": "", "description": "收束类型：'resolve'（问题解决）/ 'reveal'（悬念揭示）/ 'ascend'（价值升华）/ 'merge'（并入主线）", "title": "Resolution Type", "type": "string"}}, "title": "SubplotPlan"}, "SubplotWeaveLink": {"description": "支线之间的交织关系，或主线对支线的触发关系。", "properties": {"source_type": {"default": "", "description": "触发源类型：'main_plot'（主线事件）/ 'subplot'（另一支线）/ 'turning_point'（关键转折）", "title": "Source Type", "type": "string"}, "source_ref": {"default": "", "description": "触发源引用：主线事件描述 / 支线名称 / 转折点描述", "title": "Source Ref", "type": "string"}, "target_subplot": {"default": "", "description": "被影响的支线名称", "title": "Target Subplot", "type": "string"}, "trigger_chapter": {"default": 0, "description": "触发发生的章节号（0=全书级别，不绑定具体章节）", "minimum": 0, "title": "Trigger Chapter", "type": "integer"}, "link_type": {"default": "", "description": "\n关系类型：\n【源触发目标（单向）】\n- trigger_start: 源触发支线启动\n- trigger_turn: 源触发支线转折\n- constrain: 源约束支线走向\n- enable: 源为支线提供条件\n- conflict: 源为支线制造冲突\n【目标回馈源（双向）】\n- feed_main: 支线结果反哺主线（推动主线转折）\n- reveal_key: 支线揭露关键信息（改变主线认知）\n- create_tension: 支线为主线制造张力（增加压力）\n- theme_echo: 支线呼应主题（升华故事内核）\n", "title": "Link Type", "type": "string"}, "description": {"default": "", "description": "交织关系的具体描述，说明源如何影响目标支线", "title": "Description", "type": "string"}}, "title": "SubplotWeaveLink"}, "SubversionPoint": {"description": "反套路点 — 规划一个颠覆读者预期的合理转折。", "properties": {"chapter": {"default": 0, "description": "章节号", "minimum": 0, "title": "Chapter", "type": "integer"}, "expected_outcome": {"default": "", "description": "读者预期的", "title": "Expected Outcome", "type": "string"}, "actual_outcome": {"default": "", "description": "实际发生的", "title": "Actual Outcome", "type": "string"}, "setup_chapters": {"description": "铺垫章节", "items": {"type": "integer"}, "title": "Setup Chapters"}, "justification": {"default": "", "description": "为什么合理", "title": "Justification", "type": "string"}, "related_subplots": {"description": "相关支线", "items": {"type": "string"}, "title": "Related Subplots"}}, "title": "SubversionPoint"}, "SuspenseScheduleItem": {"description": "悬念时间表条目 — 用于追读力窗口系统初始化.", "properties": {"suspense_id": {"default": "", "description": "悬念唯一标识", "title": "Suspense Id", "type": "string"}, "suspense_type": {"default": "", "description": "悬念类型：mystery/crisis/emotion/choice/desire", "title": "Suspense Type", "type": "string"}, "introduce_chapter": {"default": 1, "description": "悬念引入章节", "minimum": 1, "title": "Introduce Chapter", "type": "integer"}, "resolve_chapter": {"default": 0, "description": "悬念计划兑现章节（0=未规划/全书末收束）", "minimum": 0, "title": "Resolve Chapter", "type": "integer"}, "description": {"default": "", "description": "悬念内容描述", "title": "Description", "type": "string"}, "urgency_level": {"default": "normal", "description": "紧迫度：critical/high/normal/low", "title": "Urgency Level", "type": "string"}, "related_subplot": {"default": "", "description": "关联支线名称（可选）", "title": "Related Subplot", "type": "string"}, "strand_affinity": {"additionalProperties": {"type": "number"}, "description": "追读力系统必需：与三条情节线的关联度（quest/fire/constellation）", "title": "Strand Affinity", "type": "object"}}, "title": "SuspenseScheduleItem"}, "TurningPoint": {"description": "关键转折点.", "properties": {"chapter_number": {"default": 1, "minimum": 1, "title": "Chapter Number", "type": "integer"}, "description": {"default": "", "title": "Description", "type": "string"}, "location": {"default": "", "description": "转折发生的场景", "title": "Location", "type": "string"}, "characters_involved": {"description": "参与转折的角色", "items": {"type": "string"}, "title": "Characters Involved"}}, "title": "TurningPoint"}, "VolumeOutline": {"description": "Outline for a volume (part/arc) in long works.", "properties": {"volume_number": {"description": "1-based volume index.", "minimum": 1, "title": "Volume Number", "type": "integer"}, "title": {"default": "", "description": "Volume title.", "title": "Title", "type": "string"}, "start_chapter": {"minimum": 1, "title": "Start Chapter", "type": "integer"}, "end_chapter": {"minimum": 1, "title": "End Chapter", "type": "integer"}, "arc_goal": {"default": "", "description": "Narrative goal of this volume.", "title": "Arc Goal", "type": "string"}, "milestone_targets": {"description": "Milestones expected to be completed within this volume.", "items": {"type": "string"}, "title": "Milestone Targets"}, "main_conflicts": {"items": {"type": "string"}, "title": "Main Conflicts"}, "climax_hint": {"default": "", "title": "Climax Hint", "type": "string"}, "resolution_hint": {"default": "", "title": "Resolution Hint", "type": "string"}, "notes": {"default": "", "title": "Notes", "type": "string"}}, "title": "VolumeOutline"}}}
+
+## 语言文字硬约束
+- 输出语言：简体中文（zh-Hans）。中文内容必须统一使用简体字，禁止输出繁体字、异体字或繁简混排；专有名词和必要英文术语可保留原文。

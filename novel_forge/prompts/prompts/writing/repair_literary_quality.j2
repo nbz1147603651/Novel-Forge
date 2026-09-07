@@ -1,0 +1,95 @@
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：repair_literary_quality.j2
+服务步骤：文学质量定向修复（Review 阶段 reading_power_repair 之后）
+作用简述：对文学表达质量低于出版级标准的段落进行定向改写，保持剧情事实不变。
+上游输入：
+  - chapter_text: 当前章节正文
+  - low_quality_segments: 被识别为低质量的段落/片段列表
+  - repair_focus: 修复重点（模板化表达/句式重复/声纹同质/情感单一）
+  - style_profile: 风格规范
+  - character_voices: 角色声纹档案
+下游输出：TEXT：修复后的完整章节正文
+消费链优先级：
+  P0 = 不改变剧情事实/角色认知/关系结论/事件结果
+  P1 = 消除模板化表达、提升句式多样性、分化角色声纹
+  P2 = 意象新鲜感、段落节奏、情感手段多样性
+================================================================================
+#}
+{%- import "_base/_render_style_profile_global.j2" as style_global -%}
+{%- from "_quality_standards.j2" import creative_specificity_rules, anti_exposition_rules -%}
+{%- set _dlg_min = style_global.dialogue_ratio_min(style_profile | default(None)) | trim | int -%}
+{%- set _dlg_max = style_global.dialogue_ratio_max(style_profile | default(None)) | trim | int -%}
+
+## 任务
+对以下章节正文进行**文学表达质量定向修复**。只改写表达手段，不改变剧情事实。
+
+## 修复重点
+{% if repair_focus | default('') %}{{ repair_focus }}{% else %}综合修复：消除模板化表达、提升句式多样性、分化角色声纹、丰富情感表达手段。{% endif %}
+
+{% if low_quality_segments | default([]) %}
+## 已识别的低质量片段（优先修复）
+{% for seg in low_quality_segments %}
+- [{{ seg.kind | default('template') }}] {{ seg.location | default('') }}：{{ seg.issue | default('') }}
+{% if seg.suggestion | default('') %}  建议：{{ seg.suggestion }}{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if character_voices | default([]) %}
+## 角色声纹档案（修复对话时参照）
+{% for voice in character_voices %}
+- {{ voice.character | default('角色') }}：句式={{ voice.sentence_profile | default('') }}；情绪句法={{ voice.emotion_syntax | default('') }}；解释倾向={{ voice.explanation_bias | default('') }}
+{% if voice.signature_moves | default([]) %}  标志动作/句法：{{ voice.signature_moves | join('；') }}{% endif %}
+{% if voice.taboo_patterns | default([]) %}  禁用口吻：{{ voice.taboo_patterns | join('、') }}{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if style_profile | default(None) %}
+## 风格约束
+{{ style_global.render_style_profile_global(style_profile) }}
+{% endif %}
+
+## 当前正文
+{{ chapter_text }}
+
+## 修复规则
+1. **P0 事实守恒**：不改变剧情走向、人物关系结论、关键事件、角色认知状态、专有名词和章尾出口。
+2. **P0 字数守恒**：修复后字数与原文偏差不超过 ±15%。
+3. **P1 模板化消除**：
+   - 将身体反应模板（"指尖蜷缩""太阳穴突突跳""指尖发麻""心脏骤然一紧"）替换为动作选择、对白潜台词、环境注意力转移或关系距离变化。
+   - 同一身体部位（手/头/胸）的反应全章不得重复。
+   - 公式化过渡（"他走到窗边，看着外面"）替换为有情感功能的动作。
+4. **P1 句式多样性**：
+   - 相邻3段不得使用相同句法骨架。
+   - 连续段落的首句结构不得重复（如连续"他+动词""沈岸+没有+动词"）。
+   - 段落长度随情绪张力变化：紧张时短（1-2句），舒缓时长（4-6句）。
+5. **P1 声纹分化**：
+   - 每个角色的对话必须体现其声纹档案特征。
+   - 盲测应能分辨说话人：句长、用词、修辞偏好、信息传递方式各有不同。
+6. **P2 意象新鲜感**：
+   - 比喻和意象来自角色的感知世界（职业、经历、情绪状态）。
+   - 不使用通用比喻（"像某种古老的叹息""像某种反复愈合又裂开的伤口"）。
+7. **P2 情感手段多样性**：
+   - 全章情感表达至少使用3种不同手段：动作选择、对白潜台词、环境注意力转移、时间感知变化、关系距离变化、代价暴露。
+   - 单一手段占比不超过50%。
+8. **P2 对话密度**：对话占比参考 {{ _dlg_min }}%-{{ _dlg_max }}%，在叙述密集处适当插入推动信息/关系/决策的对话。
+
+{{ creative_specificity_rules(title="") }}
+{{ anti_exposition_rules(title="") }}
+
+## 质量校准
+- 工作身份：你是一位出版级文学编辑，擅长在保持剧情完整的前提下提升文字质感。
+- 修复路径：先定位模板化/重复/同质化段落，再用角色化的表达手段重写，最后检查全文节奏和声纹一致性。
+- 字段级质量示例：平弱="他很紧张"→模板="指尖蜷缩"→高质量="他把第三颗糖剥开又包回去，蜡纸在指间拧出细碎的褶"。
+
+## 交付前核验
+- 剧情事实是否完全未变（事件、认知、关系、出口）。
+- 模板化表达是否已消除（身体反应模板、公式化过渡）。
+- 相邻段落句法是否已分化。
+- 角色对话是否可辨识。
+- 字数是否在 ±15% 区间内。
+
+## 输出
+直接输出修复后的完整章节正文，不包含元描述、代码块或解释说明。

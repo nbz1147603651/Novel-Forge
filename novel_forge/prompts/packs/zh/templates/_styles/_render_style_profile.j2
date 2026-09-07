@@ -1,0 +1,241 @@
+{#- 渲染项目风格规范为 prompt 规范段落（合并版，含题材参数和大类风格）。
+    用法：
+      {%- from "_styles/_render_style_profile.j2" import render_style_profile -%}
+      {{ render_style_profile(style_profile) }}
+-#}
+
+{#-
+  === 宏模块：项目风格规范渲染 ===
+  文件类型：宏模块（macro module）
+  作用简述：将 style_profile 对象渲染为完整的 markdown 格式风格规范段落，包含风格基调、钩子配置、爽点配置、微兑现配置、三线节奏阈值、写作技法模块等。
+
+  定义的宏及参数：
+  1. render_style_profile(profile, include_banned_phrases=false)
+     - 渲染完整的项目风格规范，包含 summary, global_style, hook_config, cool_point_config, micro_payoff_config, strand_config, modules
+
+  使用方式：
+  - 被 initialization/profile_style.j2, checking/profile_style.j2 等模板通过 {% from "_styles/_render_style_profile.j2" import render_style_profile %} 调用
+-#}
+
+{%- macro render_style_profile(profile, include_banned_phrases=false) -%}
+{%- if profile -%}
+{%- set gs = profile.global_style | default({}) -%}
+{%- set hook = profile.hook_config | default({}) -%}
+{%- set cool = profile.cool_point_config | default({}) -%}
+{%- set micro = profile.micro_payoff_config | default({}) -%}
+{%- set strand = profile.strand_config | default({}) -%}
+{%- set pacing = profile.pacing_config | default({}) -%}
+{%- set hook_score = profile.hook_score_config | default({}) -%}
+{%- set rp = profile.reading_power_window_config | default({}) -%}
+{%- set modules = profile.modules | default([]) -%}
+
+## 项目专属风格规范
+
+- 优先级：若本规范存在，写作时以本规范为准；题材、基调与补充指令仅作兜底，不得与本规范冲突。
+
+{%- if profile.summary | default('') %}
+> {{ profile.summary | default('') }}
+{%- endif %}
+{%- if profile.source_elements | default([]) %}
+- 来源要素：{{ profile.source_elements | default([]) | join('、') }}
+{%- endif %}
+
+{#- 大类风格参数 #}
+{%- if gs %}
+
+### 风格基调
+- 对话占比：{{ gs.dialogue_ratio | default('') }}
+- 节奏模式：{{ gs.pace_mode | default('') }}
+- 情绪风格：{{ gs.emotional_style | default('') }}
+- 环境描写：{{ gs.environment_ratio | default('') }}
+- 信息密度：{{ gs.info_density | default('') }}
+{%- set _banned_phrases = gs.banned_phrases | default([]) -%}
+{%- if include_banned_phrases and _banned_phrases %}
+- 项目级禁用短语：{{ _banned_phrases | join('、') }}（避免原样或近似复用）
+{%- endif %}
+{%- endif %}
+
+{#- 钩子配置 #}
+{%- if hook %}
+
+### 钩子要求
+- 偏好类型：{{ hook.preferred_types | default([]) | join('、') }}
+- 强度基准：{{ hook.strength_baseline | default('') }}
+{%- if hook.chapter_end_required | default(false) %}
+- 章末必须钩子
+{%- endif %}
+{%- endif %}
+
+{#- 爽点配置 #}
+{%- if cool and cool.preferred_patterns | default([]) %}
+
+### 爽点模式
+- 偏好模式：{{ cool.preferred_patterns | default([]) | join('、') }}
+- 爽点密度：{{ cool.density_per_chapter | default('') }}
+{%- endif %}
+
+{#- 微兑现配置 #}
+{%- if micro %}
+
+### 微兑现要求
+- 偏好类型：{{ micro.preferred_types | default([]) | join('、') }}
+- 每章最低：{{ micro.min_per_chapter | default('') }} 个
+{%- endif %}
+
+{#- 情节线配置 #}
+{%- if strand %}
+
+### 三线节奏阈值
+- Quest线最大连续：{{ strand.quest_max_consecutive | default('') }} 章
+- Fire线最大断档：{{ strand.fire_max_absent | default('') }} 章
+- Constellation线最大断档：{{ strand.constellation_max_absent | default('') }} 章
+{%- if strand.stagnation_threshold is defined %}
+- 停滞预警阈值：{{ strand.stagnation_threshold }} 章
+{%- endif %}
+{%- endif %}
+
+{#- 节奏配置 #}
+{%- if pacing %}
+
+### 节奏参数
+- 低张力上限：{{ pacing.min_tension_chapters | default('') }} 章
+- 高潮间隔：{{ pacing.climax_spacing_chapters | default('') }} 章
+{%- endif %}
+
+{#- 钩子评分配置 #}
+{%- if hook_score %}
+
+### 追读力评分权重
+- 强钩子：{{ hook_score.hook_score_strong | default('') }} 分
+- 中钩子：{{ hook_score.hook_score_medium | default('') }} 分
+- 弱钩子：{{ hook_score.hook_score_weak | default('') }} 分
+- 兑现计分上限：{{ hook_score.payoff_cap | default('') }}
+- 过渡章惩罚：{{ hook_score.transition_penalty | default('') }} 分
+{%- endif %}
+
+{#- 追读力窗口配置 #}
+{%- if rp %}
+
+### 追读力窗口配置
+- 窗口大小：{{ rp.window_size | default('') }} 章（左偏移 {{ rp.window_left_offset | default('') }}，右偏移 {{ rp.window_right_offset | default('') }}）
+- 悬念延迟阈值：{{ rp.suspense_delay_threshold | default('') }} 章；强制兑现阈值：{{ rp.force_resolve_threshold | default('') }} 章
+- 钩子交替阈值：{{ rp.hook_alternation_threshold | default('') }}；最大连续同类型：{{ rp.max_consecutive_same_hook | default('') }}
+- 张力偏差容忍度：{{ rp.tension_deviation_tolerance | default('') }}；恢复因子：{{ rp.tension_recovery_factor | default('') }}
+{%- if rp.hook_strength_weights | default({}) %}
+- 综合评分权重：{% for key, value in rp.hook_strength_weights.items() %}{{ key }}={{ value }}{% if not loop.last %}、{% endif %}{% endfor %}
+{%- endif %}
+- 兑现计分上限：{{ rp.payoff_cap | default('') }}
+- 预警阈值：临界 {{ rp.critical_score_threshold | default('') }}，警告 {{ rp.warning_score_threshold | default('') }}
+- 开关：强制兑现={{ rp.enable_force_resolve | default('') }}；钩子交替={{ rp.enable_hook_alternation_check | default('') }}；张力恢复={{ rp.enable_tension_recovery | default('') }}
+{%- endif %}
+
+{#- 写作技法模块 #}
+{%- if modules %}
+
+### 写作技法规范
+{% for mod in modules %}
+#### {{ mod.name }}
+{% for rule in mod.rules %}- {{ rule }}
+{% endfor %}
+{%- if mod.positive_example | default('') %}- ✓ {{ mod.positive_example }}{% endif %}
+{%- if mod.negative_example | default('') %}
+- ✗ {{ mod.negative_example }}{% endif %}
+
+{% endfor %}
+{%- endif %}
+
+{%- endif -%}
+{%- endmacro -%}
+
+{%- macro render_style_profile_for_stage(profile, stage="draft", include_banned_phrases=false) -%}
+{%- if profile -%}
+{%- set gs = profile.global_style | default({}) -%}
+{%- set hook = profile.hook_config | default({}) -%}
+{%- set cool = profile.cool_point_config | default({}) -%}
+{%- set micro = profile.micro_payoff_config | default({}) -%}
+{%- set strand = profile.strand_config | default({}) -%}
+{%- set pacing = profile.pacing_config | default({}) -%}
+{%- set hook_score = profile.hook_score_config | default({}) -%}
+{%- set modules = profile.modules | default([]) -%}
+{%- set stage_label = {
+  "bridge": "桥接",
+  "plan": "规划",
+  "draft": "正文生成",
+  "edit": "编辑修复",
+  "eval": "评估"
+}.get(stage, "写作") -%}
+
+## 项目风格约束（{{ stage_label }}）｜项目专属风格规范
+
+{%- if profile.summary | default('') %}
+- 风格概述：{{ profile.summary | default('') }}
+{%- endif %}
+
+{%- if gs and stage in ["bridge", "draft", "edit", "eval"] %}
+### 语感与密度
+- 对话占比：{{ gs.dialogue_ratio | default('') }}
+- 节奏模式：{{ gs.pace_mode | default('') }}
+- 情绪风格：{{ gs.emotional_style | default('') }}
+- 环境描写：{{ gs.environment_ratio | default('') }}
+- 信息密度：{{ gs.info_density | default('') }}
+{%- endif %}
+
+{%- if hook and stage in ["plan", "draft", "edit", "eval"] %}
+### 钩子执行
+- 偏好类型：{{ hook.preferred_types | default([]) | join('、') }}
+- 强度基准：{{ hook.strength_baseline | default('') }}
+{%- if hook.chapter_end_required | default(false) %}
+- 章末必须形成可执行钩子
+{%- endif %}
+{%- endif %}
+
+{%- if micro and stage in ["plan", "draft", "edit", "eval"] %}
+### 微兑现
+- 偏好类型：{{ micro.preferred_types | default([]) | join('、') }}
+- 每章最低：{{ micro.min_per_chapter | default('') }} 个
+{%- endif %}
+
+{%- if cool and cool.preferred_patterns | default([]) and stage in ["plan", "draft"] %}
+### 爽点模式
+- 偏好模式：{{ cool.preferred_patterns | default([]) | join('、') }}
+- 密度：{{ cool.density_per_chapter | default('') }}
+{%- endif %}
+
+{%- if strand and stage == "plan" %}
+### 三线节奏
+- Quest线最大连续：{{ strand.quest_max_consecutive | default('') }} 章
+- Fire线最大断档：{{ strand.fire_max_absent | default('') }} 章
+- Constellation线最大断档：{{ strand.constellation_max_absent | default('') }} 章
+{%- if strand.stagnation_threshold is defined %}
+- 停滞预警阈值：{{ strand.stagnation_threshold }} 章
+{%- endif %}
+{%- endif %}
+
+{%- if pacing and stage == "plan" %}
+### 节奏参数
+- 低张力上限：{{ pacing.min_tension_chapters | default('') }} 章
+- 高潮间隔：{{ pacing.climax_spacing_chapters | default('') }} 章
+{%- endif %}
+
+{%- if modules and stage in ["bridge", "draft", "edit"] %}
+### 写作技法
+{% for mod in modules %}
+- {{ mod.name }}：{{ mod.rules | default([]) | join('；') }}
+{% endfor %}
+{%- endif %}
+
+{%- set _banned_phrases = gs.banned_phrases | default([]) -%}
+{%- if include_banned_phrases and _banned_phrases %}
+### 项目级禁用短语
+- {{ _banned_phrases | join('、') }}
+{%- endif %}
+
+{%- if hook_score and stage == "eval" %}
+### 评分参数
+- 强/中/弱钩子分：{{ hook_score.hook_score_strong | default('') }} / {{ hook_score.hook_score_medium | default('') }} / {{ hook_score.hook_score_weak | default('') }}
+- 兑现计分上限：{{ hook_score.payoff_cap | default('') }}
+- 过渡章惩罚：{{ hook_score.transition_penalty | default('') }}
+{%- endif %}
+
+{%- endif -%}
+{%- endmacro -%}

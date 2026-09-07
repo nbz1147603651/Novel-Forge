@@ -1,0 +1,152 @@
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：init_character_bible.j2
+服务步骤：INIT_CHARACTER_BIBLE（初始化角色圣经）
+作用简述：根据世界观设定和故事前提，生成完整的角色档案（CharacterBible），
+          为后续规划与写作提供角色约束。
+上游输入：
+  - story_bible: INIT_STORY_BIBLE 产出（世界观设定）
+  - premise: 用户输入的故事前提
+  - title/genre/tone/language: 用户输入的作品元信息
+  - expected_total_words: 预计总字数（影响角色数量建议）
+  - characters_hint/conflict_hint/extra_instructions: 用户输入的辅助提示
+下游输出：
+  - JSON（CharacterBible）：characters 列表
+  - 下游消费者：
+    * PLAN_OUTLINE：消费 characters 列表生成角色弧光计划和 subplot_plan
+    * PLAN_CHAPTER：消费 character_profiles 生成 scene-based 创作计划
+    * DRAFT_CHAPTER：消费 character_profiles 和 active_relationships 作为硬约束
+    * EDIT_CHAPTER：消费 canon_context.characters 验证角色状态一致性
+消费链优先级：
+  P0 = 角色定义字段边界（只使用 CharacterProfile 字段）
+  P1 = role 分类正确性 / relationships 关系网络
+  P2 = arc 深度 / 角色可塑性 / 结局收束考量
+简要例子：
+  输入：story_bible={"era":"近未来",...}, premise="记忆回收师..."
+  输出：{"character_bible":{"characters":[{"name":"林远","role":"protagonist",...}]}}
+
+【保护性注释 - 禁止删除以下内容】
+- "角色质量优先原则"章节（宁缺毋滥/避免主角中心主义/派系分层/可塑性）是质量约束，
+  不是与 JSON schema 重复的字段列表。这些原则直接影响后续 PLAN_OUTLINE 和 DRAFT_CHAPTER
+  的角色深度，删除会导致角色设定扁平化、所有角色围绕主角旋转、缺少派系冲突。
+- "避免所有角色都围绕主角旋转，配角应有自己的目标、立场、利益冲突"是关键设计意图，
+  确保故事有多维度的冲突和张力。
+- 如需精简，可将质量原则合并到"核心原则"中，但不可完全删除。
+- 所有字段必须与 core/schemas/bible.py 中 CharacterProfile 的字段定义完全对齐，
+  不得添加 schema 中不存在的字段，不得遗漏 schema 中 required 的字段。
+- gender 字段必须明确标注（男/女/其他），DRAFT_CHAPTER 的代词一致性检查依赖此字段。
+================================================================================
+#}
+{#- ---------------------------------------------------------------------------
+    指导层：任务与输入
+    --------------------------------------------------------------------------- -#}
+
+根据以下世界观设定和故事前提，生成本作品的完整角色档案（CharacterBible）。
+
+## 链路边界
+本模板用于完整角色生成任务；新项目初始化默认由 split_v2 角色链路消费更细的字段合同。
+你不会收到 split_v2 链路的 `character_roster`、`target_character_roster`、`relationship_matrix` 或 `character_arcs` 作为中间约束；
+因此必须在本轮一次性完成角色名单、完整档案、人物间有效关系和主要弧线。
+不要输出 roster/profile/matrix/arc 这类分片产物；也不要要求后续分片替你补全关系或弧线。
+如果上下文中出现 `character_generation_mode`，仅将其视为链路说明，不要把它写入角色字段。
+
+{% if premise %}
+## 故事前提（角色设计的核心锚点）
+{{ premise }}
+{% endif %}
+
+## 世界观设定
+{{ story_bible | tojson(indent=2) if story_bible is mapping else story_bible }}
+
+（体裁：{{ genre }}｜基调：{{ tone }}｜语言：{{ describe_language(language) }}）
+
+{% if title %}- 暂定标题：{{ title }}{% endif %}
+{% if expected_total_words %}- 预计总字数：{{ expected_total_words }}字{% endif %}
+{% if characters_hint %}- 角色提示：{{ characters_hint }}{% endif %}
+{% if conflict_hint %}- 核心冲突：{{ conflict_hint }}{% endif %}
+{% if extra_instructions %}- 额外约束：{{ extra_instructions }}{% endif %}
+
+{#- ---------------------------------------------------------------------------
+    规模建议与角色要求
+    --------------------------------------------------------------------------- -#}
+
+{% if expected_total_words %}
+根据本作品规模（约{{ expected_total_words }}字）：
+{% if expected_total_words < 100000 %}
+  核心角色建议 5-7 人（核心行动轴 + 主要压力源 + 关键关系/支线轴 + 必要功能角色）
+{% elif expected_total_words < 300000 %}
+  核心角色建议 6-10 人（核心行动轴 + 主要压力源 + 多条关系/支线轴 + 必要功能角色）
+{% elif expected_total_words < 800000 %}
+  核心角色建议 8-15 人（核心行动轴 + 多层压力源 + 多条关系/支线轴 + 派系/场域代表）
+{% else %}
+  核心角色建议 12-20 人（核心行动轴 + 多层压力源 + 多条关系/支线轴 + 派系/场域代表）
+{% endif %}
+{% else %}
+核心角色数量应与篇幅匹配：短篇（<10万字）5-7人 / 中篇（10-30万字）6-10人 / 长篇（30-80万字）8-15人 / 超长篇（>80万字）12-20人
+{% endif %}
+
+角色分类：`protagonist`（核心主视角/主行动轴）/ `antagonist`（主要压力源或对抗轴）/ `deuteragonist`（第二行动轴、关系轴或强支线轴）/ `supporting`（重要配角、协作/阻碍/派系代表）/ `minor`（次要角色，此阶段无需设定）
+
+核心原则：
+- 角色必须与世界观一致（时代、文化、规则约束）
+- `protagonist` 表示全书最核心主视角/主行动轴；其他同样重要但承担第二行动轴、关系轴或强支线轴的角色，应使用 `deuteragonist`，不要因为角色重要就全部标成 protagonist。
+- 若存在双核心或多核心结构，按“谁承担主要视角/主要行动决策/章节推进责任”确定 `protagonist`；另一核心通常用 `deuteragonist`。只有用户明确要求群像多主角，或多个角色确实平分主行动轴时，才可输出多个 protagonist。
+- 角色提示不是封闭白名单：保留已有角色并补全必要的反派助手、派系代表、功能性角色
+- 宁缺毋滥——每个核心角色须有清晰弧光与作用，配角应独立于主角有自己的目标与立场
+- **避免主角中心主义**：配角不应全部围绕主角旋转，应有自己的目标、立场、利益冲突
+- **制造派系分层**：明面势力与暗中势力、理想主义者与现实主义者，增加故事维度
+- 预留角色"可塑性"：部分配角应能在后续发展中转变立场
+- 结局收束考量：每个核心角色都应能在故事结尾得到合理交代
+- 特殊能力/背景须符合世界观中的 magic_or_tech 规则
+
+{#- ---------------------------------------------------------------------------
+    字段边界（必须遵守）
+    --------------------------------------------------------------------------- -#}
+
+## 字段内容约束
+`character_bible` 只能包含 `characters`。
+每个角色仅允许以下字段：`name`、`role`、`age`、`gender`、`status`、`time_layer`、`social_status`、`abilities`、`appearance`、`personality`、`backstory`、`arc`、`relationships`、`voice`、`visual_identity`、`tts_voice_hints`、`notes`。
+禁止新增 schema 外字段。
+身份、职业、头衔、阶层写入 `social_status`；稳定能力、资源或专业技能写入 `abilities`；目标与恐惧写入 `personality`；长期变化写入 `arc`；角色声纹特征（句式节奏、解释倾向、情绪句法、标志性说话动作）写入 `voice`。
+主要角色必须在本轮建立跨媒介身份：`visual_identity` 用 `facial_anchors`、`silhouette`、
+`body_language`、`costume_palette`、`signature_props`、`continuity_rules`、`forbidden_drift`
+描述可观察、可审核、可跨镜头保持的形象；`tts_voice_hints` 用 `timbre`、`register`、
+`cadence`、`accent`、`emotion_range`、`pronunciation_notes` 描述可用于选声和声音设计的条件。
+不要在这两个上游字段中填写任何具体平台、模型或 voice_id。
+`social_status`、`abilities`、`appearance`、`personality`、`backstory`、`arc`、`voice`、`notes` 必须是单段字符串；禁止拆成对象、数组或带子字段的结构。若需要分层说明，用中文分号写在同一个字符串中。
+`status` 只可使用 `active`（主线可登场）、`dormant`（暂时离场/回忆或支线待唤醒）、`retired`（弧线已完成且后续不应主动注入）。
+`time_layer` 只可使用 `modern`（今生/当代主线）、`past`（历史线可直接出场）、`cross_temporal`（今生角色承载前世记忆/双时间线作用）、`memory_only`（仅通过档案、梦境、回忆或遗物出现）、`default`。
+已故但持续影响主线的人物写作 `role=minor`、`status=retired`、`time_layer=memory_only`，把“已故”写入 age/backstory/notes。
+relationships 只允许记录“人物 ↔ 人物”的社会、情感、敌对、合作关系；key 必须是 characters 数组中另一个角色的完整姓名。
+relationships 是“叙事有效关系”，不是全人物关系表；只写会在正文中产生互动、冲突、信息转移、行动协作、情感变化或长期张力的关系。听说过、无直接关系、可能间接关联、同社区但不互动的关系必须省略。
+前世/今生的**同一灵魂、转世身份、别名/称谓、误认**不要写进 relationships，可在 notes 中短句提及；但“两世恋人、前世挚友、今生对手、跨时代师友”等真实人物关系仍必须写进 relationships。
+道具归属、概念触发物、组织/群体关联不要写进 relationships，可在 notes 中短句提及，系统会抽取到实体指代图。
+
+## 质量校准
+- 工作身份：你是一位长篇叙事架构师，擅长把故事资产拆成可承接、可验证、不过度剧透的执行计划。
+- 规划推断路径：先锁定 P0 硬约束，再分配 P1 推进节奏，最后用 P2 风格/主题补足表现层。
+- 字段级质量示例（非输出格式）：平弱=“推进关系”；高质量=“写清谁因何行动、关系如何变化、下一环如何承接”。
+- 可操作路径：计划项要能被后续写作/审计直接检查，避免只给抽象愿望或主题口号。
+
+## 交付前核验
+- P0/P1/P2 优先级是否被保持，且没有让弱参考覆盖硬约束。
+- 是否能把关键判断回指到输入证据、上游契约或已批准计划。
+- 是否避免新增未授权的人物、地点、世界规则、未来 payoff 或格式协议。
+- 是否把抽象目标转化为可观察的行动、冲突、状态变化或章节承接点。
+
+{#- ---------------------------------------------------------------------------
+    系统契约由 PromptBuilder 注入
+    --------------------------------------------------------------------------- -#}
+
+## 结构稳定性要求
+- `characters` 数组不能为空，至少包含一个 protagonist。
+- 每个角色的 `name` 使用完整姓名，并与后续章节保持一致。
+- 字段名必须完全一致：`backstory` 不可写成 bystory，`gender` 不可写成 sex。
+- 字段名禁止添加数字后缀或变体，如 relationships_2、backstory2。
+- `gender` 必须明确标注男/女/其他，不得留空；后续代词一致性检查依赖此字段。
+- `status` 与 `time_layer` 必须使用上述枚举值；不确定时分别写 active 与 default。
+- `relationships` 必须是对象而非字符串，key 为其他角色名，value 为关系描述。
+- `relationships` 禁止出现“无直接关系”“间接认识”“听闻其名”这类弱关系；不值得推动剧情的关系直接不写。
+- `relationships` 禁止出现道具、组织、概念、别名组合或称谓组合；关系 key 只能是另一个角色的规范姓名。

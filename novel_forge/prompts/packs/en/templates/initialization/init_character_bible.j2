@@ -1,0 +1,153 @@
+{# source_template_hash: 65d3623338382b5a9177508ba2322827a02ace4ae34dd901e88d484ac053f666 #}
+{#
+================================================================================
+【notes】
+================================================================================
+Prompt: init_character_bible.j2
+Service Step: INIT_CHARACTER_BIBLE (Initialize Character Bible)
+Function Summary: Generate complete character files (CharacterBible) based on worldbuilding settings and story premise,
+                   providing character constraints for subsequent planning and writing.
+Upstream Inputs:
+  - story_bible: Output from INIT_STORY_BIBLE (worldbuilding settings)
+  - premise: Story premise from user input
+  - title/genre/tone/language: Work metadata from user input
+  - expected_total_words: Expected total word count (influences character count recommendations)
+  - characters_hint/conflict_hint/extra_instructions: Auxiliary hints from user input
+Downstream Outputs:
+  - JSON (CharacterBible): characters list
+  - Downstream Consumers:
+    * PLAN_OUTLINE: Consumes characters list to generate character arc plans and subplot_plan
+    * PLAN_CHAPTER: Consumes character_profiles to generate scene-based writing plans
+    * DRAFT_CHAPTER: Consumes character_profiles and active_relationships as hard constraints
+    * EDIT_CHAPTER: Consumes canon_context.characters to verify character state consistency
+Consumption Chain Priority:
+  P0 = Character definition field boundaries (use only CharacterProfile fields)
+  P1 = role classification correctness / relationships network
+  P2 = arc depth / character plasticity / ending convergence considerations
+Brief Example:
+  Input: story_bible={"era":"near-future",...}, premise="memory recycler..."
+  Output: {"character_bible":{"characters":[{"name":"Lin Yuan","role":"protagonist",...}]}}
+
+【Protective Comments - Do Not Delete Following Content】
+- The "Character Quality First Principle" section (quality over quantity / avoid protagonist-centrism / faction stratification / plasticity) is a quality constraint,
+  not a field list that duplicates the JSON schema. These principles directly affect character depth in subsequent PLAN_OUTLINE and DRAFT_CHAPTER;
+  deletion will cause character settings to become flat, all characters to revolve around the protagonist, and lack faction conflicts.
+- "Avoid having all characters revolve around the protagonist; supporting characters should have their own goals, stances, and interest conflicts" is a key design intent,
+  ensuring the story has multi-dimensional conflicts and tension.
+- For simplification, quality principles can be merged into "Core Principles," but cannot be completely deleted.
+- All fields must be perfectly aligned with CharacterProfile field definitions in core/schemas/bible.py;
+  do not add fields that don't exist in the schema, and do not omit fields marked as required in the schema.
+- The gender field must be clearly marked (male/female/other); DRAFT_CHAPTER's pronoun consistency check depends on this field.
+================================================================================
+#}
+{#- ---------------------------------------------------------------------------
+    Guidance Layer: Task and Input
+    --------------------------------------------------------------------------- -#}
+
+Based on the following worldbuilding settings and story premise, generate the complete character file (CharacterBible) for this work.
+
+## Chain Boundary
+This template is for complete character generation tasks; new project initialization defaults to the split_v2 character chain consuming finer-grained field contracts.
+You will not receive `character_roster`, `target_character_roster`, `relationship_matrix`, or `character_arcs` from the split_v2 chain as intermediate constraints;
+therefore, you must complete the character list, complete profiles, effective inter-character relationships, and main arcs in this round.
+Do not output fragmented products like roster/profile/matrix/arc; do not ask subsequent fragments to complete relationships or arcs for you.
+If `character_generation_mode` appears in the context, only treat it as a chain description; do not write it into character fields.
+
+{% if premise %}
+## Story Premise (Core Anchor for Character Design)
+{{ premise }}
+{% endif %}
+
+## Worldbuilding Settings
+{{ story_bible | tojson(indent=2) if story_bible is mapping else story_bible }}
+
+(Genre: {{ genre }} | Tone: {{ tone }} | Language: {{ describe_language(language) }})
+
+{% if title %}- Working Title: {{ title }}{% endif %}
+{% if expected_total_words %}- Expected Total Words: {{ expected_total_words }}{% endif %}
+{% if characters_hint %}- Character Hints: {{ characters_hint }}{% endif %}
+{% if conflict_hint %}- Core Conflict: {{ conflict_hint }}{% endif %}
+{% if extra_instructions %}- Extra Constraints: {{ extra_instructions }}{% endif %}
+
+{#- ---------------------------------------------------------------------------
+    Scale Recommendations and Character Requirements
+    --------------------------------------------------------------------------- -#}
+
+{% if expected_total_words %}
+Based on this work's scale (approximately {{ expected_total_words }} words):
+{% if expected_total_words < 100000 %}
+  Recommended 5-7 core characters (core action axis + main pressure source + key relationship/side plot axis + necessary functional roles)
+{% elif expected_total_words < 300000 %}
+  Recommended 6-10 core characters (core action axis + main pressure source + multiple relationship/side plot axes + necessary functional roles)
+{% elif expected_total_words < 800000 %}
+  Recommended 8-15 core characters (core action axis + multi-layer pressure sources + multiple relationship/side plot axes + faction/field representatives)
+{% else %}
+  Recommended 12-20 core characters (core action axis + multi-layer pressure sources + multiple relationship/side plot axes + faction/field representatives)
+{% endif %}
+{% else %}
+Core character count should match the length: short story (<100k words) 5-7 / medium-length (100k-300k) 6-10 / long (300k-800k) 8-15 / epic (>800k) 12-20
+{% endif %}
+
+Character Classification: `protagonist` (core main perspective/main action axis) / `antagonist` (main pressure source or opposition axis) / `deuteragonist` (second action axis, relationship axis, or strong side plot axis) / `supporting` (important supporting character, collaboration/obstruction/faction representative) / `minor` (secondary character, no need to set up at this stage)
+
+Core Principles:
+- Characters must be consistent with the worldbuilding (era, cultural context, rule constraints)
+- `protagonist` represents the most core main perspective/main action axis in the entire book; other equally important characters who carry the second action axis, relationship axis, or strong side plot axis should use `deuteragonist` — do not mark all important characters as protagonist.
+- If a dual-core or multi-core structure exists, determine `protagonist` by "who carries the main perspective/main action decisions/chapter advancement responsibility"; the other core typically uses `deuteragonist`. Only output multiple protagonists when the user explicitly requests ensemble multiple protagonists, or when multiple characters truly share the main action axis equally.
+- Character hints are not a closed whitelist: retain existing characters and supplement necessary antagonist assistants, faction representatives, and functional roles
+- Quality over quantity — each core character must have a clear arc and function; supporting characters should have their own goals and stances independent from the protagonist
+- **Avoid protagonist-centrism**: supporting characters should not all revolve around the protagonist; they should have their own goals, stances, and interest conflicts
+- **Create faction stratification**: visible forces vs. hidden forces, idealists vs. realists, adding story dimension
+- Reserve character "plasticity": some supporting characters should be able to shift stances in subsequent development
+- Ending convergence consideration: each core character should receive a reasonable conclusion at the story's end
+- Special abilities/backgrounds must comply with the magic_or_tech rules in the worldbuilding
+
+{#- ---------------------------------------------------------------------------
+    Field Boundaries (Must Follow)
+    --------------------------------------------------------------------------- -#}
+
+## Field Content Constraints
+`character_bible` can only contain `characters`.
+Each character is only allowed the following fields: `name`, `role`, `age`, `gender`, `status`, `time_layer`, `social_status`, `abilities`, `appearance`, `personality`, `backstory`, `arc`, `relationships`, `voice`, `visual_identity`, `tts_voice_hints`, `notes`.
+Do not add fields outside the schema.
+Identity, occupation, title, and class belong in `social_status`; stable abilities, resources, or professional skills belong in `abilities`; goals and fears belong in `personality`; long-term changes belong in `arc`; character voice characteristics (sentence rhythm, explanation tendencies, emotional syntax,signature speech actions) belong in `voice`.
+Main characters must establish cross-media identity in this pass. `visual_identity` uses
+`facial_anchors`, `silhouette`, `body_language`, `costume_palette`, `signature_props`,
+`continuity_rules`, and `forbidden_drift` for observable, reviewable, shot-consistent appearance.
+`tts_voice_hints` uses `timbre`, `register`, `cadence`, `accent`, `emotion_range`, and
+`pronunciation_notes` for casting and voice design. Do not place a platform, model, or voice_id here.
+`social_status`, `abilities`, `appearance`, `personality`, `backstory`, `arc`, `voice`, `notes` must be single-segment strings; do not split into objects, arrays, or structures with sub-fields. If layered explanation is needed, write it in the same string using English semicolons.
+`status` can only use `active` (can appear in main plot), `dormant` (temporarily off-stage/recall or side plot to be awakened), `retired` (arc completed and should not be actively injected thereafter).
+`time_layer` can only use `modern` (current life/contemporary main plot), `past` (historical line can appear directly), `cross_temporal` (current-life character carries past-life memory/dual timeline function), `memory_only` (appears only through records, dreams, memories, or relics), `default`.
+Deceased characters who continue to influence the main plot should be written as `role=minor`, `status=retired`, `time_layer=memory_only`, and write "deceased" in age/backstory/notes.
+relationships only allow recording "person ↔ person" social, emotional, adversarial, or cooperative relationships; keys must be the full names of other characters in the characters array.
+relationships are "narratively effective relationships," not a full character relationship table; only write relationships that will generate interaction, conflict, information transfer, action coordination, emotional change, or long-term tension in the main text. Relationships like "has heard of," "no direct relationship," "possibly indirectly related," "same community but no interaction" must be omitted.
+Past life/current life **same soul, reincarnation identity, alias/title, mistaken identity** should not be written into relationships, but can be briefly mentioned in notes; however, "past-life lovers, past-life best friends, current-life rivals, cross-era mentors/friends" and other true character relationships must still be written into relationships.
+Item ownership, concept triggers, organization/group associations should not be written into relationships, but can be briefly mentioned in notes; the system will extract these to entity reference graphs.
+
+## Quality Calibration
+- Work Identity: You are a long-form narrative architect, skilled at decomposing story assets into executable, verifiable, and not overly spoiler-heavy plans.
+- Planning Inference Path: First lock in P0 hard constraints, then allocate P1 for pacing advancement, and finally use P2 style/theme to complement the presentation layer.
+- Field-Level Quality Examples (not output format): Weak = "advance relationship"; High-Quality = "clearly state who acts for what reason, how the relationship changes, and how the next link connects."
+- Actionable Path: Plan items must be directly checkable by subsequent writing/audit; avoid only giving abstract wishes or thematic slogans.
+
+## Pre-Delivery Verification
+- Are P0/P1/P2 priorities maintained, and no weak references overriding hard constraints?
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans?
+- Are unauthorized new characters, places, world rules, future payoffs, or format agreements avoided?
+- Are abstract goals transformed into observable actions, conflicts, state changes, or chapter connection points?
+
+{#- ---------------------------------------------------------------------------
+    System Contract Injected by PromptBuilder
+    --------------------------------------------------------------------------- -#}
+
+## Structural Stability Requirements
+- The `characters` array cannot be empty and must contain at least one protagonist.
+- Each character's `name` uses the full name and remains consistent with subsequent sections.
+- Field names must be identical: `backstory` cannot be written as bystory, `gender` cannot be written as sex.
+- Field names must not have numeric suffixes or variants, such as relationships_2 or backstory2.
+- `gender` must be clearly marked as male/female/other, and cannot be left empty; subsequent pronoun consistency checks depend on this field.
+- `status` and `time_layer` must use the enumerated values above; when uncertain, write active and default respectively.
+- `relationships` must be objects, not strings; keys are other character names, values are relationship descriptions.
+- `relationships` must not contain weak relationships like "no direct relationship," "know indirectly," or "heard their name"; relationships not worth driving the plot should simply not be written.
+- `relationships` must not contain items, organizations, concepts, alias combinations, or title combinations; relationship keys can only be another character's standard full name.

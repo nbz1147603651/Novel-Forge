@@ -1,0 +1,8 @@
+{
+  "fixture_id": "duration-equivalence-3-5-days",
+  "kind": "comparison",
+  "comparator_id": "init_duration_range_v1",
+  "expected_raw": "[3,5]日",
+  "actual_raw": "[3, 5] 日",
+  "expect_equivalent": true
+}

@@ -1,0 +1,144 @@
+{# ================================================================================
+source_template_hash: dfba221f9be32a444e39cabac516e38244d735b93ccd7bee9786776064281e93
+[NOTES]
+================================================================================
+Prompt: short_blueprint.j2
+Service Step: SHORT_BLUEPRINT (Short Story Blueprint)
+Function Description: Generate a lightweight narrative blueprint for short stories
+         (Synopsis + AnchorElements + NarrativePhases + TurningPoints +
+         CharacterArcs + EmotionalArc + EndingStrategy), to guide subsequent
+         beat generation and draft writing.
+Upstream Input:
+  - spec: User-provided story specifications (genre, tone, language, length_target,
+          theme, characters_hint, world_hint, conflict_hint, pov_hint,
+          opening_style, ending_style, extra_instructions)
+  - blueprint_element_selection: From BLUEPRINT_ELEMENT_SELECT (required_elements,
+                                  extension_elements, focus_constraints)
+Downstream Output:
+  - JSON: {synopsis, anchor_elements, narrative_phases, turning_points,
+           character_arcs, emotional_arc, ending_strategy}
+  - Downstream Consumers: SPEC_TO_BEATS (Beat Generation) / BEATS_TO_DRAFT (Draft Writing)
+Consumption Chain Priority:
+  P0 = spec core fields (genre/tone/length_target) / Four Elements Anchoring
+  P1 = blueprint_element_selection constraints / turning_points design
+  P2 = emotional_arc rationality
+Brief Example:
+  Input: spec={genre:"Mystery", tone:"Tense", length_target:5000}
+  Output: {synopsis:"...", anchor_elements:{time_frame:"One Winter Night",...}, narrative_phases:[...]}
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer: Task Definition + Context Consumption
+    --------------------------------------------------------------------------- -#}
+
+Please design a lightweight narrative blueprint for this short story based on the following story specifications. The blueprint will guide subsequent beat generation and draft writing, ensuring the story structure consciously controls the emotional arc and pacing.
+
+**Important**: Please pay special attention to anchoring the "time-place-character-event" four elements. With the limited length of short stories, any drift in any element will destroy narrative consistency.
+
+## Story Specifications
+- Genre: {{ spec.genre }} | Tone: {{ spec.tone }} | Language: {{ describe_language(spec.language) }}
+- Target Word Count: {{ spec.length_target }}
+{% if spec.theme %}- Theme: {{ spec.theme }}{% endif %}
+{% if spec.characters_hint %}- Character Hints: {{ spec.characters_hint }}{% endif %}
+{% if spec.world_hint %}- Worldview: {{ spec.world_hint }}{% endif %}
+{% if spec.conflict_hint %}- Core Conflict: {{ spec.conflict_hint }}{% endif %}
+{% if spec.pov_hint %}- Narrative POV: {{ spec.pov_hint }}{% endif %}
+{% if spec.opening_style %}- Opening Strategy: {{ spec.opening_style }}{% endif %}
+{% if spec.ending_style %}- Ending Direction: {{ spec.ending_style }}{% endif %}
+{% if spec.extra_instructions %}- Supplementary Instructions: {{ spec.extra_instructions }}{% endif %}
+
+{% set sel = blueprint_element_selection or {} %}
+{% set required_elements = sel.required_elements if sel.required_elements is defined else [] %}
+{% set extension_elements = sel.extension_elements if sel.extension_elements is defined else [] %}
+
+## Narrative Element Selector Injection
+{% if sel.selector_summary is defined and sel.selector_summary %}- Selection Conclusion: {{ sel.selector_summary }}{% endif %}
+{% if required_elements %}
+- Required Items (must all be implemented):
+{% for item in required_elements %}
+  - {{ item.name }}: {{ item.description }}
+    Prompt Hint: {{ item.prompt_hint }}
+{% endfor %}
+{% endif %}
+{% if extension_elements %}
+- Extended Items (enabled according to this work's mechanism):
+{% for item in extension_elements %}
+  - {{ item.name }} ({{ item.category }})
+    {% if item.selection_score is defined and item.selection_score %}Priority: {{ item.selection_score }}{% if item.selection_source is defined and item.selection_source %} | Source: {{ item.selection_source }}{% endif %}
+    {% endif %}
+    Selection Reason: {{ item.selection_reason }}
+    Prompt Hint: {{ item.prompt_hint }}
+{% endfor %}
+{% endif %}
+{% if sel.focus_constraints is defined and sel.focus_constraints %}
+- Execution Constraints: {{ sel.focus_constraints | join("; ") }}
+{% endif %}
+
+## Structure Scale Suggestions
+{% if spec.length_target <= 3000 %}
+- This is a relatively short short story: Prioritize 3-4 narrative phases, 1-2 key turning points, avoid too many subplots causing the main conflict to lose focus.
+{% else %}
+- This is a medium-length short story: Can use 4-5 narrative phases, 2-3 key turning points, but must still advance around a single core event.
+{% endif %}
+- The entire piece should try to keep only 1 main conflict and at most 1 auxiliary relationship/theme thread, do not write a compressed long novel.
+- The blueprint must directly guide beats and the main text, so each phase needs "specific events" and "consequence landing", do not just write abstract atmosphere.
+
+## Blueprint Dimensions to Cover
+
+### 1. Story Synopsis (synopsis)
+Summarize the core conflict, development trajectory, and final direction of the entire piece in 2-3 sentences.
+The synopsis must include: Who is acting, what resistance they encounter, and what emotional/relationship/cognitive outcome the ending lands on.
+
+### 2. Narrative Anchoring Elements (anchor_elements)
+**This is key to preventing LLM drift** - The following global constraints must be locked in the blueprint:
+- `time_frame`: The time range when the story takes place, must come from this work's input or be naturally derivable narrative scale.
+- `primary_locations`: List of core scenes, use this work's own locations; should not exceed 3-4.
+- `core_characters`: List of main characters, each with name + role; write their narrative function in this story, do not use fixed character trope labels.
+- `central_event`: The core event or action the entire piece revolves around (one sentence description)
+
+### 3. Narrative Phases (narrative_phases)
+Divide the entire piece into 3-5 narrative phases. Short stories are not divided by chapters, but by "text position percentage" indicating ranges.
+**Each phase must anchor the time-place-character-event four elements** to prevent drift across phases:
+- `phase_name`: Phase name, summarizing the phase's narrative function or emotional turn.
+- `position_start` / `position_end`: 0-100 percentage
+- `description`: The narrative goal of this phase
+- `tension_level`: Low/Rising/High/Climax/Receding
+- `emotional_focus`: The emotional anchor of this phase
+- `time_setting`: The time point/period when this phase occurs, must be consistent with anchor_elements.time_frame.
+- `location`: The specific scene of this phase, must come from anchor_elements.primary_locations or its natural extension.
+- `characters_present`: List of characters appearing in this phase
+- `key_event`: The core event of this phase (one sentence)
+
+### 4. Key Turning Points (turning_points)
+Mark 1-3 key turning points, specifying approximately what position in the text (percentage), and the nature of the turn.
+Turning points must be events that truly change the character's strategy, relationship, or direction of the ending, not just information supplementation.
+
+### 5. Character Arcs (character_arcs)
+Each main character's change intention - from what state to what state, and which phase the key transformation occurs in.
+
+### 6. Emotional Arc Design (emotional_arc)
+Briefly describe the emotional trajectory of the entire piece; emotional nodes must come from this work's conflict and character changes, do not copy generic emotional chains.
+The emotional arc should correspond one-to-one with the emotional_focus of narrative_phases, not be disconnected before and after.
+
+### 7. Ending Strategy (ending_strategy)
+How the entire piece concludes - Open/Closed/Reversal/Resonant? What is the final emotional landing point?
+Must be clear about "what feeling/judgment/aftershock the reader should take away from the final paragraph", avoid having only formal labels without landing.
+Note: Open endings must also be "complete openings", meaning the main conflict has reached a comprehensiblestage-levelresult, leaving only an aftertaste, not allowed to stop at something like "to be continued" like a serialized long novel.
+
+## Blueprint Consistency Self-Check
+1. narrative_phases' position_start/position_end must cover 0-100 without overlap.
+2. Each narrative_phase must contain time_setting, location, characters_present, key_event.
+3. The core_characters in anchor_elements must correspond to characters in character_arcs.
+
+## Quality Calibration
+- Work Identity: You are a long-form narrative architect, skilled at splitting story assets intohandoff, verifiable, non-spoiler-heavy execution plans.
+- Planning Inference Path: First lock P0 hard constraints, then allocate P1 to advance pacing, finally use P2 style/theme to supplement the presentation layer.
+- Field-Level Quality Examples (not output format): Weak = "Advance relationship"; High Quality = "Clarify who acts for what reason, how the relationship changes, how the next step connects".
+- Actionable Path: Plan items must be directly checkable by subsequent writing/audit, avoid giving only abstract wishes or theme slogans.
+
+## Pre-Delivery Verification
+- Are P0/P1/P2 priorities maintained, and do not let weak references override hard constraints.
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans.
+- Are unauthorized characters, locations, world rules, future payoffs, or format agreements avoided.
+- Are abstract goals transformed into observable actions, conflicts, state changes, or chapter connection points.

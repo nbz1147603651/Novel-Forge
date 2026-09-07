@@ -1,0 +1,320 @@
+.overlay-backdrop.voice-script-editor-backdrop {
+  padding: 4px;
+}
+
+.voice-script-editor-dialog {
+  display: grid;
+  grid-template-rows: auto auto auto minmax(430px, 1fr) auto;
+  width: min(1520px, calc(100vw - 24px));
+  height: min(1076px, calc(100vh - 8px));
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--nf-border-soft) 46%, transparent);
+  border-radius: 17px;
+  color: var(--nf-text-body);
+  background: var(--nf-bg-dialog);
+  box-shadow: 0 25px 65px color-mix(in srgb, var(--nf-shadow) 31%, transparent);
+  animation: dialog-rise-in 180ms cubic-bezier(.22, .61, .36, 1);
+}
+
+.voice-script-editor-dialog.is-performance {
+  width: min(1180px, calc(100vw - 24px));
+  height: min(772px, calc(100vh - 8px));
+}
+
+.voice-script-editor-dialog.is-performance .voice-script-text textarea {
+  min-height: 120px;
+}
+
+.voice-script-editor-dialog > header {
+  padding: 18px 20px 13px;
+  border-bottom: 1px solid color-mix(in srgb, var(--nf-border-default) 14%, transparent);
+}
+
+.voice-script-editor-dialog h2,
+.voice-script-editor-dialog h3 {
+  margin: 0;
+  color: var(--nf-text-heading);
+  font-family: Georgia, "Songti SC", serif;
+}
+
+.voice-script-editor-dialog h2 {
+  font-size: var(--nf-font-page);
+}
+
+.voice-script-editor-dialog > header p,
+.voice-script-editor-dialog article header p {
+  margin: 6px 0 0;
+  color: var(--nf-text-secondary);
+  font-size: var(--nf-font-body);
+  line-height: 1.55;
+}
+
+.voice-script-editor-review {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 20px;
+  padding: 9px 12px;
+  border: 1px solid color-mix(in srgb, var(--nf-success) 32%, transparent);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--nf-success) 7%, var(--nf-bg-surface));
+}
+
+.voice-script-editor-review > div {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.voice-script-editor-review strong {
+  color: var(--nf-success);
+}
+
+.voice-script-editor-review span {
+  color: var(--nf-text-secondary);
+  font-size: var(--nf-font-ui);
+}
+
+.voice-script-editor-capabilities {
+  margin: 0 20px;
+  padding: 8px 11px;
+  border: 1px solid color-mix(in srgb, var(--nf-accent-primary) 24%, transparent);
+  border-radius: 9px;
+  color: var(--nf-text-secondary);
+  background: color-mix(in srgb, var(--nf-accent-primary) 6%, var(--nf-bg-surface));
+  font-size: var(--nf-font-ui);
+  line-height: 1.4;
+}
+
+.voice-script-editor-body {
+  display: grid;
+  grid-template-columns: minmax(204px, .7fr) minmax(0, 2fr);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.voice-script-editor-body > aside {
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  padding: 10px;
+  overflow: auto;
+  border-right: 1px solid color-mix(in srgb, var(--nf-border-default) 14%, transparent);
+  background: color-mix(in srgb, var(--nf-bg-control) 30%, var(--nf-bg-surface));
+}
+
+.voice-script-editor-body > aside button {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--nf-text-secondary);
+  background: transparent;
+  text-align: left;
+}
+
+.voice-script-editor-body > aside button.is-active {
+  border-color: color-mix(in srgb, var(--nf-accent-primary) 38%, transparent);
+  background: color-mix(in srgb, var(--nf-accent-primary) 9%, var(--nf-bg-surface));
+}
+
+.voice-script-editor-body aside span {
+  color: var(--nf-accent-primary-pressed);
+  font-size: var(--nf-font-micro);
+  font-weight: 700;
+}
+
+.voice-script-editor-body aside strong {
+  color: var(--nf-text-heading);
+  font-size: var(--nf-font-body);
+}
+
+.voice-script-editor-body aside small {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-micro);
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.voice-script-editor-body article {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 18px 20px;
+  overflow: auto;
+}
+
+.voice-script-editor-body article h3 {
+  margin-top: 5px;
+  font-size: var(--nf-font-heading);
+}
+
+.voice-script-speaker,
+.voice-script-text {
+  display: grid;
+  gap: 6px;
+  color: var(--nf-text-secondary);
+  font-size: var(--nf-font-body);
+  font-weight: 700;
+}
+
+.voice-script-identifiers {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.voice-script-speaker select,
+.voice-script-text textarea,
+.voice-script-control-grid input,
+.voice-script-control-grid select {
+  box-sizing: border-box;
+  width: 100%;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 26%, transparent);
+  border-radius: 8px;
+  color: var(--nf-text-body);
+  background: var(--nf-bg-input-soft);
+  font: inherit;
+}
+
+.voice-script-speaker select,
+.voice-script-control-grid input,
+.voice-script-control-grid select {
+  min-height: 32px;
+  padding: 0 8px;
+}
+
+.voice-script-text textarea {
+  min-height: 132px;
+  padding: 10px;
+  resize: vertical;
+}
+
+.voice-script-control-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px 12px;
+}
+
+.voice-script-control-grid label {
+  display: grid;
+  grid-template-columns: 74px minmax(0, 1fr);
+  gap: 7px;
+  align-items: center;
+  color: var(--nf-text-secondary);
+  font-size: var(--nf-font-ui);
+}
+
+.voice-script-control-grid label.is-wide {
+  grid-column: 1 / -1;
+}
+
+.voice-script-control-grid label.voice-script-intensity {
+  grid-template-columns: 74px minmax(0, 1fr) auto;
+}
+
+.voice-script-intensity input[type="range"] {
+  min-height: auto;
+  padding: 0;
+}
+
+.voice-script-intensity output {
+  min-width: 40px;
+  color: var(--nf-text-heading);
+  text-align: right;
+}
+
+.voice-script-editor-assist {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.voice-script-editor-assist .button {
+  min-height: 30px;
+  font-size: var(--nf-font-ui);
+}
+
+.voice-script-editor-assist span {
+  color: var(--nf-text-muted-soft);
+  font-size: var(--nf-font-micro);
+}
+
+.voice-script-validation {
+  margin: 0;
+  color: var(--nf-accent-primary-pressed);
+  font-size: var(--nf-font-body);
+  font-weight: 700;
+}
+
+.voice-script-editor-dialog > footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 20px 16px;
+  border-top: 1px solid color-mix(in srgb, var(--nf-border-default) 14%, transparent);
+}
+
+.voice-script-editor-dialog > footer > div {
+  display: flex;
+  gap: 8px;
+}
+
+.voice-script-editor-dialog > footer .button {
+  min-height: 33px;
+  font-size: var(--nf-font-ui);
+}
+
+@media (max-width: 760px) {
+  .overlay-backdrop.voice-script-editor-backdrop {
+    padding: 12px;
+  }
+
+  .voice-script-editor-dialog {
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    width: min(100%, 853px);
+    height: calc(100vh - 24px);
+  }
+
+  .voice-script-editor-body {
+    grid-template-columns: 1fr;
+  }
+
+  .voice-script-editor-body > aside {
+    max-height: 145px;
+    border-right: 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--nf-border-default) 14%, transparent);
+  }
+
+  .voice-script-control-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .voice-script-control-grid label.is-wide {
+    grid-column: auto;
+  }
+
+  .voice-script-editor-dialog > footer {
+    flex-wrap: wrap;
+  }
+}
+
+/* Honor reduced motion (design-tokens has global guard, this is explicit
+ * for local animations that should not run when the user prefers reduced
+ * motion). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

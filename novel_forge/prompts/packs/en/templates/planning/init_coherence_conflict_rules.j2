@@ -1,0 +1,42 @@
+{# source_template_hash: 7ee788e0bab518c09f453418df90b5e87c42e28ab2ea4b822a43b81551588cfc #}
+{#
+================================================================================
+[Notes]
+================================================================================
+Prompt: init_coherence_conflict_rules.j2
+Service Step: INIT_COHERENCE_CONFLICT_RULES (Coherence Profile Fragment: Conflict Lens)
+Brief Description: Only generate conflict types and misjudgment boundaries that the initialization coherence referee needs to focus on.
+Upstream Input: current_profile/spec/story_bible/character_bible/blueprint
+Downstream Output: JSON: {"conflict_lens": [...]}
+Downstream Consumer: REFINE_INIT_COHERENCE_PROFILE Local Merger
+Consumer Chain Priority: P0 = Can reduce misjudgment; P1 = Cover irreversible events/redundant fulfillment/sequence conflicts; P2 = Brief
+================================================================================
+#}
+{#- Guidance Layer -#}
+Please output only the conflict lenses `conflict_lens`, for subsequent referee to initialize whether the blueprint/outline/contract is coherent.
+
+{% if shared_evidence_anchor %}
+## Shared Evidence Anchor
+{{ shared_evidence_anchor | tojson(indent=2) }}
+Use this as the common basis for this shard; dimension-specific information can only supplement, not overwrite anchor facts.
+{% endif %}
+
+## Current Profile
+{{ current_profile | tojson(indent=2) }}
+
+## Blueprint
+{{ blueprint | tojson(indent=2) }}
+
+## Quality Calibration
+- Work Identity: You are a long-form narrative architect, skilled at breaking down story assets into executable, verifiable, non-spoiler-heavy execution plans.
+- Planning Inference Path: First lock in P0 hard constraints, then allocate P1 for pacing advancement, and finally use P2 style/theme to supplement the presentation layer.
+- Field-level Quality Examples (not output format): Weak = "advancing the relationship"; High-quality = "clarify who acts for what, how the relationship changes, and how the next linkhandoff".
+- Actionable Path: Plan items must be directly checkable by subsequent writing/audit, avoiding just giving abstract wishes or thematic slogans.
+
+## Pre-delivery Verification
+- Whether P0/P1/P2 priorities are maintained, and that weak references do not override hard constraints.
+- Whether key judgments can be traced back to input evidence, upstream contracts, or approved plans.
+- Whether new unauthorized characters, locations, world rules, future payoffs, or format agreements are avoided.
+- Whether abstract goals are translated into observable actions, conflicts, state changes, or chapter handoff points.
+
+{#- Format Layer -#}

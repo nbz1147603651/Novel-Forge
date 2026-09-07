@@ -1,0 +1,23 @@
+{
+  "provider_id": "default",
+  "profile_version": "1.0",
+  "display_name": "通用TTS平台",
+  "sentence_limits": {
+    "narration": 30,
+    "dialogue": 20,
+    "inner_thought": 25
+  },
+  "pause_strategy": "在自然意群处断句，单句不超过句长限制；破折号插入语拆为独立短句。",
+  "punctuation_guidance": "确保每句有明确标点收束；省略号表达语意未尽时保留。",
+  "interjection_policy": "不手动写入任何平台标记；文本结构应允许合成层在情绪转折处注入副语言标签。",
+  "platform_prompt_guidance": "只使用供应商无关字段：emotion、tone_hint、vocal_direction、language_code、language_runs、pronunciation_overrides 与 paralinguistic_tags。不得自行写入任何厂商私有标记、私有 SSML 或 platform_extensions；只有适配器已声明并由后端投影的能力才可使用。",
+  "rhythm_guidance": "按呼吸和语义分组断句，不为凑长度破坏自然意群。",
+  "special_rules": [],
+  "polyphone_strategy": "",
+  "emotion_vocabulary": {
+    "native_emotions": ["neutral", "happy", "sad", "angry", "fearful", "surprised", "disgusted", "tender", "whisper", "nostalgic", "anxious", "determined"],
+    "instruction_emotions": [],
+    "emotion_guidance": "通用平台：emotion 从 native_emotions 选取，tone_hint 用自然语言补充表演意图。",
+    "narration_default": "neutral，旁白以叙事距离和节奏变化制造层次"
+  }
+}

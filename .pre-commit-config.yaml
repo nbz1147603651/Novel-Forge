@@ -1,0 +1,40 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.4.4
+    hooks:
+      - id: ruff
+        args: [--check]
+      - id: ruff-format
+        args: [--check]
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy
+        entry: python scripts/pre_commit_local.py mypy
+        language: system
+        types: [python]
+        pass_filenames: false
+      - id: verify-templates
+        name: verify_templates
+        entry: python scripts/pre_commit_local.py verify-templates
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: lint-imports
+        name: lint-imports (architecture layers)
+        entry: python scripts/pre_commit_local.py lint-imports
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: check-agents-md-drift
+        name: check_agents_md_drift
+        entry: python scripts/pre_commit_local.py drift-check
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: check-contract-consumers
+        name: check_contract_consumers (boundary consumers)
+        entry: python scripts/pre_commit_local.py contract-consumers
+        language: system
+        pass_filenames: false
+        always_run: true

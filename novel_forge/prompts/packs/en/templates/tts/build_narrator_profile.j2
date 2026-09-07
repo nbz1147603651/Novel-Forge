@@ -1,0 +1,159 @@
+{# source_template_hash: 62d6700d348bdbd11288d3190eda3dfdb1873acd22d4eabeee64e6678aa4f55e #}
+{#
+================================================================================
+【Remarks】
+================================================================================
+Prompt: build_narrator_profile.j2
+Service Step: TTS_BUILD_NARRATOR_PROFILE (Narrator Voice Profile Generation)
+Function Summary: Based on the book's outline, genre, tone, and style profile,
+                  call LLM to analyze and generate narrator voice characteristics
+                  (timbre type, speed range, emotional expression style, narrative
+                  distance, etc.).
+Upstream Inputs:
+  - outline: Book outline (or volume-level outline)
+  - genre: Genre (Romance/Mystery/Historical/Sci-Fi, etc.)
+  - tone: Tone (Light/Heavy/Tense/Warm, etc.)
+  - style_profile: Style profile
+  - sample_chapter: Sample chapter text (optional, for narrative style analysis)
+Downstream Output:
+  - NarratorVoiceProfile (Narrator Voice Profile JSON)
+================================================================================
+#}
+
+{%- set cards = stage_cards | default({}) -%}
+{%- set outline = cards.outline | default({}) -%}
+{%- set genre = cards.genre | default("") -%}
+{%- set tone = cards.tone | default("") -%}
+{%- set style_profile = cards.style_profile | default({}) -%}
+{%- set story_bible = cards.story_bible | default({}) -%}
+{%- set audio_aesthetic_hint = cards.audio_aesthetic_hint | default("") -%}
+{%- set sample_chapter = cards.sample_chapter | default("") -%}
+
+# Role
+
+You are a senior audiobook director and voice designer. You excel at designing the most suitable narrator voice based on a work's genre, tone, and narrative style.
+
+## Task
+
+Analyze the following work information to design the optimal voice profile for the narrator. You need to consider:
+
+1. **Voice Type**: What kind of voice is best suited for this work? (Melodic male voice / Intellectual female voice / Weathered elder / Warm young adult, etc.)
+2. **Speed Range**: What should the base speed and dynamic range be?
+3. **Emotional Expression**: Should the narrator's emotional expression be wide-ranging, moderate, or restrained?
+4. **Narration Distance**: Should the narrator be close to the character's inner world (close), maintain a moderate distance (medium), or adopt an omniscient perspective (distant)?
+5. **Style Keywords**: Describe the narrator's overall style in 3-5 keywords
+6. **Emotional Dynamic Adjustments**: How should speed and volume change across different emotional scenes?
+
+# Work Information
+
+## Genre
+
+{{ genre | default("Not specified") }}
+
+## Tone
+
+{{ tone | default("Not specified") }}
+
+## Audio Aesthetic Requirement
+
+{{ audio_aesthetic_hint | default("Not specified") }}
+
+## Story Bible
+
+{% if story_bible %}
+{% if story_bible.core_premise %}- Core premise: {{ story_bible.core_premise }}{% endif %}
+{% if story_bible.themes %}- Themes: {{ story_bible.themes | join(", ") if story_bible.themes is iterable and story_bible.themes is not string else story_bible.themes }}{% endif %}
+{% if story_bible.audio_aesthetic %}- Audio aesthetic: {{ story_bible.audio_aesthetic }}{% endif %}
+{% if story_bible.pov_rules %}- POV rules: {{ story_bible.pov_rules }}{% endif %}
+{% else %}
+(No story bible information)
+{% endif %}
+
+## Outline Summary
+
+{% if outline %}
+{% if outline.synopsis %}
+**Story Synopsis**: {{ outline.synopsis }}
+{% endif %}
+{% if outline.themes %}
+**Core Themes**: {{ outline.themes | join(", ") }}
+{% endif %}
+{% if outline.volume_count is defined %}
+**Number of Volumes**: {{ outline.volume_count }}
+{% endif %}
+{% if outline.total_chapters is defined %}
+**Number of Chapters**: {{ outline.total_chapters }}
+{% endif %}
+{% else %}
+(No outline information available)
+{% endif %}
+
+## Style Profile
+
+{% if style_profile %}
+{% if style_profile.literary_style %}
+- Literary Style: {{ style_profile.literary_style }}
+{% endif %}
+{% if style_profile.narrative_pace %}
+- Narrative Pace: {{ style_profile.narrative_pace }}
+{% endif %}
+{% if style_profile.emotional_tone %}
+- Emotional Tone: {{ style_profile.emotional_tone }}
+{% endif %}
+{% if style_profile.speed_range %}
+- Recommended Speed Range: {{ style_profile.speed_range }}
+{% endif %}
+{% if style_profile.pov_style %}
+- POV Style: {{ style_profile.pov_style }}
+{% endif %}
+{% else %}
+(No style profile available)
+{% endif %}
+
+## Sample Chapter Excerpt
+
+{% if sample_chapter %}
+```
+{{ sample_chapter[:2000] }}{% if sample_chapter | length > 2000 %}...{% endif %}
+```
+{% else %}
+(No sample chapter available)
+{% endif %}
+
+# Field Semantics
+
+- Derive `voice_type`, `emotional_range`, and `narration_distance` from this work's genre, tone, narrative distance, and sample chapter.
+- Keep only relevant dimensions in `genre_adaptation`; do not apply a fixed universal table.
+- Derive `emotion_speed_modifiers` and `emotion_volume_modifiers` from this book's performance strategy rather than a stock emotion-number recipe.
+- `sample_narration_text` is a 50–100 character audition passage; `notes` explains the design evidence.
+
+# Design Guidelines
+
+1. **Genre Matching**:
+   - Romance/Urban: Warm, character-proximate voice, moderate to slow pace
+   - Mystery/Thriller: Deep, tense voice, wide speed variation
+   - Historical/Period: Steady, literary voice, slower pace
+   - Sci-Fi/Future: Clear, rational voice, moderate pace
+   - Light/Comedy: Lively, rhythmic voice, faster pace
+
+2. **Tone Influence**:
+   - Heavy/Tragic: Slower pace, lower volume, restrained emotional expression
+   - Light/Warm: Moderate pace, moderate volume, natural emotional expression
+   - Tense/Thrilling: Faster pace, wide volume variation, strong emotional expression
+
+3. **Narration Distance**:
+   - Close: Intimate with character's inner world, suitable for first-person or deep third-person
+   - Moderate: Appropriate distance, suitable for standard third-person narrative
+   - Distant: Omniscient perspective, suitable for epic/ensemble narratives
+
+4. **Emotional Dynamics**:
+   - emotion_speed_modifiers: Speed multipliers for different emotions (<1.0 slows down, >1.0 speeds up)
+   - emotion_volume_modifiers: Volume multipliers for different emotions
+
+# Constraints
+
+1. base_speed must be within the range of 0.5~2.0
+2. speed_range_low and speed_range_high must be within the range of 0.5~2.0
+3. style_keywords must contain 3-5 items
+4. sample_narration_text must be 50-100 characters
+5. All modifier values must be within the range of 0.5~2.0

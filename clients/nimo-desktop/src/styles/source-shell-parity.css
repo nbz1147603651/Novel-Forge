@@ -1,0 +1,100 @@
+@media (max-width: 1360px), (max-height: 820px) {
+/*
+ * Shared shell metrics measured from the stable PySide6 1440×900 source
+ * frame. The user-directed compact density reduces chrome only; keep that
+ * deviation at this shared-shell boundary rather than distributing equivalent
+ * values through individual pages.
+ */
+.rail-brand {
+  padding: 4px 2px 0;
+  border: 0;
+}
+
+.rail-brand strong {
+  font-size: var(--nf-font-page);
+  line-height: 30px;
+  letter-spacing: 5px;
+}
+
+.rail-brand span {
+  margin-top: 4px;
+  color: color-mix(in srgb, var(--nf-text-brand-gold) 30%, transparent);
+  font-family: "Songti SC", "STSong", Georgia, serif;
+  font-size: var(--nf-font-micro);
+  line-height: 16px;
+  letter-spacing: 3px;
+}
+
+.rail-brand p,
+.rail-brand small {
+  color: color-mix(in srgb, var(--nf-text-brand-light) 55%, transparent);
+  font-size: var(--nf-font-micro);
+  line-height: 16px;
+}
+
+.rail-brand p {
+  margin-top: 4px;
+}
+
+.rail-brand small {
+  margin-top: 14px;
+}
+
+.rail-brand::after {
+  display: block;
+  height: 1px;
+  margin-top: 10px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--nf-text-brand-gold) 12%, transparent) 15%,
+    color-mix(in srgb, var(--nf-text-brand-gold) 36%, transparent) 35%,
+    color-mix(in srgb, var(--nf-brand-logo-accent) 42%, transparent) 50%,
+    color-mix(in srgb, var(--nf-text-brand-gold) 36%, transparent) 65%,
+    color-mix(in srgb, var(--nf-text-brand-gold) 12%, transparent) 85%,
+    transparent 100%
+  );
+  content: "";
+}
+
+.rail-navigation {
+  margin-top: 5px;
+}
+
+.rail-nav-item {
+  min-height: 42px;
+  color: color-mix(in srgb, var(--nf-text-brand-light) 78%, transparent);
+  font-size: var(--nf-font-section);
+  font-weight: 500;
+}
+
+.rail-nav-item.is-active {
+  border-color: color-mix(in srgb, var(--nf-accent-primary) 32%, transparent);
+  color: var(--nf-accent-primary);
+  background: color-mix(in srgb, var(--nf-accent-primary) 16%, transparent);
+  font-weight: 600;
+}
+
+.rail-footer {
+  min-height: 96px;
+  padding: 9px;
+  border-color: color-mix(in srgb, var(--nf-text-brand-gold) 10%, transparent);
+  background: color-mix(in srgb, var(--nf-bg-surface) 7%, transparent);
+}
+
+.rail-footer span {
+  font-size: var(--nf-font-body);
+  line-height: 17px;
+}
+
+.rail-footer small {
+  font-size: var(--nf-font-micro);
+  line-height: 15px;
+}
+
+/* `Surface(tone="hero")` uses a diagonal Qt gradient (x1/y1 → x2/y2). */
+.dashboard-hero,
+.settings-hero {
+  background: linear-gradient(135deg, var(--nf-bg-hero-start), var(--nf-bg-hero-mid) 45%, var(--nf-bg-hero-end));
+}
+}

@@ -1,0 +1,33 @@
+{#- ============================================================================
+    POV 知识边界约束共享宏
+    ============================================================================
+    消除 draft_chapter.j2 和 wave_chapter.j2 中重复的 POV 知识边界约束段落。
+    用于渲染每个场景的 pov_knowledge_constraints（forbidden_knowledge + sensory_limits）。
+    使用方式：
+      {%- from "_base/_pov_knowledge_constraints.j2" import render_pov_knowledge_constraints -%}
+      {{ render_pov_knowledge_constraints(scene, fallback_pov='') }}
+    ============================================================================ -#}
+
+{#- ── POV 知识边界约束 ── -#}
+{%- macro render_pov_knowledge_constraints(scene, fallback_pov='', heading_level=3) -%}
+{% set pov_constraints = scene.pov_knowledge_constraints | default({}, true) %}
+{% if pov_constraints.forbidden_knowledge | default([]) %}
+{% set heading = '#' * heading_level %}
+{{ heading }} POV 知识边界约束（严格遵守）
+当前 POV 角色「{{ scene.pov_character | default(fallback_pov) }}」采用{{ pov_constraints.scope_label | default('limited') }}视角。
+
+**该角色不可能知道以下类别的信息，正文中绝不能出现这些知识的直接或间接表达：**
+{% for item in pov_constraints.forbidden_knowledge | default([]) %}
+- {{ item }}
+{% endfor %}
+{% if pov_constraints.sensory_limits | default([]) %}
+
+**该角色的感知限制：**
+{% for limit in pov_constraints.sensory_limits | default([]) %}
+- {{ limit }}
+{% endfor %}
+{% endif %}
+
+违反此约束将导致角色获取全知信息，破坏限知视角的真实感。若需要表达该角色不知情的状态，可通过困惑、误判、猜测等方式间接呈现。
+{% endif %}
+{%- endmacro -%}

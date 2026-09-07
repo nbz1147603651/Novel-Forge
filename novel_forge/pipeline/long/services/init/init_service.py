@@ -1,0 +1,223 @@
+"""Stable, explicit compatibility facade for long-project initialization.
+
+Initialization implementations live in focused ``init_*`` modules. Importing
+this facade never mutates an implementation module or depends on import order.
+"""
+
+from __future__ import annotations
+
+from novel_forge.pipeline.long.services.init.init_cache import _load_cached_model_or_rollback
+from novel_forge.pipeline.long.services.init.init_chapter_contracts import (
+    _assert_chapter_contracts_ready_to_persist,
+    _backfill_cognitive_constraints,
+    _batched_adjudicate_contract_coherence,
+    _batched_generate_chapter_contracts,
+    _chapter_contract_batch_max_tokens,
+    _chapter_contract_batch_outline_payload,
+    _chapter_contract_input_hashes,
+    _cognitive_constraint_from_claim,
+    _init_claim_constraints_by_chapter,
+    _load_reusable_chapter_contracts,
+    _normalize_chapter_contracts_cognitive_subjects,
+    _persist_chapter_contract_runtime_artifacts,
+    _select_init_claim_constraints_for_backfill,
+    _select_init_claim_constraints_for_batch,
+    _source_artifact_resume_rebuild_chapters,
+    merge_reusable_and_rebuilt_chapter_contracts,
+    partition_chapter_contracts_for_resume,
+)
+from novel_forge.pipeline.long.services.init.init_character_bible import (
+    _character_bible_semantic_hash,
+    _character_knowledge_boundaries_complete,
+    _character_source_metadata_matches,
+    _relationship_matrix_cache_matches,
+    ensure_init_readiness_for_existing_project,
+)
+from novel_forge.pipeline.long.services.init.init_claim_coverage import _local_cognitive_backfill
+from novel_forge.pipeline.long.services.init.init_coherence import InitCoherenceError
+from novel_forge.pipeline.long.services.init.init_context import (
+    InitLongServiceContext,
+    build_init_context,
+)
+from novel_forge.pipeline.long.services.init.init_contract import (
+    _build_and_persist_narrative_contract,
+    _seed_canon_from_character_bible,
+)
+from novel_forge.pipeline.long.services.init.init_contract_flow import (
+    _claim_coverage_checkpoint_path,
+    _save_claim_coverage_checkpoint,
+    claim_coverage_checkpoint_matches,
+    initialize_narrative_state_and_contracts,
+    reaudit_changed_chapter_contracts,
+)
+from novel_forge.pipeline.long.services.init.init_creative_refinement import (
+    _try_local_blueprint_coherence_fallback,
+)
+from novel_forge.pipeline.long.services.init.init_orchestrator import init_long_project
+from novel_forge.pipeline.long.services.init.init_outline_batch import _batched_generate_outline
+from novel_forge.pipeline.long.services.init.init_outline_helpers import (
+    _record_outline_exchange,
+    _sanitize_outline_conversation_history,
+)
+from novel_forge.pipeline.long.services.init.init_repair_execution import (
+    _call_repair_for_chunk,
+    _detect_artifact_type,
+    _merge_repaired_chunks,
+    _navigate_json_pointer,
+    _repair_artifact_chunked,
+    _repair_artifact_summary_only,
+    _split_payload_by_chapter,
+)
+from novel_forge.pipeline.long.services.init.init_repair_targets import (
+    _apply_prune_strategy,
+    _build_scoped_init_repair_payload,
+    _extract_top_level_issues,
+    _init_coherence_repair_round_start,
+    _merge_pruned_fields,
+    _repair_init_artifact_payload,
+)
+from novel_forge.pipeline.long.services.init.init_source_artifact_repair import (
+    _apply_source_artifact_entity_alias_repair,
+    _format_source_artifact_failure,
+    _source_artifact_contract_repair_report,
+    _source_artifact_readiness_stage_report,
+    _source_artifact_repair_plan,
+)
+from novel_forge.pipeline.long.services.init.init_source_resume import (
+    _cached_outline_matches_reveal_guard,
+    _finish_init_after_source_artifacts,
+    _format_init_coherence_error,
+    _init_coherence_allows_llm_followup_repair,
+    _init_coherence_blocks,
+    _init_coherence_claim_ledger,
+    _init_coherence_focus_chapters_after_repair,
+    _init_coherence_max_repair_rounds,
+    _init_coherence_repair_stop_decision,
+    _init_readiness_blocks_only_claim_coverage,
+    _late_init_resume_base_readiness,
+    _load_reusable_init_coherence_report,
+    _load_source_artifacts_resume_bundle,
+    _local_story_fallbacks_enabled,
+    _repair_outline_reveal_guard_manifest_from_downstream,
+    _run_init_coherence_auto_repair,
+    _save_init_readiness,
+    _source_artifacts_resume_base_readiness,
+)
+from novel_forge.pipeline.long.services.init.init_story_bible import (
+    CHARACTER_GENERATION_MODE_SPLIT,
+    SourceArtifactsResumeBundle,
+    _blueprint_spine_budget,
+    _classify_init_readiness_resume,
+    _compact_blueprint_prompt_snapshot,
+    _detect_init_resume_anchor,
+    _deterministic_non_character_registry,
+    _entity_registry_needs_llm_supplement,
+    _init_readiness_blocks_only_contract_coherence,
+    _init_readiness_blocks_only_source_artifacts,
+    _llm_narrative_contract_input_hashes,
+    _load_reusable_llm_narrative_contract,
+    _merge_entity_registries,
+    _partial_blueprint_validation_report,
+    _persist_llm_narrative_contract,
+    _supplemental_non_character_registry,
+)
+from novel_forge.pipeline.long.services.init_repair.policies.chapter_contracts import (
+    ensure_chapter_contract_coverage as _ensure_chapter_contract_coverage,
+)
+from novel_forge.pipeline.steps.spec_step import SpecStep
+
+__all__ = [
+    "CHARACTER_GENERATION_MODE_SPLIT",
+    "InitCoherenceError",
+    "InitLongServiceContext",
+    "SourceArtifactsResumeBundle",
+    "SpecStep",
+    "_apply_prune_strategy",
+    "_apply_source_artifact_entity_alias_repair",
+    "_assert_chapter_contracts_ready_to_persist",
+    "_backfill_cognitive_constraints",
+    "_batched_adjudicate_contract_coherence",
+    "_batched_generate_chapter_contracts",
+    "_batched_generate_outline",
+    "_blueprint_spine_budget",
+    "_build_and_persist_narrative_contract",
+    "_build_scoped_init_repair_payload",
+    "_cached_outline_matches_reveal_guard",
+    "_call_repair_for_chunk",
+    "_chapter_contract_batch_max_tokens",
+    "_chapter_contract_batch_outline_payload",
+    "_chapter_contract_input_hashes",
+    "_character_bible_semantic_hash",
+    "_character_knowledge_boundaries_complete",
+    "_character_source_metadata_matches",
+    "_claim_coverage_checkpoint_path",
+    "_classify_init_readiness_resume",
+    "_cognitive_constraint_from_claim",
+    "_compact_blueprint_prompt_snapshot",
+    "_detect_artifact_type",
+    "_detect_init_resume_anchor",
+    "_deterministic_non_character_registry",
+    "_ensure_chapter_contract_coverage",
+    "_entity_registry_needs_llm_supplement",
+    "_extract_top_level_issues",
+    "_finish_init_after_source_artifacts",
+    "_format_init_coherence_error",
+    "_format_source_artifact_failure",
+    "_init_claim_constraints_by_chapter",
+    "_init_coherence_allows_llm_followup_repair",
+    "_init_coherence_blocks",
+    "_init_coherence_claim_ledger",
+    "_init_coherence_focus_chapters_after_repair",
+    "_init_coherence_max_repair_rounds",
+    "_init_coherence_repair_round_start",
+    "_init_coherence_repair_stop_decision",
+    "_init_readiness_blocks_only_claim_coverage",
+    "_init_readiness_blocks_only_contract_coherence",
+    "_init_readiness_blocks_only_source_artifacts",
+    "_late_init_resume_base_readiness",
+    "_llm_narrative_contract_input_hashes",
+    "_load_cached_model_or_rollback",
+    "_load_reusable_chapter_contracts",
+    "_load_reusable_init_coherence_report",
+    "_load_reusable_llm_narrative_contract",
+    "_load_source_artifacts_resume_bundle",
+    "_local_cognitive_backfill",
+    "_local_story_fallbacks_enabled",
+    "_merge_entity_registries",
+    "_merge_pruned_fields",
+    "_merge_repaired_chunks",
+    "_navigate_json_pointer",
+    "_normalize_chapter_contracts_cognitive_subjects",
+    "_partial_blueprint_validation_report",
+    "_persist_chapter_contract_runtime_artifacts",
+    "_persist_llm_narrative_contract",
+    "_record_outline_exchange",
+    "_relationship_matrix_cache_matches",
+    "_repair_artifact_chunked",
+    "_repair_artifact_summary_only",
+    "_repair_init_artifact_payload",
+    "_repair_outline_reveal_guard_manifest_from_downstream",
+    "_run_init_coherence_auto_repair",
+    "_sanitize_outline_conversation_history",
+    "_save_claim_coverage_checkpoint",
+    "_save_init_readiness",
+    "_seed_canon_from_character_bible",
+    "_select_init_claim_constraints_for_backfill",
+    "_select_init_claim_constraints_for_batch",
+    "_source_artifact_contract_repair_report",
+    "_source_artifact_readiness_stage_report",
+    "_source_artifact_repair_plan",
+    "_source_artifact_resume_rebuild_chapters",
+    "_source_artifacts_resume_base_readiness",
+    "_split_payload_by_chapter",
+    "_supplemental_non_character_registry",
+    "_try_local_blueprint_coherence_fallback",
+    "build_init_context",
+    "claim_coverage_checkpoint_matches",
+    "ensure_init_readiness_for_existing_project",
+    "init_long_project",
+    "initialize_narrative_state_and_contracts",
+    "merge_reusable_and_rebuilt_chapter_contracts",
+    "partition_chapter_contracts_for_resume",
+    "reaudit_changed_chapter_contracts",
+]

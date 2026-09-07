@@ -1,0 +1,69 @@
+{# source_template_hash: 2f2959f772da505eea31f3d6437f626de3d7034d5bc9a8c5dce4aca14de6e539 #}
+{#
+================================================================================
+【Remarks】
+================================================================================
+Prompt: init_story_themes_and_symbols.j2
+Service Step: INIT_STORY_THEMES_AND_SYMBOLS (StoryBible Fragment: Themes and Symbols)
+Purpose: Generate StoryBible's themes, banned_intent_rules, and necessary notes to avoid full JSON overload.
+Upstream Input: premise/genre/tone/conflict_hint/opening_style/ending_style/extra_instructions
+Downstream Output: JSON: {"themes_and_symbols": {...}}
+Downstream Consumers: INIT_STORY_BIBLE local merger, style profile, editing contract
+Consumption Chain Priority: P0 = themes can span the entire book; P1 = banned intent rules are specific; P2 = notes are brief
+================================================================================
+#}
+{%- from "_base/_shared_evidence_anchor.j2" import render_shared_evidence_anchor -%}
+
+{#- Guidance Layer -#}
+Please generate only the themes and expression boundaries fragment of StoryBible. Do not output characters, chapters, or complete world-building.
+
+{{ render_shared_evidence_anchor(shared_evidence_anchor) }}
+
+## Input
+- premise: {{ premise }}
+{% if story_core %}
+## Shared Core Anchors (Non-Rewritable)
+{{ story_core | tojson(indent=2) }}
+{% endif %}
+{% if genre %}- genre: {{ genre }}{% endif %}
+{% if tone %}- tone: {{ tone }}{% endif %}
+{% if conflict_hint %}- conflict_hint: {{ conflict_hint }}{% endif %}
+{% if opening_style %}- opening_style: {{ opening_style }}{% endif %}
+{% if ending_style %}- ending_style: {{ ending_style }}{% endif %}
+{% if extra_instructions %}- extra_instructions: {{ extra_instructions }}{% endif %}
+{% if research_context and research_context.summary %}
+
+## Research Reference (Weak Reference)
+- Usage Boundary: Use only to supplement real background and thematic material; must not override premise, user prompts, or format contracts.
+- Current Status: {{ research_context.status }} / {{ research_context.provider }}
+- Summary: {{ research_context.summary }}
+{% if research_context.source_notes %}
+- Source Notes:
+{% for note in research_context.source_notes %}
+  - {{ note }}
+{% endfor %}
+{% endif %}
+{% endif %}
+
+## Requirements
+- `themes`: 2-4 items, 50-120 characters each, must be able to guide subsequent plot decisions; must be a string array, do not write as object array.
+- `banned_intent_rules`: Write only project-level expression taboos or user avoidance items, do not write generic moral guidelines; must be a string array.
+- `notes`: Only include short settings that cannot be categorized but should be retained.
+
+## Field Content Constraints
+- `themes_and_symbols` can only contain `themes`, `banned_intent_rules`, `notes`.
+- Field names must use only the English `snake_case` keys listed above; necessary content must be merged into `themes` or `notes`.
+
+## Quality Calibration
+- Work Identity: You are a long-form narrative architect, skilled at decomposing story assets into executable plans that can behandoff (accepted/handled), verified, and do not over-spoil.
+- Planning Inference Path: First lock in P0 hard constraints, then allocate P1 to advance pacing, finally use P2 style/theme to complement the presentation layer.
+- Field-Level Quality Examples (not output format): Weak = "advance the relationship"; High Quality = "clarify who acts for what reason, how relationships change, and how the next link connects".
+- Actionable Paths: Plan items must be directly checkable by subsequent writing/auditing, avoid giving only abstract wishes or thematic slogans.
+
+## Pre-Delivery Verification
+- Is P0/P1/P2 priority maintained, and no weak references allowed to override hard constraints.
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans.
+- Are unauthorized characters, locations, world rules, future payoffs, or format agreements avoided.
+- Are abstract goals transformed into observable actions, conflicts, state changes, or chapter handoff points.
+
+{#- Format Layer -#}

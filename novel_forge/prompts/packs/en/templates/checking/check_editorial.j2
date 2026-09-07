@@ -1,0 +1,114 @@
+{# ================================================================================
+source_template_hash: e752ef90cf660cb0a945f04aa1631c336d709246c38ba8008853d3662b7160c3
+[NOTES]
+================================================================================
+Prompt: check_editorial.j2
+Service Step: CHECK_EDITORIAL (Single Chapter Editorial Quality Check)
+Function Summary: Check single chapter for publication-level editorial issues based on EditorialContract, output soft report.
+Upstream Input:
+  - chapter_number/chapter_text: Current chapter body text
+  - editorial_contract: Project editorial contract
+  - chapter_contract/forbidden_reveal_boundaries: Current chapter hard contract and forbidden premature redemption boundaries
+  - local_findings/local_metrics: Local pre-check signals
+Downstream Output:
+  - JSON: {"summary", "findings", "revision_plan", "metrics"}
+  - Downstream Consumer: Chapter report / known issues / Current chapter edit correction
+Consumption Chain Priority: P2 (Editorial Quality Soft Check)
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer: Task Definition + Context Consumption
+    --------------------------------------------------------------------------- -#}
+Please perform a **single chapter editorial quality check** on the current chapter based on the project's `EditorialContract`.
+
+This is not about fact consistency, causality verification, or outline alignment; only check for publication-level expression issues:
+- Whether character voices are converging
+- Whether physical reactions/action tags/dialogue tags are repetitive
+- Whether themes and symbols are being directly explained
+- Whether scenes have only atmosphere but lack tension
+- Whether post-climax chapters are confirming again, lacking new action/new information
+- Whether there are overly long paragraphs causing visual fatigue
+
+## Chapter Information
+- Chapter {{ chapter_number }}
+
+## Editorial Contract
+{{ editorial_contract | tojson(indent=2) }}
+
+{% set chapter_contract = chapter_contract | default({}) %}
+{% set forbidden_boundaries = forbidden_reveal_boundaries | default([]) %}
+{% if chapter_contract or forbidden_boundaries %}
+## Current Chapter Hard Boundaries (Priority Over Editorial Suggestions)
+{% if chapter_contract %}
+### Chapter Contract Summary
+{% for key in ["required_events", "allowed_changes", "forbidden_changes", "forbidden_progressions", "future_leak_risks", "completion_criteria"] %}
+{% set values = chapter_contract.get(key, []) if chapter_contract.get is defined else [] %}
+{% if values %}
+- {{ key }}: {{ values | join("; ") }}
+{% endif %}
+{% endfor %}
+### chapter_contract_json
+{{ chapter_contract | tojson(indent=2) }}
+{% endif %}
+{% if forbidden_boundaries %}
+### forbidden_reveal_boundaries
+{% for item in forbidden_boundaries %}
+- {{ item.rule | default(item) }}
+{% endfor %}
+{% endif %}
+{% endif %}
+
+{% set risk_guidance = editorial_risk_guidance | default({}) %}
+{% set risk_items = risk_guidance.get('items', []) if risk_guidance else [] %}
+{% set denouement_risk = risk_guidance.get('denouement', {}) if risk_guidance else {} %}
+{% if risk_items or denouement_risk.guidance | default('') %}
+## Editorial Risk Review Initialization
+These risks come from `reports/init_editorial_readiness.json` or are derived from editorial contract budgets, and are only used for this chapter's editorial quality check, not for fact consistency.
+{% if denouement_risk.guidance | default('') %}- Denouement/epilogue review: {{ denouement_risk.guidance }}{% endif %}
+{% for item in risk_items %}
+- [{{ item.severity }}] {{ item.summary }}; Review focus = {{ item.action }}
+{% endfor %}
+{% endif %}
+
+{% if local_findings %}
+## Local Pre-Check Findings
+{% for item in local_findings %}
+- [{{ item.issue_type }} / {{ item.severity }}] {{ item.summary }}{% if item.evidence %}; Evidence: {{ item.evidence | join("; ") }}{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if local_metrics %}
+## Local Metrics
+{{ local_metrics | tojson(indent=2) }}
+{% endif %}
+
+## Chapter Body Text
+{{ chapter_text }}
+
+## Inspection Rules
+1. Local pre-check is only a candidate signal; you must combine it with the body text to determine whether it genuinely affects reading.
+2. For each finding, provide specific evidence and actionable revision suggestions—do not just write "strengthen" or "optimize."
+3. If this chapter has exceeded the main climax denouement budget, focus on checking for new action, new conflict, or new information; pure gentle confirmation should be flagged.
+4. If a symbol appears, only flag it when "the meaning is explicitly stated"; simple repetition is not a problem.
+5. Full chapter rewrite is not recommended; prioritize suggestions for local deletion/revision, shifting load-bearing method, paragraph compression, or voice adjustment.
+6. Only flag overly long paragraphs when they genuinely cause reading pauses; suggest splitting by action, dialogue, information revelation, or emotional beats.
+7. `chapter_contract` and `forbidden_reveal_boundaries` are hard boundaries: you must not request, suggest, or imply that the body text add events, dialogue, public results, or future payoffs that violate these boundaries; if the project editorial contract/initialization risks conflict with this chapter's hard boundaries, this chapter's hard boundaries take precedence, and you may only suggest strengthening expressions like "preparation, suspension, aftermath, cost awareness" that are allowed in this chapter.
+
+## Inspection Result Field Requirements
+- `summary`: This chapter's editorial quality judgment, explaining whether local revision is needed.
+- `findings`: Each item includes issue_type, severity, chapter_number, summary, evidence, recommendation, confidence, metadata; must provide body text evidence and actionable suggestions.
+- `revision_plan`: Local revision steps, prioritizing deletion/revision, shifting load-bearing method, paragraph compression, voice adjustment.
+- `metrics.editorial_score`: 0-10 points, deducted based on this chapter's editorial issue density and severity.
+
+## Quality Calibration
+- Work identity: You are a rigorous novel quality proofreader, skilled at using concise evidence, clear boundaries, and downstream-executable suggestions to locate issues.
+- Proofreading path: First confirm input evidence, then determine issue type, impact scope, and repair boundaries, finally provide downstream-executable location information.
+- Field-level quality examples (not output format): Weak = "this is inconsistent"; High-quality = "identify which two pieces of evidence conflict, risk level, verifiable issue."
+- Actionable path: Every judgment must support verification or repair; low-confidence content is downgraded to pending verification issues.
+
+## Pre-Delivery Verification
+- Are P0/P1/P2 priorities maintained, and is there no override of hard constraints by weak references?
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans?
+- Is there avoidance of unauthorized additions of characters, locations, world rules, future payoffs, revision suggestions violating this chapter's hard boundaries, or format agreements?
+- Are short evidence, risk levels, location information, and downstream-verifiable issues provided?

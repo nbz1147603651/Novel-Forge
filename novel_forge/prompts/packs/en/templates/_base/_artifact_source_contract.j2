@@ -1,0 +1,109 @@
+{# source_template_hash: afa8a9cdb784614c2af5e91a8aaec5a30f9f04df97d43be9626425887ffa86ac #}
+{#
+================================================================================
+【Note】
+================================================================================
+Shared macro: _artifact_source_contract.j2
+Brief description: Renders lightweight source contract for ChapterSourceSlice,
+unifying source artifact consumption boundaries for long-form chapter stages.
+This macro only describes input consumption rules, does not define output format.
+================================================================================
+#}
+{%- from "_base/_cognitive_constraints.j2" import render_cognitive_constraints -%}
+
+{%- macro render_artifact_source_contract(source, title="## Source Artifact Contract (P0)", mode="chapter") -%}
+{% set source = source | default({}) %}
+{{ title }}
+{% if source %}
+- source_artifact_id：{{ source.source_artifact_id | default('') }}
+{% if source.source_hashes | default({}) %}
+- source_hashes：{% for key, value in source.source_hashes.items() %}{{ key }}={{ value }}{% if not loop.last %}; {% endif %}{% endfor %}
+{% endif %}
+- Authority boundary: `cards.source` is the sole authoritative projection initialized for this chapter; other `stage_cards` can only serve as local assistance for this step, cannot reverse-override source.
+- Entity boundary: Characters, locations, objects, organizations and concepts must come from canonical entity refs; display names are resolved only before body rendering, must not self-create old names, unregistered aliases or synonymous entities.
+
+{% set chapter_contract = source.chapter_contract | default({}) %}
+{% if chapter_contract and mode in ["review", "extract"] %}
+### chapter_contract
+{% if chapter_contract.chapter_number is defined %}- Chapter: {{ chapter_contract.chapter_number }}{% endif %}
+{% if chapter_contract.title | default('') %}- Title: {{ chapter_contract.title }}{% endif %}
+{% if chapter_contract.entry_state_requirements | default([]) %}- Entry state: {{ chapter_contract.entry_state_requirements | join('; ') }}{% endif %}
+{% if chapter_contract.required_events | default([]) %}- Required events: {{ chapter_contract.required_events | join('; ') }}{% endif %}
+{% if chapter_contract.required_progressions | default([]) %}- Required progressions: {{ chapter_contract.required_progressions | join('; ') }}{% endif %}
+{% if chapter_contract.allowed_progressions | default([]) %}- Allowed foreshadowing: {{ chapter_contract.allowed_progressions | join('; ') }}{% endif %}
+{% if chapter_contract.forbidden_changes | default([]) %}- Forbidden changes: {{ chapter_contract.forbidden_changes | join('; ') }}{% endif %}
+{% if chapter_contract.forbidden_progressions | default([]) %}- Forbidden early progressions: {{ chapter_contract.forbidden_progressions | join('; ') }}{% endif %}
+{% if chapter_contract.future_leak_risks | default([]) %}- future_leak_risks: {{ chapter_contract.future_leak_risks | join('; ') }}{% endif %}
+{% if chapter_contract.cognitive_constraints | default([]) %}
+- Cognitive boundaries (complete per-character coverage):
+{{ render_cognitive_constraints(chapter_contract.cognitive_constraints) }}
+{% endif %}
+{% if chapter_contract.exit_state_targets | default([]) %}- Exit targets: {{ chapter_contract.exit_state_targets | join('; ') }}{% endif %}
+{% if chapter_contract.completion_criteria | default([]) %}- Completion criteria: {{ chapter_contract.completion_criteria | join('; ') }}{% endif %}
+{% elif chapter_contract and mode in ["repair", "polish"] and chapter_contract.cognitive_constraints | default([]) %}
+### cognitive_constraints (read-only preservation boundary)
+{{ render_cognitive_constraints(chapter_contract.cognitive_constraints) }}
+{% endif %}
+
+{% set relevant_entities = source.relevant_entities | default([]) %}
+{% if relevant_entities %}
+### relevant_entities
+{% for entity in relevant_entities %}
+- {{ entity.entity_id | default(entity.id | default('')) }}｜{{ entity.entity_type | default(entity.type | default('')) }}｜{{ entity.canonical_name | default(entity.name | default('')) }}{% if mode in ["review", "extract"] and entity.aliases | default([]) %}; aliases={{ entity.aliases | join(', ') }}{% endif %}
+{% endfor %}
+{% endif %}
+
+{% set boundaries = source.forbidden_reveal_boundaries | default([]) %}
+### forbidden_reveal_boundaries
+{% if boundaries %}
+{% for item in boundaries %}
+- {{ item }}
+{% endfor %}
+{% else %}
+- [] (No explicit boundaries still prohibits confirming future facts in advance)
+{% endif %}
+
+{% set world_rule_card = source.world_rule_card | default({}) %}
+{% if world_rule_card %}
+### world_rule_card (P0)
+- Rule ledger version: {{ world_rule_card.rule_book_version | default('') }}; source_hash={{ world_rule_card.source_hash | default('') }}.
+- The following rules are the sole executable world-rule projection for this chapter. Do not add, rewrite, or bypass costs for narrative convenience.
+{% for item in world_rule_card.always_on | default([]) %}
+- [always/{{ item.rule.rule_id | default('') }}] {{ item.rule.content | default('') }}{% if item.rule.forbidden_behavior | default([]) %}; forbidden={{ item.rule.forbidden_behavior | join('; ') }}{% endif %}{% if item.rule.cost_or_consequence | default([]) %}; costs/consequences={{ item.rule.cost_or_consequence | join('; ') }}{% endif %}
+{% endfor %}
+{% for item in world_rule_card.relevant_rules | default([]) %}
+- [chapter-relevant/{{ item.rule.rule_id | default('') }}] {{ item.rule.content | default('') }}; selection_reason={{ item.selection_reason | default('') }}{% if item.rule.trigger_conditions | default([]) %}; triggers={{ item.rule.trigger_conditions | join('; ') }}{% endif %}{% if item.rule.forbidden_behavior | default([]) %}; forbidden={{ item.rule.forbidden_behavior | join('; ') }}{% endif %}{% if item.rule.cost_or_consequence | default([]) %}; costs/consequences={{ item.rule.cost_or_consequence | join('; ') }}{% endif %}
+{% endfor %}
+{% if world_rule_card.omitted_rule_ids | default([]) %}
+- Omitted rule IDs: {{ world_rule_card.omitted_rule_ids | join(', ') }}. They do not authorize new related facts in this chapter; return to source selection before using one.
+{% endif %}
+{% endif %}
+
+{% if mode in ["draft", "scene", "wave", "polish"] %}
+{% set story_foundation = source.story_foundation | default({}) %}
+{% set style_voice = source.style_voice | default({}) %}
+{% if story_foundation or style_voice %}
+### Local Writing Projection
+{% if world_rule_card %}- World rules are limited to the preceding `world_rule_card`; do not read or infer omitted rules.{% endif %}
+{% if story_foundation.address_rules | default([]) %}- Address rules: {{ story_foundation.address_rules | join('; ') }}{% endif %}
+{% if style_voice.style_profile | default({}) %}- Style profile: Only used for language, syntax, dialogue register; does not add new plot facts.{% endif %}
+{% if style_voice.character_voices | default([]) %}- Character voice projection: Only used for expression styles of characters relevant to current chapter, does not read full characterprofile.{% endif %}
+{% endif %}
+{% endif %}
+
+{% if mode == "repair" %}
+### ticket/window Repair Boundary
+- Only fix current ticket, evidence quote, text window and acceptance criteria coverage issues; free rewriting of entire chapter is not allowed.
+- Do not read macro creative planning to add events, character cognition, identity confirmation, future payoffs or scene sequence.
+- If ticket/window evidence is lacking, keep body text unchanged and handle locatable issues according to minimal change principle.
+{% elif mode == "polish" %}
+### Polish Boundary
+- Only polish corrected body text, expression density and style projection; cannot add new plot facts, character cognition, event ledger, relationship conclusions or future reveals.
+{% elif mode == "extract" %}
+### Extraction Boundary
+- Plans, chapter contracts, intermediate drafts and source projections are not occurred facts; canon/memory can only write facts supported by final body text evidence.
+{% endif %}
+{% else %}
+- Missing `cards.source`: This step has no initialized authoritative projection, should be blocked by upstream gate; do not arbitrarily fill in story_bible, character_bible or narrative_contract.
+{% endif %}
+{%- endmacro %}

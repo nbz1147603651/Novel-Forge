@@ -1,0 +1,88 @@
+{
+  "schema_version": 2,
+  "standard": "codex-atlas-v1",
+  "pet_id": "nimo",
+  "display_name": "Nimo",
+  "description": "Nimo 会守在案头，用于提示 Novel Forge 的后台任务状态。",
+  "assets": {
+    "spritesheet": "spritesheet.webp",
+    "sprite": "nimo.png",
+    "source": "source.png"
+  },
+  "atlas": {
+    "columns": 8,
+    "rows": 9,
+    "cell_width": 192,
+    "cell_height": 208,
+    "row_order": [
+      {"state": "idle", "row": 0, "frames": 6, "fps": 6},
+      {"state": "running-right", "row": 1, "frames": 8, "fps": 8},
+      {"state": "running-left", "row": 2, "frames": 8, "fps": 8},
+      {"state": "waving", "row": 3, "frames": 4, "fps": 6},
+      {"state": "jumping", "row": 4, "frames": 5, "fps": 7},
+      {"state": "failed", "row": 5, "frames": 8, "fps": 6},
+      {"state": "waiting", "row": 6, "frames": 6, "fps": 5},
+      {"state": "running", "row": 7, "frames": 6, "fps": 7},
+      {"state": "review", "row": 8, "frames": 6, "fps": 5}
+    ]
+  },
+  "layout": {
+    "normal_width": 144,
+    "normal_height": 166,
+    "compact_width": 112,
+    "compact_height": 120,
+    "normal_sprite": 96,
+    "compact_sprite": 78
+  },
+  "states": {
+    "idle": {
+      "label": "待命",
+      "animation": "breathe",
+      "row": 0,
+      "frames": 6,
+      "fps": 6
+    },
+    "running": {
+      "label": "运行中",
+      "animation": "bob",
+      "row": 7,
+      "frames": 6,
+      "fps": 7
+    },
+    "decision": {
+      "label": "待确认",
+      "animation": "alert",
+      "row": 8,
+      "frames": 6,
+      "fps": 5
+    },
+    "paused": {
+      "label": "等待继续",
+      "animation": "breathe",
+      "row": 6,
+      "frames": 6,
+      "fps": 5
+    },
+    "waiting": {
+      "label": "等待中",
+      "animation": "breathe",
+      "row": 6,
+      "frames": 6,
+      "fps": 5
+    },
+    "review": {
+      "label": "审阅中",
+      "animation": "breathe",
+      "row": 8,
+      "frames": 6,
+      "fps": 5
+    },
+    "failed": {
+      "label": "失败",
+      "animation": "alert",
+      "row": 5,
+      "frames": 8,
+      "fps": 6
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{#
+source_template_hash: edf27a0c1f681601dc54fbe41987959fed14ddb12e46ef0a19ee15457b0f6ab5
+Prompt: init_creative_direction_select.j2
+Task: INIT_CREATIVE_DIRECTION_SELECT
+Inputs: user_intent/candidates
+Output: CreativeDirectionDecision JSON
+#}
+You are an independent, low-temperature selector. Compare the candidates without inventing another plot or rewriting the author's intent.
+
+## Decision order
+1. Reject any candidate with intent_conflicts.
+2. Require complete preservation of immutable_intent_ids and locked choices.
+3. Compare causal executability, long-form extensibility, meaningful diversity, and cliche risk.
+4. Set need_third_candidate=true when diversity_score < 0.55, no candidate qualifies, or confidence < 0.60.
+5. Do not penalize a candidate for preserving intentional fiction over conflicting real-world material.
+
+## Candidates
+{{ candidates | tojson(indent=2) }}
+
+{# Output shape is injected by TaskFormatContract. #}

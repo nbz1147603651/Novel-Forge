@@ -1,0 +1,220 @@
+{# source_template_hash: fb636627991a1418d24f15f6a51049721a2457cc94c0c9138aaa7cb99c2d7897 #}
+{%- from "_quality_standards.j2" import creative_specificity_rules -%}
+{%- from "_base/_artifact_source_contract.j2" import render_artifact_source_contract -%}
+{%- from "_base/_repair_attempt_guidance.j2" import render_repair_attempt_guidance, render_repair_self_check -%}
+{%- from "_base/_repair_quality_calibration.j2" import render_repair_quality_calibration, render_repair_pre_delivery_checklist -%}
+
+{#
+================================================================================
+[Notes]
+================================================================================
+Prompt: causal_repair_typed.j2
+Service Step: REPAIR_CAUSAL (Causal Chain Targeted Repair)
+Function Summary: Only repairs causal issues identified by causal validation, locates
+                  windows by issue type, does not replan chapters or introduce new
+                  main storylines.
+Upstream Inputs:
+  - numbered_chapter_text / chapter_text: Text to be corrected
+  - typed_issues / issue_types: Causal issues
+  - stage_cards.source: ChapterSourceSlice, containing reveal boundaries
+  - stage_cards.bridge / stage_cards.plan / stage_cards.repair: Causal and boundary-derived cards
+Downstream Output:
+  - TEXT: Corrected full text
+Consumption Chain Priority:
+  P0 = opening_causal_gap / event_without_cause / causal_contradiction
+  P1 = missing_causal_transition / unmotivated_decision / verified style voice preservation
+  P2 = question timing / suspense management
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer
+    --------------------------------------------------------------------------- -#}
+
+{% set cards = stage_cards | default({}) %}
+{% set source = cards.source | default({}) %}
+{% set source_contract = source.chapter_contract | default({}, true) %}
+{% set bridge_card = cards.bridge | default({}) %}
+{% set plan_card = cards.plan | default({}) %}
+{% set contract = source_contract if source_contract else (cards.contract | default({})) %}
+{% set repair = cards.repair | default({}) %}
+{% set style = cards.style | default({}) %}
+{% set editorial = cards.editorial | default({}) %}
+{% set knowledge = cards.knowledge | default({}) %}
+{% set cognitive_constraints = contract.cognitive_constraints | default([]) %}
+
+Perform causal chain targeted repair on Chapter {{ chapter_number }}.
+
+{{ render_artifact_source_contract(source, title="## Source Artifact Boundaries (P0)", mode="repair") }}
+
+## ticket/window Rules
+- First examine the issue type, location, evidence, repair_boundary, and repair_scope from typed_issues.
+- Only repair the text window covered by the causal ticket; do not freely rewrite the entire chapter, and do not use macro-level creative planning to add new plot or new main storylines.
+- Causal supplementation can only explain the motivations for behaviors that have already occurred or been permitted, and must not escalate doubts into confirmations.
+
+## Causal Anchors
+{% if bridge_card.causal_link %}
+- Previous Chapter Event: {{ bridge_card.causal_link.previous_event }}
+- Causal Mechanism: {{ bridge_card.causal_link.causal_mechanism }}
+- Suspense to Advance: {{ bridge_card.causal_link.unresolved_question }}
+{% elif causal_link %}
+- Previous Chapter Event: {{ causal_link.previous_event }}
+- Causal Mechanism: {{ causal_link.causal_mechanism }}
+- Suspense to Advance: {{ causal_link.unresolved_question }}
+{% endif %}
+{% if bridge_card.action_handoff %}- Action Handoff: {{ bridge_card.action_handoff }}{% endif %}
+{% if previous_chapter_ending %}- Previous Chapter Ending: {{ previous_chapter_ending }}{% endif %}
+
+{% if contract.required_events or contract.forbidden_changes or contract.forbidden_progressions or contract.future_leak_risks or contract.exit_state_targets or contract.must_carry_forward or cognitive_constraints %}
+## Immutable Chapter Contract
+{% if contract.must_carry_forward %}- Must Carry Forward: {{ contract.must_carry_forward | join('; ') }}{% endif %}
+{% if contract.required_events %}- Required Events: {{ contract.required_events | join('; ') }}{% endif %}
+{% if contract.forbidden_changes %}- Forbidden Changes: {{ contract.forbidden_changes | join('; ') }}{% endif %}
+{% if contract.forbidden_progressions %}- Forbidden Progressions: {{ contract.forbidden_progressions | join('; ') }}{% endif %}
+{% if contract.future_leak_risks %}- Future Leak Risks: {{ contract.future_leak_risks | join('; ') }}{% endif %}
+{% if contract.exit_state_targets %}- Exit State Targets: {{ contract.exit_state_targets | join('; ') }}{% endif %}
+{% if cognitive_constraints %}
+- Cognitive boundaries are listed once in the Source Artifact above. Causal supplementation may explain only behavior permitted in this chapter; new links must not grant knowledge or prematurely confirm future secrets.
+{% endif %}
+{% endif %}
+
+{% if plan_card.scene_intents or chapter_plan_scenes %}
+## Plan Boundaries
+{% for scene in plan_card.scene_intents | default(chapter_plan_scenes) %}
+- {{ scene.scene_id }}: {{ scene.summary }}{% if scene.purpose %} ({{ scene.purpose }}){% endif %}
+{% endfor %}
+{% endif %}
+
+{% if repair.do_not_introduce %}## Must Not Introduce
+{{ repair.do_not_introduce | join('; ') }}
+{% endif %}
+{% if character_whitelist_note %}{{ character_whitelist_note }}{% endif %}
+{% if knowledge.character_cards or knowledge.chapter_ops %}
+## Character Knowledge Boundaries (Must Not Be Broken During Repair)
+- Causal supplementation must proceed from what the character knows/suspects/misbelieves; do not use authorial omniscience to supply motivations for characters.
+{% for kb in knowledge.character_cards %}
+{% set changes = kb.chapter_promised_changes | default([]) %}
+- {{ kb.character }}{% if kb.is_pov %} (Current POV){% endif %}: known={{ kb.known_facts | default([]) | join('; ') or 'no special known facts' }}; suspects={{ kb.suspicions | default([]) | join('; ') or 'none' }}; misbelieves={{ kb.misbeliefs | default([]) | join('; ') or 'none' }}{% if changes %}; chapter_cognitive_changes={{ changes | map(attribute='target_text') | list | join('; ') }}{% endif %}
+{% endfor %}
+{% endif %}
+{% if plan_card.forbidden_elements %}
+### 🚫 Forbidden Elements List (Hard Constraints)
+The following images/patterns have been overused in recent chapters; the corrected text must not contain original forms, synonyms, or same-channel substitutions; if they serve plot functions, only retain the function and rewrite the expression.
+{% for item in plan_card.forbidden_elements %}
+- {{ item }}
+{% endfor %}
+{% endif %}
+{% if plan_card.forbidden_elements_soft %}
+### ⚠️ Suggested Avoidance Elements (Soft Constraints)
+{% for item in plan_card.forbidden_elements_soft %}
+- {{ item }}
+{% endfor %}
+{% endif %}
+{% if plan_card.intentional_callbacks %}
+### 🔄 Intentional Callbacks (Allowed to Reuse)
+The following are intentional callback plot/motif elements; their functions may be preserved, but still replace with new actions, dialogue, or details for the current scene.
+{% for item in plan_card.intentional_callbacks %}
+- {{ item }}
+{% endfor %}
+{% endif %}
+{% if escalation_note %}## Escalation Reminder
+{{ escalation_note }}
+{% endif %}
+
+{% if memory_guidance %}
+{% set guidance = memory_guidance %}
+## Historical Causal Repair Guidance
+{% if guidance.strategy_recommendation %}
+- Recommended Pattern: {{ guidance.strategy_recommendation.preferred_strategy }} ({{ guidance.strategy_recommendation.reason }})
+{% endif %}
+{% if guidance.matched_issues %}
+- Similar History: {% for item in guidance.matched_issues %}{% if loop.index <= 2 -%}
+Chapter {{ item.chapter }} {{ item.summary }}{% if item.lesson_learned %} (lesson: {{ item.lesson_learned }}){% endif %}{% if not loop.last and loop.index < 2 %}; {% endif %}
+{%- endif %}{% endfor %}
+{% endif %}
+{% if guidance.recommended_strategies %}
+- Can Reference: {{ guidance.recommended_strategies | join('; ') }}
+{% endif %}
+{% if guidance.avoid_strategies %}
+- Avoid: {{ guidance.avoid_strategies | join('; ') }}
+{% endif %}
+{% if guidance.success_rate is defined and guidance.total_attempts %}
+- Historical Success Rate: {{ (guidance.success_rate * 100) | round(0) }}% ({{ guidance.total_attempts }} attempts)
+{% endif %}
+{% if guidance.warning %}
+- Warning: {{ guidance.warning }}
+{% endif %}
+{% endif %}
+
+{{ render_repair_attempt_guidance(repair_attempt_guidance | default(none)) }}
+
+{% set style_modules = style.modules | default([]) %}
+{% set style_banned = style.banned_phrases | default([]) %}
+{% set editorial_voices = editorial.character_voices | default([]) %}
+{% if style.summary | default('') or style_modules or style_banned or editorial_voices %}
+## Style and Voice Preservation (P1, Does Not Override Causal Tickets)
+- This section is only for making supplemented causal sentences, transition sentences, and decision setups match the original text's feel; do not add new events, reveals, character knowledge, or relationship conclusions for style purposes.
+{% if style.summary | default('') %}- Style Summary: {{ style.summary }}{% endif %}
+{% if style.dialogue_ratio | default('') or style.pace_mode | default('') %}- Dialogue/Pacing: {{ style.dialogue_ratio | default('') }} / {{ style.pace_mode | default('') }}{% endif %}
+{% if style.emotional_style | default('') or style.environment_ratio | default('') or style.info_density | default('') %}- Emotion/Environment/Info Density: {{ style.emotional_style | default('') }} / {{ style.environment_ratio | default('') }} / {{ style.info_density | default('') }}{% endif %}
+{% for module in style_modules %}
+- {{ module.name | default('Style Module') }}: {{ module.rules | default([]) | join('; ') }}
+{% endfor %}
+{% if style_banned %}- Project-Level Banned Phrases: {{ style_banned | join(', ') }}{% endif %}
+{% if editorial_voices %}
+- Dialogue Voice Reference (only for the repair window; do not copy samples verbatim):
+{% for item in editorial_voices %}
+  - {{ item.character | default('Character') }}: {{ item.sentence_profile | default('') }}; emotion_syntax={{ item.emotion_syntax | default('') }}{% if item.sample_lines | default([]) %}; samples={{ item.sample_lines[:2] | join(' / ') }}{% endif %}{% if item.taboo_patterns | default([]) %}; forbidden={{ item.taboo_patterns | join(', ') }}{% endif %}
+{% endfor %}
+{% endif %}
+{% endif %}
+
+## Issues to Repair
+{% if structured_issues_block | default('') %}
+{{ structured_issues_block }}
+{% else %}
+{% for issue_type, issues in typed_issues.items() %}
+{% if issues %}
+### {{ issue_type }}
+{% for issue in issues %}
+- [Issue {{ issue.issue_id | default('not provided', true) }}] {{ issue.summary | default('') }}{% if issue.location | default('') %} ({{ issue.location }}){% endif %}{% if issue.evidence | default('') %}; evidence: {{ issue.evidence }}{% endif %}{% if issue.fix_suggestion | default('') %}; suggestion: {{ issue.fix_suggestion }}{% endif %}
+{% if issue.adjudication_notes | default('') %}  Adjudication: {{ issue.adjudication_notes }}{% endif %}
+{% if issue.handoff_notes | default('') %}  Audit Handoff: {{ issue.handoff_notes }}{% endif %}
+{% if issue.repair_boundary | default('') %}  Repair Boundary: {{ issue.repair_boundary }}{% endif %}
+{% if issue.repair_scope | default([]) %}  Repair Scope: {{ issue.repair_scope }}{% endif %}
+{% if issue.must_preserve | default([]) %}  Must Preserve: {{ issue.must_preserve | join('; ') }}{% endif %}
+{% if issue.forbidden_changes | default([]) %}  Forbidden Changes: {{ issue.forbidden_changes | join('; ') }}{% endif %}
+{% if issue.evidence_pairs | default([]) %}  Cross-Chapter Evidence Pairs: {{ issue.evidence_pairs }}{% endif %}
+{% endfor %}
+{% endif %}
+{% endfor %}
+{% endif %}
+
+## Main Text
+{% if numbered_chapter_text %}
+{{ numbered_chapter_text }}
+{% else %}
+{{ chapter_text }}
+{% endif %}
+
+## Repair Rules
+1. Only repair causal issues; do not modify unrelated passages.
+2. opening_causal_gap: Only rewrite necessary opening passages so readers clearly feel "because of the previous chapter's event, it is now like this."
+3. missing_causal_transition: Add 1-3 traceable setup sentences before the turning point; do not change the turning point outcome.
+4. event_without_cause: Before the event occurs, clarify the sender, channel, receiver, and temporal sequence.
+5. unmotivated_decision: Before the decision, add character weighing of options, costs, or tactical intent; do not change the decision itself.
+6. question_resolved_too_early: Degrade the complete answer to a clue, misunderstanding, interruption, or partial reveal.
+7. question_ignored: Use action, dialogue, or discovery to give the suspense staged advancement.
+8. Maintain word count between {{ word_count_min }}-{{ word_count_max }} after repair.
+9. Prohibit adding unplanned POVs, character positive actions, future chapter reveals, system explanations, or repair reports.
+{{ creative_specificity_rules(title="") }}
+
+{{ render_repair_self_check("causal") }}
+
+{{ render_repair_quality_calibration("repair") }}
+
+{{ render_repair_pre_delivery_checklist("repair") }}
+
+{#- ---------------------------------------------------------------------------
+    Format Layer
+    --------------------------------------------------------------------------- -#}

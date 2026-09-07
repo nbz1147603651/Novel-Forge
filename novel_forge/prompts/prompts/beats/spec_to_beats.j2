@@ -1,0 +1,137 @@
+{# ================================================================================
+【备注】
+================================================================================
+提示词：spec_to_beats.j2
+服务步骤：BEATS（节拍生成）
+作用简述：根据故事规格（Spec）和叙事蓝图（Blueprint）生成结构化的故事节拍
+         （Beats）列表，每个节拍包含 sequence, beat_type, summary, tension_level,
+         characters_involved, setting, emotional_note。
+上游输入：
+  - spec: 用户输入的故事规格（genre, theme, tone, length_target, language,
+          characters_hint, world_hint, conflict_hint, pov_hint,
+          opening_style, ending_style, extra_instructions）
+  - blueprint: 来自 SHORT_BLUEPRINT 或 PLAN_OUTLINE（synopsis, anchor_elements,
+               narrative_phases, turning_points, character_arcs,
+               emotional_arc, ending_strategy, element_selection）
+下游输出：
+  - JSON：{beats: [{sequence, beat_type, summary, tension_level,
+             characters_involved, setting, emotional_note}],
+           total_estimated_words, structure_note}
+  - 下游消费者：BEATS_TO_DRAFT（草稿创作）
+消费链优先级：
+  P0 = spec 核心字段 / beat_type 首尾约束（opening/resolution）
+  P1 = blueprint.narrative_phases 覆盖 / turning_points 转折落地
+  P2 = emotional_arc 情感曲线匹配
+简要例子：
+  输入：spec={genre:"悬疑", length_target:5000}, blueprint={synopsis:"...", phases:[...]}
+  输出：{beats:[{sequence:1, beat_type:"opening", summary:"...", tension_level:3}], ...}
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    指导层：任务定义 + 上下文消费
+    --------------------------------------------------------------------------- -#}
+
+请根据以下故事规格，生成结构化的故事节拍（beats）列表。
+
+## 故事规格
+- 体裁：{{ spec.genre }}｜主题：{{ spec.theme }}｜基调：{{ spec.tone }}
+- 目标字数：{{ spec.length_target }}｜语言：{{ describe_language(spec.language) }}
+{% if spec.characters_hint | default('') %}- 角色：{{ spec.characters_hint }}{% endif %}
+{% if spec.world_hint | default('') %}- 世界观：{{ spec.world_hint }}{% endif %}
+{% if spec.conflict_hint | default('') %}- 核心冲突：{{ spec.conflict_hint }}{% endif %}
+{% if spec.pov_hint | default('') %}- 叙事视角：{{ spec.pov_hint }}{% endif %}
+{% if spec.opening_style | default('') %}- 开篇策略：{{ spec.opening_style }}{% endif %}
+{% if spec.ending_style | default('') %}- 结尾走向：{{ spec.ending_style }}{% endif %}
+{% if spec.extra_instructions | default('') %}- 补充：{{ spec.extra_instructions }}{% endif %}
+{% if blueprint is defined and blueprint and blueprint.synopsis | default('') %}
+
+## 叙事蓝图参考
+以下叙事蓝图是对整个故事的结构规划，请在生成节拍时 **严格遵循** 蓝图的结构意图。
+
+### 故事梗概
+{{ blueprint.synopsis }}
+{% if blueprint.anchor_elements is defined and blueprint.anchor_elements %}
+{% set anchor = blueprint.anchor_elements %}
+
+### ⚓ 叙事锚定（严禁偏离）
+{% if anchor.time_frame | default('') %}- 时间范围：{{ anchor.time_frame }}{% endif %}
+{% if anchor.primary_locations | default([]) %}- 核心场景：{{ anchor.primary_locations | join('、') }}{% endif %}
+{% if anchor.core_characters | default([]) %}- 主要人物：{% for c in anchor.core_characters %}{{ c.name }}（{{ c.role }}）{% if not loop.last %}、{% endif %}{% endfor %}{% endif %}
+{% if anchor.central_event | default('') %}- 核心事件：{{ anchor.central_event }}{% endif %}
+
+⚠️ 每个节拍的 setting 和 characters_involved 必须出自上述锚定范围，不得凭空新增场景或人物。
+{% endif %}
+{% if blueprint.narrative_phases | default([]) %}
+
+### 叙事阶段
+{% for phase in blueprint.narrative_phases %}- **{{ phase.phase_name }}**（位置 {{ phase.position_start }}%-{{ phase.position_end }}%）：{{ phase.description }}｜张力={{ phase.tension_level }}｜情感={{ phase.emotional_focus }}
+{%- if phase.time_setting %} ⏰ {{ phase.time_setting }}{% endif %}{%- if phase.location %} 📍 {{ phase.location }}{% endif %}{%- if phase.characters_present %} 👤 {{ phase.characters_present | join('、') }}{% endif %}{%- if phase.key_event %} ▸ {{ phase.key_event }}{% endif %}
+{% endfor %}{% endif %}
+{% if blueprint.turning_points | default([]) %}
+
+### 关键转折
+{% for tp in blueprint.turning_points %}- 位置 {{ tp.position_percent }}%：{{ tp.description }}（影响：{{ tp.impact }}）
+{% endfor %}{% endif %}
+{% if blueprint.character_arcs | default([]) %}
+
+### 角色弧线
+{% for arc in blueprint.character_arcs %}- **{{ arc.character }}**：{{ arc.arc_summary }}（关键时刻：{{ arc.key_moment }}）
+{% endfor %}{% endif %}
+{% if blueprint.emotional_arc | default('') %}
+
+### 情感走势
+{{ blueprint.emotional_arc }}
+{% endif %}
+{% if blueprint.ending_strategy | default('') %}
+
+### 结尾策略
+{{ blueprint.ending_strategy }}
+{% endif %}
+{% if blueprint.element_selection is defined and blueprint.element_selection and blueprint.element_selection.extension_elements %}
+
+### 叙事要素结构参考
+以下为本故事激活的题材表达参考，节拍设计时按篇幅与冲突需要自然取舍：
+{% for elem in blueprint.element_selection.extension_elements %}
+- **{{ elem.name }}**：{{ elem.prompt_hint }}
+{% endfor %}
+{% endif %}
+{% endif %}
+
+## 结构约束
+- 第一个节拍必须是 "opening" 类型（建立场景、引入人物或悬念）
+- 最后一个节拍必须是 "resolution" 类型（给出结局、情感收束）
+- 中间节拍应包含至少一个 "climax"（高潮）
+- beat_type 可选值：opening / rising / climax / falling / resolution
+- 所有节拍必须按 blueprint 的 narrative_phases 顺序覆盖，不得跳阶段、并阶段或提前透支结尾。
+- 每个节拍的 summary 必须同时写清：当前动作、冲突/变化、该 beat 结束时留下的后果。
+- 若 blueprint 提供了 turning_points，则必须让对应位置附近的 beat 承载转折本身，而不是只做预告。
+- resolution 节拍必须兑现 blueprint.ending_strategy，不得只做总结性收尾。
+- resolution 节拍必须让故事达到"可独立成立的完成态"：核心冲突得到阶段性答案，人物情绪有落点，不能写成待续式断尾。
+
+
+## 节拍字段要求
+- `beats` 中每项包含 sequence、beat_type、summary、tension_level、characters_involved、setting、emotional_note。
+- `beat_type` 固定使用 opening / rising / climax / falling / resolution。
+- 每个 beat 的 `tension_level` 必须是 1-10 范围内的整数，表示该 beat 的即时张力强度。
+- 蓝图阶段中的 `tension_level`（如低、渐升、高、高潮、回落）只是阶段趋势标签，不能原样填入 beat；必须转换为该 beat 的 1-10 整数分数。
+- `total_estimated_words` 使用目标字数估算值；`structure_note` 概述整体结构策略。
+
+要求：
+1. 节拍数 ≈ 目标字数 / 1000 × 2（弹性调整，最少 4 个，最多 16 个）
+2. 张力曲线有起伏；所有 `tension_level` 均为 1-10 整数，climax 前递增
+3. 每个节拍推动情节，不要空洞描述
+4. setting 与 characters_involved 必须持续服从蓝图锚定，不能凭空扩展到蓝图外的主场景/主角色
+5. 最后一个 beat 的 summary 必须具体写出"怎么收束"，不能只写"留下悬念""故事结束"这种抽象描述
+
+## 质量校准
+- 工作身份：你是一位契约感很强的小说执行编辑，擅长把输入约束转化为有动作、有选择、有后果的叙事内容。
+- 创意推断路径：先找情感引擎与冲突压力，再落到动作、对白、场面调度和后果。
+- 字段级质量示例（非输出格式）：平弱=“角色很紧张”；高质量=“角色在具体选择前暴露代价、误判或情绪转折”。
+- 可操作路径：每个新增内容都服务于已给人物动机、场景阻力、悬念推进或情绪落点。
+
+## 交付前核验
+- P0/P1/P2 优先级是否被保持，且没有让弱参考覆盖硬约束。
+- 是否能把关键判断回指到输入证据、上游契约或已批准计划。
+- 是否避免新增未授权的人物、地点、世界规则、未来 payoff 或格式协议。
+- 是否把抽象目标转化为可观察的行动、冲突、状态变化或章节承接点。

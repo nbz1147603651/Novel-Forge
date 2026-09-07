@@ -1,0 +1,8 @@
+locale = "zh"
+display_name = "中文 (zh)"
+status = "stable"
+base_language = "zh"
+length_unit = "characters"
+source_revision = "legacy-prompts-2026-06-17"
+coverage_required = true
+templates_dir = "templates"

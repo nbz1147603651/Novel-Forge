@@ -1,0 +1,13 @@
+{# source_template_hash: 100a2939a6a0c0cf121e833807334672188365d28457f72fedb7ff6808e9b722 #}
+{% macro render_summary_pass(summary_pass='', source_scope='') -%}
+{% if summary_pass == 'evidence_chunk' %}
+## Hierarchical Summary Pass
+- Current input scope: {{ source_scope | default('local evidence chunk') }}.
+- Summarize only events, states, and unresolved questions actually present in this chunk; do not infer other chunks or the overall ending.
+- Preserve character names, event causality, exit states, and evidence boundaries for verification during the final merge.
+{% elif summary_pass == 'evidence_merge' %}
+## Hierarchical Summary Pass
+- Current input scope: {{ source_scope | default('merged result of full-coverage chunks') }}.
+- Merge timelines, character changes, and unresolved questions by chunk label; remove duplication without adding facts absent from the chunks.
+{% endif %}
+{%- endmacro %}

@@ -1,0 +1,417 @@
+/* ============================================================
+ * Pet Companion — floating task observation mascot
+ *
+ * Mirrors PySide6 FloatingTaskCompanion (companion.py) with:
+ * - Transparent container (no card/panel wrapping)
+ * - CSS sprite animation via steps()
+ * - Glow pulse for non-idle states
+ * - Task bubble cards with glassmorphism
+ * - Drag positioning via transform
+ * - Cross-fade on state change (opacity transition)
+ * ============================================================ */
+
+.pet-companion {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 60;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 8px 10px;
+  cursor: pointer;
+  user-select: none;
+  touch-action: none;
+  will-change: transform;
+  /* Transparent — no card background (mirrors WA_TranslucentBackground) */
+  background: transparent;
+}
+
+.pet-companion.is-compact {
+  padding: 4px 6px;
+  gap: 1px;
+}
+
+/* ── Sprite container ──────────────────────────────────────── */
+
+.pet-sprite {
+  position: relative;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 8px;
+  /* Cross-fade on state change */
+  transition: opacity 180ms cubic-bezier(.22, .61, .36, 1);
+  will-change: background-position;
+}
+
+.pet-sprite-atlas {
+  background-repeat: no-repeat;
+}
+
+.pet-sprite-fallback {
+  background: color-mix(in srgb, var(--nf-bg-control) 30%, transparent);
+  border-radius: 50%;
+}
+
+.pet-sprite-img {
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.pet-sprite-placeholder {
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-section);
+  font-weight: 700;
+}
+
+/* ── Glow pulse (non-idle states only) ─────────────────────── */
+
+.pet-glow {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 300ms ease;
+}
+
+.pet-glow.is-running,
+.pet-glow.is-waiting,
+.pet-glow.is-failed,
+.pet-glow.is-review {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .pet-glow.is-running {
+    animation: pet-glow-pulse 1.8s ease-in-out infinite;
+    background: radial-gradient(circle, color-mix(in srgb, var(--nf-accent-primary) 18%, transparent) 0%, transparent 70%);
+  }
+  .pet-glow.is-waiting {
+    animation: pet-glow-pulse 2.2s ease-in-out infinite;
+    background: radial-gradient(circle, color-mix(in srgb, var(--nf-status-warning) 16%, transparent) 0%, transparent 70%);
+  }
+  .pet-glow.is-failed {
+    animation: pet-glow-pulse 1.4s ease-in-out infinite;
+    background: radial-gradient(circle, color-mix(in srgb, var(--nf-status-danger) 16%, transparent) 0%, transparent 70%);
+  }
+  .pet-glow.is-review {
+    animation: pet-glow-pulse 2s ease-in-out infinite;
+    background: radial-gradient(circle, color-mix(in srgb, var(--nf-status-success) 14%, transparent) 0%, transparent 70%);
+  }
+}
+
+@keyframes pet-glow-pulse {
+  0%, 100% { transform: scale(0.92); opacity: 0.3; }
+  50% { transform: scale(1.05); opacity: 1; }
+}
+
+/* ── Labels ────────────────────────────────────────────────── */
+
+.pet-name {
+  color: var(--nf-text-heading);
+  font-size: var(--nf-font-micro);
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.pet-meta {
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-2xs);
+  line-height: 1.2;
+  text-align: center;
+}
+
+.pet-usage {
+  color: var(--nf-text-muted);
+  font-size: var(--nf-font-2xs);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.pet-companion.is-compact .pet-meta {
+  font-size: 8px;
+}
+
+/* ── Bubble toggle ─────────────────────────────────────────── */
+
+.pet-bubble-toggle {
+  position: absolute;
+  top: 2px;
+  right: 0;
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  color: var(--nf-text-muted);
+  background: color-mix(in srgb, var(--nf-bg-control) 60%, transparent);
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.pet-bubble-toggle:hover {
+  color: var(--nf-text-heading);
+  background: color-mix(in srgb, var(--nf-bg-control) 80%, transparent);
+}
+
+/* ── Task bubble panel ─────────────────────────────────────── */
+
+.pet-bubble-panel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 59;
+  display: grid;
+  gap: 8px;
+  width: 280px;
+  pointer-events: auto;
+  animation: pet-bubble-in 200ms cubic-bezier(.22, .61, .36, 1) both;
+}
+
+@keyframes pet-bubble-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── Task bubble card ──────────────────────────────────────── */
+
+.pet-bubble-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 12px 10px 16px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-warm) 22%, transparent);
+  border-radius: 12px;
+  /* Glassmorphism (mirrors elevated Surface) */
+  background: color-mix(in srgb, var(--nf-bg-surface) 82%, transparent);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--nf-shadow) 18%, transparent);
+  cursor: pointer;
+  text-align: left;
+  transition: box-shadow 140ms ease, transform 140ms ease;
+}
+
+.pet-bubble-card:hover {
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--nf-shadow) 24%, transparent);
+  transform: translateY(-1px);
+}
+
+.pet-bubble-card:active {
+  transform: scale(0.985);
+}
+
+/* Streaming indicator: a 4px corner accent plus a small tag.  Mirrors the
+ * fold state pill in the focus module so the user can tell which bubble
+ * already has live output before tapping into the floating reader. */
+.pet-bubble-card.is-streaming {
+  border-color: color-mix(in srgb, var(--nf-accent-primary) 42%, var(--nf-border-warm));
+  box-shadow:
+    0 8px 24px color-mix(in srgb, var(--nf-shadow) 18%, transparent),
+    inset 4px 0 0 var(--nf-accent-primary);
+}
+
+.pet-bubble-streaming-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--nf-accent-primary) 14%, transparent);
+  color: var(--nf-accent-primary);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.3;
+}
+
+.pet-bubble-streaming-tag::before {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 22%, transparent);
+  content: "";
+}
+
+.pet-bubble-card.is-compact {
+  padding: 9px 10px 8px 14px;
+}
+
+.pet-bubble-text {
+  display: grid;
+  flex: 1;
+  gap: 3px;
+  min-width: 0;
+}
+
+.pet-bubble-title {
+  color: var(--nf-text-heading);
+  font-size: var(--nf-font-body);
+  font-weight: 700;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pet-bubble-detail {
+  color: var(--nf-text-secondary);
+  font-size: var(--nf-font-micro);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pet-bubble-progress {
+  display: block;
+  height: 3px;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--nf-border-default) 18%, transparent);
+  overflow: hidden;
+}
+
+.pet-bubble-progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  transition: width 400ms cubic-bezier(.22, .61, .36, 1);
+}
+
+.pet-bubble-progress-fill.is-active { background: var(--nf-accent-primary); }
+.pet-bubble-progress-fill.is-success { background: var(--nf-status-success); }
+.pet-bubble-progress-fill.is-danger { background: var(--nf-status-danger); }
+.pet-bubble-progress-fill.is-warning { background: var(--nf-status-warning); }
+.pet-bubble-progress-fill.is-muted { background: var(--nf-text-muted); }
+
+.pet-bubble-icon {
+  flex-shrink: 0;
+  color: var(--nf-text-muted);
+}
+
+.pet-bubble-icon.is-running {
+  color: var(--nf-accent-primary);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .pet-bubble-icon.is-running path {
+    animation: pet-spinner-rotate 1.2s linear infinite;
+    transform-origin: center;
+  }
+}
+
+@keyframes pet-spinner-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ── Context menu ──────────────────────────────────────────── */
+
+.pet-context-menu {
+  position: fixed;
+  z-index: 100;
+  display: grid;
+  min-width: 140px;
+  padding: 5px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 22%, transparent);
+  border-radius: 9px;
+  background: var(--nf-bg-surface);
+  box-shadow: 0 8px 28px color-mix(in srgb, var(--nf-shadow) 26%, transparent);
+  animation: pet-bubble-in 140ms ease both;
+}
+
+.pet-context-menu button {
+  padding: 7px 12px;
+  border: 0;
+  border-radius: 6px;
+  color: var(--nf-text-body);
+  background: transparent;
+  font-size: var(--nf-font-body);
+  text-align: left;
+  cursor: pointer;
+}
+
+.pet-context-menu button:hover {
+  background: color-mix(in srgb, var(--nf-bg-control) 60%, transparent);
+  color: var(--nf-text-heading);
+}
+
+.pet-context-menu hr {
+  margin: 4px 8px;
+  border: 0;
+  border-top: 1px solid color-mix(in srgb, var(--nf-border-default) 16%, transparent);
+}
+
+/* ── Sprite atlas keyframes (generated per state) ──────────── */
+/* These use CSS custom properties set inline by PetSprite.tsx */
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes pet-atlas-idle {
+    from { background-position-x: 0; }
+    to { background-position-x: calc(var(--pet-frames) * var(--pet-cell-w) * -1); }
+  }
+  @keyframes pet-atlas-running-right {
+    from { background-position-x: 0; }
+    to { background-position-x: calc(var(--pet-frames) * var(--pet-cell-w) * -1); }
+  }
+  @keyframes pet-atlas-running-left {
+    from { background-position-x: 0; }
+    to { background-position-x: calc(var(--pet-frames) * var(--pet-cell-w) * -1); }
+  }
+  @keyframes pet-atlas-waving {
+    from { background-position-x: 0; }
+    to { background-position-x: calc(var(--pet-frames) * var(--pet-cell-w) * -1); }
+  }
+  @keyframes pet-atlas-jumping {
+    from { background-position-x: 0; }
+    to { background-position-x: calc(var(--pet-frames) * var(--pet-cell-w) * -1); }
+  }
+  @keyframes pet-atlas-failed {
+    from { background-position-x: 0; }
+    to { background-position-x: calc(var(--pet-frames) * var(--pet-cell-w) * -1); }
+  }
+  @keyframes pet-atlas-waiting {
+    from { background-position-x: 0; }
+    to { background-position-x: calc(var(--pet-frames) * var(--pet-cell-w) * -1); }
+  }
+  @keyframes pet-atlas-running {
+    from { background-position-x: 0; }
+    to { background-position-x: calc(var(--pet-frames) * var(--pet-cell-w) * -1); }
+  }
+  @keyframes pet-atlas-review {
+    from { background-position-x: 0; }
+    to { background-position-x: calc(var(--pet-frames) * var(--pet-cell-w) * -1); }
+  }
+}
+
+/* Reduced motion: static sprite, no animation */
+@media (prefers-reduced-motion: reduce) {
+  .pet-sprite-atlas {
+    animation: none !important;
+  }
+  .pet-glow {
+    animation: none !important;
+    opacity: 0 !important;
+  }
+  .pet-bubble-icon.is-running {
+    animation: none !important;
+  }
+}
+
+/* Fallback breathing animation for non-atlas sprite */
+@media (prefers-reduced-motion: no-preference) {
+  .pet-sprite-fallback {
+    animation: pet-breathe 3s ease-in-out infinite;
+  }
+}
+
+@keyframes pet-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+}

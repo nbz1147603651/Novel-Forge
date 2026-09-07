@@ -1,0 +1,97 @@
+{# ================================================================================
+source_template_hash: d5a9278099fdf7452fd9993eb3b839b1256c0f1836efe5258b18bf60936976f2
+[Notes]
+================================================================================
+Template: book_editorial_audit.j2
+Service Step: BOOK_EDITORIAL_AUDIT (Publication-Level Full-Book Editorial Audit)
+Role Summary: Based on EditorialContract, audit full-book structure, voice, language,
+              themes, symbolism, titles and time bridges; output revision plan;
+              do not execute consistency fixes.
+Upstream Input:
+  - chapter_summaries / chapter_texts: Chapter summaries or full text
+  - editorial_contract: Project editorial contract
+  - local_findings: Local structure and expression indicators
+Downstream Output:
+  - JSON: {"summary", "findings", "revision_plan", "metrics"}
+  - Downstream Consumer: Full-book editorial report / Manual or subsequent structural revision
+Consumer Chain Priority: P1 (Full-book structure and publication-quality)
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer: Task Definition + Context Consumption
+    --------------------------------------------------------------------------- -#}
+You are a senior editor responsible for long-form final manuscripts. Please perform a **publication-level full-book editorial audit**.
+
+Note: This task does not review factual consistency, does not output automatic fix patches, and does not reuse the issue semantics from `BOOK_CONSISTENCY`. You need to determine whether the work has issues such as structural drag, converging character voices, excessive explanatory lyricism, over-interpretation of themes/symbolism, title repetition, unclear time bridges, or subplot conclusions overshadowing the main plot.
+
+{% if shared_evidence_anchor %}
+## Shared Evidence Anchor
+{{ shared_evidence_anchor | tojson(indent=2) }}
+All audit dimensions must use this as the common basis; dimension-specific contracts are only used for supplementary judgment and must not override anchor facts.
+{% endif %}
+
+## Editorial Contract
+{{ editorial_contract | tojson(indent=2) }}
+
+{% if local_findings %}
+## Local Pre-Inspection Findings
+{% for item in local_findings %}
+- [{{ item.issue_type }} / {{ item.severity }}] {{ item.summary }}{% if item.evidence %}; Evidence: {{ item.evidence | join("; ") }}{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if chapter_summaries %}
+## Chapter Summaries
+{% for ch in chapter_summaries %}
+### Chapter {{ ch.chapter_number }}{% if ch.title %}: {{ ch.title }}{% endif %}
+{{ ch.summary or "" }}
+{% if ch.key_events %}- Key Events: {{ ch.key_events | join("; ") }}{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if chapter_texts %}
+## Chapter Text Excerpts / Full Text
+{% for ch in chapter_texts %}
+### Chapter {{ ch.chapter_number }}
+{{ ch.numbered_text or ch.text or "" }}
+{% endfor %}
+{% endif %}
+
+{% if prompt_hint %}
+## User's Audit Focus This Time
+{{ prompt_hint }}
+{% endif %}
+
+## Audit Dimensions
+1. Structural Pacing: Does the aftermath after the main climax exceed budget; are there multiple "re-endings"?
+2. Character Voice: Do the main characters sound like they're written by the same author?
+3. Language Repetition: Are physical reactions, light/shadow, explanatory sentences, confirmatory dialogue highly repetitive; are there overly long paragraphs causing visual fatigue?
+4. Themes/Symbolism: Are objects and thematic sentences explained every time they appear?
+5. Titles and Time Bridges: Is title reuse excessive; are seasons/months/time spans clear?
+6. Subplot Resolution: Do subplots steal focus from the main plot's finale?
+7. Narrative Element Execution: Do the narrative elements referenced in `editorial_element_directives` actually manifest as scene functions, rather than just remaining as settings or slogans?
+
+## Audit Result Semantic Constraints
+- Findings must be executable, and try to localize to chapters or chapter segments.
+- Revision plan should be written as an editorial revision plan: compress, merge, move foreshadowing forward, add cost scenes, modify voice, delete explanations, split long paragraphs, rename titles, etc.
+- If the problem belongs to structural reorganization, please write it as a chapter merge/move/add scene plan; if the problem comes from insufficient narrative element execution, please reference the corresponding `element_id`.
+- Do not give factual fix patches, do not recommend entering continuity fixes.
+
+## Audit Result Field Requirements
+- `summary`: Full-book editorial audit summary, summarizing the structure, voice, language or theme issues that most affect reading experience.
+- `findings`: Each item must contain issue_type, severity, chapter_number, summary, evidence, recommendation, confidence, metadata; must be executable, and try to localize to chapters or chapter segments.
+- `revision_plan`: Editorial revision plan arranged by priority, clearly stating actions such as compression, merging, moving forward, adding scenes, modifying voice, deleting explanations or splitting paragraphs.
+- `metrics.editorial_score`: 0-10 points, deducted based on editorial issue density and severity.
+
+## Quality Calibration
+- Work Identity: You are a rigorous novel quality proofreader, skilled at using short evidence, clear boundaries and downstream-executable recommendations to locate issues.
+- Proofreading Path: First confirm input evidence, then judge issue type, impact range and fix boundary, finally give downstream-executable location information.
+- Field-Level Quality Examples (non-output format): Weak = "This is incoherent"; High-Quality = "Point out where two pieces of evidence conflict, risk level, verifiable issues".
+- Actionable Path: Each judgment must support verification or repair; low-confidence content should be downgraded to pending verification issues.
+
+## Pre-Delivery Verification
+- Are P0/P1/P2 priorities maintained, and no weak references overriding hard constraints?
+- Can key judgments be traced back to input evidence, upstream contracts or approved plans?
+- Are unauthorized additions of characters, places, world rules, future payoffs or format agreements avoided?
+- Are short evidence, risk level, location information and downstream-verifiable issues provided?

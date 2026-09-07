@@ -1,0 +1,134 @@
+{# source_template_hash: 65845de29c27f1f921e1cf979476949cce765caee8cb9926a4a2dc28ed7d8371 #}
+{#-
+Memory Module: Adaptive Compression Service
+Replaces: context_compress.j2
+Enhancement: Adds quality verification and fact preservation
+-#}
+
+{#
+================================================================================
+[NOTES]
+================================================================================
+Prompt: adaptive_compress.j2
+Service Step: ADAPTIVE_COMPRESS
+Function Summary: Intelligently compresses context while preserving key facts, adapting compression strategy based on context type
+Upstream Input:
+  - blocks: List of context fragments (including id, max_chars, text)
+  - priority_facts: Key facts that must be preserved (optional)
+  - context_facts: Context facts reference (optional)
+  - mode: fact_priority (optional, fact priority mode)
+Downstream Output:
+  - JSON: items list (including id, compressed, retained_facts), compression_stats
+  - Downstream Consumer: Memory System / Context Injection
+Consumption Chain Priority:
+  P0 = Preserve priority_facts / Do not alter causal relationships
+  P1 = Preserve hard facts / Delete redundant content
+  P2 = Compressed character count not exceeding 120% of max_chars
+Brief Example:
+  Input: blocks=[{"id":"b1","max_chars":100,"text":"Lin Yuan stood at the city gate..."}], priority_facts=["Lin Yuan arrived at the city gate"]
+  Output: {"items":[{"id":"b1","compressed":"Lin Yuan arrived at the gate","retained_facts":["Lin Yuan arrived at the city gate"]}],"compression_stats":{...}}
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer: Task Definition and Input Consumption
+    --------------------------------------------------------------------------- -#}
+
+You are a professional text compression expert. Please intelligently compress the following context without changing the story direction or fact constraints.
+
+## Compression Requirements
+
+### Input Fragments
+{% for b in blocks %}
+---
+Fragment ID: {{ b.max_chars }}
+Maximum Characters: {{ b.max_chars }}
+---
+{{ b.text }}
+---
+{% endfor %}
+
+{% if priority_facts %}
+### Key Facts That Must Be Preserved (Highest Priority)
+{{ priority_facts }}
+
+**Note**: These facts must be retained in the compressed text, even if it means a lower compression rate.
+{% endif %}
+
+{% if context_facts %}
+### Context Facts Reference
+{% for fact in context_facts %}
+- {{ fact }}
+{% endfor %}
+{% endif %}
+
+## Compression Goals
+
+1. **Retain Main Story Progression Information**
+   - Goals, conflicts, causes and effects, action outcomes
+   - Key turning points
+
+2. **Retain Hard Facts**
+   - Character relationships, locations, time
+   - Events that have occurred
+   - Foreshadowing status
+
+3. **Delete Redundant Content**
+   - Redundant modifiers
+   - Redundant descriptions
+   - Irrelevant details
+
+4. **Maintain Readability**
+   - Compressed text must be fluent natural language
+   - Maintain the original narrative rhythm
+
+## Context Type Adaptive Strategy
+
+### Chapter Body (Narrative Text)
+- **Retain**: Plot progression chains, character state changes, key dialogue conclusions, emotional turns
+- **Compress**: Environmental descriptions (except foreshadowing), redundant modifiers, transitional actions
+- **Maintain**: Narrative rhythm, roughly unchanged dialogue proportion
+
+### Planning Documents (Outline/Plans)
+- **Retain**: Goals, constraints, key nodes, character arc milestones
+- **Compress**: Explanatory text, background setup, alternative plan discussions
+- **Maintain**: Structured information (numbering/hierarchy/sequence)
+
+### Canon Changes (canon delta)
+- **Retain**: New facts, modified facts, deleted facts, effective chapter numbers
+- **Compress**: Extraction reasons, related evidence citations (retain key evidence, delete secondary evidence)
+- **Maintain**: Atomicity of facts (each fact as an independent change)
+
+### General Rules (When No Clear Context Type)
+- Compress according to P0 > P1 > P2 priority
+- When priority_facts exists, strictly prioritize preserving these facts
+- Prefer losing compression rate over losing hard facts
+
+{% if mode == 'fact_priority' %}
+## Special Mode: Fact Priority
+
+Currently in fact priority mode. Please prioritize ensuring completeness of key facts, with compression rate as secondary.
+{% endif %}
+
+## Compression Rules
+1. Each `id` in `items` must come from the input.
+2. Do not introduce new facts not present in the input, do not change event sequence or causal relationships.
+3. `compressed` must be a natural language short text, not a keyword list.
+4. If input contains `priority_facts`, must list preservation status in `retained_facts`.
+5. Compressed character count should be close to `max_chars`, but not exceed 120%.
+
+## Quality Calibration
+- Professional Identity: You are a context compression editor, skilled at preserving fact chains, state boundaries, and retrieval anchors most needed for subsequent writing.
+- Compression Path: First preserve timeline, state changes, and hard facts, then compress descriptions and redundant explanations, finally check anchors needed for subsequenthandoff.
+- Evidence Calibration: Preserve traceable sources for characters, locations, objects, promises, and foreshadowing; do not elevate compressed summaries to new facts.
+- Actionable Path: Compression results should help downstream quickly restore story context, suspense remaining, and boundaries for things that cannot be consumed early.
+
+## Pre-Delivery Verification
+- Are P0/P1/P2 priorities maintained, and no weak references overwriting hard constraints?
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans?
+- Are new unauthorized characters, locations, world rules, future payoffs, or format agreements avoided?
+- Are fact boundaries needed for subsequent merging/retrieving preserved, and not writing speculations as established facts?
+
+{#- ---------------------------------------------------------------------------
+    Format Layer: Output Format and Schema
+    --------------------------------------------------------------------------- -#}

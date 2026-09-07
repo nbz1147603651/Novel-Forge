@@ -1,0 +1,33 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "NIMO",
+  "version": "0.1.0",
+  "identifier": "com.novelforge.nimo",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "NIMO",
+        "width": 1680,
+        "height": 1020,
+        "minWidth": 1280,
+        "minHeight": 800,
+        "resizable": true,
+        "decorations": true,
+        "transparent": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": false,
+    "icon": ["icons/icon.icns", "icons/icon.ico", "icons/128x128.png"]
+  }
+}

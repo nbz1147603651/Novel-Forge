@@ -1,0 +1,60 @@
+{# source_template_hash: 297c08cf40dc6bb860aed270b090a2317cb28f43d758b3d1db12d349d91f4866 #}
+{#
+================================================================================
+【Notes】
+================================================================================
+Template: drama_series_plan.j2
+Serves step: DRAMA_SERIES_PLAN (short drama pipeline: series planning)
+Purpose: From a premise seed, produce the full series plan: three-act structure,
+         paywall beats (5 canonical routines + placement), thrill matrix,
+         four-stage emotional waveform, antagonist tier system. Outputs only a
+         complete DramaSeriesPlan object (FULL_OBJECT).
+Upstream inputs:
+  - title/genre/logline: premise seed
+  - total_episodes/episode_duration_s: episode count and duration hard params
+  - character_roster: registered cast (antagonist tiers may only map these)
+Downstream outputs:
+  - JSON (FULL_OBJECT): {"title":..., "total_episodes":..., "three_acts":[...],
+    "paywall_beats":[...], "thrill_matrix":[...], "waveform_stages":[...],
+    "antagonist_system":[...]}
+  - Consumers:
+    * EPISODE_OUTLINE: expands the plan into per-episode outlines
+    * run_plan: paywall beats registered as TimelineMarkers / decision items
+Priority chain:
+  P0 = Commercial structure: beats must land on unlock positions; strategy uses only the given enum
+  P1 = Waveform: four stages cover all episodes, intensity targets 1-10 ascending
+  P2 = Cast mapping: antagonist tiers surface/mid/boss must map registered names
+Brief example:
+  Input: {"title":"Rebirth City Cultivator","total_episodes":80}
+  Output fragment: paywall_beats=[{"episode_number":8,"position":"end","strategy":"cliffhanger_reversal","description":"cut to black right before the hero's identity is revealed"}]
+================================================================================
+#}
+{#- ---------------------------------------------------------------------------
+    Guidance layer: task and inputs
+    --------------------------------------------------------------------------- -#}
+
+You are the head writer of commercial short drama. Produce the full series plan from the premise seed, directly serving paid conversion.
+
+## Premise seed
+- Title: {{ title }}
+- Genre: {{ genre | default("urban") }}
+- Logline: {{ logline | default("") }}
+- Total episodes: {{ total_episodes }}
+- Episode duration (seconds): {{ episode_duration_s | default(120) }}
+- Output language: {{ language | default("zh") }}
+
+## Registered cast (antagonist tiers may only map these names; may be empty)
+{{ character_roster | tojson(ensure_ascii=False) }}
+
+{#- ---------------------------------------------------------------------------
+    Constraint layer: quality and boundaries
+    --------------------------------------------------------------------------- -#}
+
+## Planning rules
+- **Paywall beats**: each item in `paywall_beats` has `episode_number`, `position` (start/middle/end), `strategy`, `description`; `strategy` may only use the five enum values: `cliffhanger_reversal`, `identity_reveal`, `emotional_betrayal`, `crisis_unresolved`, `conflict_then_sweet`; episode 1 must carry an end-position hook, and the paywall episodes (typically 8-12) must carry beats.
+- **Thrill matrix**: each item in `thrill_matrix` has `episode_number`, `kind`, `intensity` (integer 1-10), `description`; intensity trends upward as the story progresses.
+- **Four-stage waveform**: `waveform_stages` has exactly 4 items (opening hook / mid reversal / climax showdown / closing hook); `episode_start`/`episode_end` cover 1 through total episodes continuously, with no overlap or gap.
+- **Three acts**: `three_acts` has exactly 3 entries, each stating the episode range and core conflict.
+- **Antagonist system**: `antagonist_system` spans tiers surface/mid/boss with at least one item each; `character_ref` may only take registered cast names, otherwise leave empty.
+- **JSON stability**: output only a complete object conforming to the schema; integer fields must be numbers, not strings; no Markdown, comments or ellipses.
+- The top level must contain the seven keys `title`, `total_episodes`, `three_acts`, `paywall_beats`, `thrill_matrix`, `waveform_stages`, `antagonist_system`.

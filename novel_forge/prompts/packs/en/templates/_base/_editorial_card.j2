@@ -1,0 +1,112 @@
+{# source_template_hash: 9b3a06201055a6ee77ff905133d3e11a03d43c584d38fd851c7258c3ec3a620a #}
+{#
+================================================================================
+【Notes】
+================================================================================
+Prompt: _base/_editorial_card.j2
+Type: Macro module (not directly rendered, only for import by other templates)
+Brief description: Unified rendering of EditorialContract projections across writing stages.
+                  draft/edit/wave/polish share the same data structure, but action labels and detail levels differ.
+Defined macros:
+  - render_editorial_card(editorial, mode="draft")
+    mode values:
+      "draft"   → DRAFT stage, full display, action label="Drafting Action"
+      "edit"    → EDIT stage, full display, action label="Revision Action"
+      "wave"    → WAVE stage, condensed display (only for transition reference)
+      "polish"  → POLISH stage, condensed display (only for language refinement reference)
+Usage:
+  {%- from "_base/_editorial_card.j2" import render_editorial_card -%}
+  {{ render_editorial_card(editorial, mode="draft") }}
+Called by: writing/draft_chapter.j2, writing/edit_chapter.j2,
+          writing/wave_chapter.j2, writing/polish_chapter.j2
+================================================================================
+#}
+
+{% macro render_editorial_card(editorial, mode="draft") -%}
+{% set is_full = mode in ("draft", "edit") %}
+{% set action_label = "Drafting Action" if mode == "draft" else ("Revision Action" if mode == "edit" else ("Weaving Action" if mode == "wave" else "Polish Action")) %}
+{% set voice_label = "Dialogue Voice Profile" if mode == "draft" else ("Voice Profile Revision Target" if mode == "edit" else "Voice Profile Reference") %}
+{% set editorial_risk = editorial.risk_guidance | default({}) %}
+{% set editorial_risk_items = editorial_risk.get('items', []) if editorial_risk else [] %}
+{% set denouement_risk = editorial_risk.get('denouement', {}) if editorial_risk else {} %}
+{% set has_body_budget = editorial.body_signal_budget_per_high_emotion_scene is defined and editorial.body_signal_budget_per_high_emotion_scene is not none %}
+{% set has_editorial_content = editorial.over_denouement_budget | default(false) or has_body_budget or editorial_risk_items or denouement_risk.guidance | default('') or editorial.character_voices | default([]) or editorial.theme_policies | default([]) or editorial.symbol_policies | default([]) or editorial.scene_resistance_rules | default([]) or editorial.revelation_ladder | default([]) or editorial.editorial_element_directives | default([]) or editorial.time_bridge_policies | default([]) or (mode == "draft" and editorial.forbidden_confirmation_phrases | default([])) %}
+{% if has_editorial_content %}
+## Editorial Contract Card (P1)
+{% if editorial.over_denouement_budget %}
+{% if mode == "draft" %}- This chapter exceeds expected main climax aftermath: must introduce new actions, new conflicts, or new information; no repetitive affirmation allowed.
+{% elif mode == "edit" %}- This chapter exceeds expected main climax aftermath: remove repetitive affirmations, preserve new actions, new conflicts, or new information.
+{% elif mode == "wave" %}- Aftermath/Conclusion: do not add extra pure affirmation passages when filling transitions.
+{% else %}- This chapter exceeds expected main climax aftermath: do not add new pure affirmation passages during polishing.
+{% endif %}
+{% endif %}
+{% if has_body_budget %}- High-emotion scene body signal budget: maximum {{ editorial.body_signal_budget_per_high_emotion_scene }} per scene.{% endif %}
+{% if editorial_risk_items or denouement_risk.guidance | default('') %}
+- Editorial Admission Risk {{ action_label }}:
+{% if denouement_risk.guidance | default('') %}
+{% if mode == "draft" %}  - Aftermath/Conclusion: {{ denouement_risk.guidance }}; do not use consecutive hugs, apologies, promises, or narrative summaries to replace new consequences.
+{% elif mode == "edit" %}  - Aftermath/Conclusion: {{ denouement_risk.guidance }}; prioritize removing second and subsequent pure affirmation passages, replacing with new information, new actions, or consequence implementation.
+{% elif mode == "wave" %}  - Aftermath/Conclusion: {{ denouement_risk.guidance }}; do not add extra pure affirmation passages when filling transitions.
+{% else %}  - Aftermath/Conclusion: {{ denouement_risk.guidance }}; during polishing maintain original facts, only fine-tune syntax and rhythm.
+{% endif %}
+{% endif %}
+{% for item in editorial_risk_items %}
+  - [{{ item.severity }}] {{ item.summary }}; {{ action_label }}={{ item.action }}
+{% endfor %}
+{% endif %}
+{% if editorial.character_voices %}
+- {{ voice_label }}:
+{% for item in editorial.character_voices %}
+{% if mode == "draft" %}  - {{ item.character }}: {{ item.sentence_profile }}; explanation bias={{ item.explanation_bias }}; forbidden={{ item.taboo_patterns | join(', ') }}
+{% elif mode == "edit" %}  - {{ item.character }}: {{ item.sentence_profile }}; explanation bias={{ item.explanation_bias }}; emotion syntax={{ item.emotion_syntax }}
+{% elif mode == "wave" %}  - {{ item.character | default('Character') }}: sentence structure={{ item.sentence_profile | default('') }}; emotion syntax={{ item.emotion_syntax | default('') }}; explanation bias={{ item.explanation_bias | default('') }}
+{% if item.signature_moves | default([]) %}  signature moves/syntax: {{ item.signature_moves | join('; ') }}{% endif %}
+{% if item.sample_lines | default([]) %}  voice profile samples (rhythm reference only, prohibit sentence reuse): {{ item.sample_lines[:2] | join(' / ') }}{% endif %}
+{% if item.taboo_patterns | default([]) %}  forbidden tones: {{ item.taboo_patterns | join(', ') }}{% endif %}
+{% else %}  - {{ item.character }}: {{ item.sentence_profile }}; explanation bias={{ item.explanation_bias }}
+{% endif %}
+{% endfor %}
+{% endif %}
+{% if editorial.theme_policies %}- Theme Presentation: {{ editorial.theme_policies | join('; ') }}{% endif %}
+{% if editorial.symbol_policies %}
+{% if mode == "draft" %}- Symbol Strategy (execute per explanation budget, do not add extra meaning explanations):
+{% for item in editorial.symbol_policies %}
+  - {{ item.symbol }}: {{ item.narrative_function }}; explanation policy={{ item.explanation_policy }}; {{ item.escalation_rule }}
+{% endfor %}
+{% elif mode == "edit" %}- Symbol Handling:
+{% for item in editorial.symbol_policies %}
+  - {{ item.symbol }}: explanation policy={{ item.explanation_policy }}; explicit explanations maximum {{ item.max_explicit_explanations }} times; {{ item.escalation_rule }}
+{% endfor %}
+{% else %}- Symbol Strategy:
+{% for item in editorial.symbol_policies %}
+  - {{ item.symbol }}: {{ item.explanation_policy }}; {{ item.escalation_rule }}
+{% endfor %}
+{% endif %}
+{% endif %}
+{% if editorial.scene_resistance_rules %}
+{% if mode == "draft" %}- Scene resistance must fall on space, process, crowd, distance, obstruction, object, or time window:
+{% for item in editorial.scene_resistance_rules %}
+  - {{ item.scene_type }}: {{ item.required_resistance }} ({{ item.examples | join(', ') }})
+{% endfor %}
+{% elif mode == "edit" %}- Scene Resistance: {{ editorial.scene_resistance_rules | map(attribute='required_resistance') | join('; ') }}
+{% else %}- Scene Resistance Rules:
+{% for item in editorial.scene_resistance_rules %}
+  - {{ item.scene_type | default('Scene') }}: {{ item.required_resistance | default('') }}{% if item.examples | default([]) %} ({{ item.examples | join(', ') }}){% endif %}
+{% endfor %}
+{% endif %}
+{% endif %}
+{% if editorial.revelation_ladder %}
+{% if mode == "draft" %}- Revelation Ladder:{% for item in editorial.revelation_ladder %}{{ item.thread }} Stage {{ item.stage_order }}={{ item.stage }}{% if item.target_chapter %}/Target Chapter {{ item.target_chapter }}{% endif %}/Consequence={{ item.required_action_consequence }}{% if not loop.last %};{% endif %}{% endfor %}
+{% else %}- Revelation Ladder:{% for item in editorial.revelation_ladder %}{{ item.thread }} Stage {{ item.stage_order }}={{ item.stage }}{% if not loop.last %};{% endif %}{% endfor %}
+{% endif %}
+{% endif %}
+{% if editorial.editorial_element_directives %}
+- Narrative Element Editorial Directives:
+{% for item in editorial.editorial_element_directives %}
+  - {{ item.element_id }}: {{ item.requirement }}; completion criteria={{ item.success_criteria }}
+{% endfor %}
+{% endif %}
+{% if editorial.time_bridge_policies %}- Time Bridge Rules: {{ editorial.time_bridge_policies | join('; ') }}{% endif %}
+{% if mode == "draft" and editorial.forbidden_confirmation_phrases %}- Confirmation-type Dialogue Forbidden/Limited Reuse: {{ editorial.forbidden_confirmation_phrases | join('; ') }}{% endif %}
+{% endif %}
+{%- endmacro %}

@@ -1,0 +1,8 @@
+locale = "en"
+display_name = "English (en)"
+status = "stable"
+base_language = "en"
+length_unit = "words"
+source_revision = "en-prompts-2026-07-15"
+coverage_required = true
+templates_dir = "templates"

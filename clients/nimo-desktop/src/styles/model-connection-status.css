@@ -1,0 +1,45 @@
+.model-connection-status { display: grid; gap: 14px; }
+.model-connection-status > header { display: flex; align-items: end; justify-content: space-between; gap: 18px; }
+.model-connection-status h2 { margin: 0; color: var(--nf-text-heading); font-family: Georgia, "Songti SC", serif; font-size: var(--nf-font-section); font-weight: 600; letter-spacing: .035em; }
+.model-connection-status > header p { margin: 6px 0 0; color: var(--nf-text-muted-soft); font-size: var(--nf-font-ui); line-height: 1.55; }
+.model-connection-manage { flex: 0 0 auto; min-width: 112px; }
+.model-connection-manage span { font-size: var(--nf-font-label); line-height: 1; }
+.model-connection-progress { display: block; margin-top: 7px; color: var(--nf-accent-primary); font-size: var(--nf-font-ui); font-weight: 700; }
+.model-connection-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+.model-connection-card { display: grid; gap: 6px; min-width: 0; min-height: 114px; padding: 12px; border: 1px solid color-mix(in srgb, var(--nf-border-default) 20%, transparent); border-radius: 13px; background: color-mix(in srgb, var(--nf-bg-surface) 75%, transparent); box-shadow: 0 7px 17px color-mix(in srgb, var(--nf-shadow) 6%, transparent); transition: border-color 180ms ease, transform 180ms ease, opacity 180ms ease; content-visibility: auto; contain-intrinsic-size: auto 114px; }
+.model-connection-card.is-pending { border-color: color-mix(in srgb, var(--nf-status-warning) 36%, var(--nf-border-default)); }
+.model-connection-card.is-success { border-color: color-mix(in srgb, var(--nf-status-success) 35%, var(--nf-border-default)); }
+.model-connection-card.is-failed { border-color: color-mix(in srgb, var(--nf-status-danger) 35%, var(--nf-border-default)); }
+.model-connection-card.is-checking { animation: model-connection-settle 200ms ease-out; }
+.model-connection-card > header { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.model-connection-dot, .model-connection-capabilities i { display: block; flex: 0 0 auto; border-radius: 50%; }
+.model-connection-dot { width: 10px; height: 10px; background: var(--nf-status-warning); box-shadow: 0 0 0 3px color-mix(in srgb, var(--nf-status-warning) 13%, transparent); }
+.model-connection-card.is-success .model-connection-dot { background: var(--nf-status-success); box-shadow: 0 0 0 3px color-mix(in srgb, var(--nf-status-success) 13%, transparent); }
+.model-connection-card.is-failed .model-connection-dot { background: var(--nf-status-danger); box-shadow: 0 0 0 3px color-mix(in srgb, var(--nf-status-danger) 13%, transparent); }
+.model-connection-card strong { overflow: hidden; color: var(--nf-text-heading); font-size: var(--nf-font-label); text-overflow: ellipsis; white-space: nowrap; }
+.model-connection-card header small { margin-left: auto; color: var(--nf-text-muted); font-size: var(--nf-font-micro); }
+.model-connection-card > p { min-height: 18px; margin: 0; overflow: hidden; color: var(--nf-text-secondary); font-size: var(--nf-font-meta); line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }
+.model-connection-capabilities { display: flex; align-items: center; gap: 14px; margin-top: auto; }
+.model-connection-capabilities span { display: inline-flex; align-items: center; gap: 5px; color: var(--nf-text-muted); font-size: var(--nf-font-micro); }
+.model-connection-capabilities i { width: 8px; height: 8px; background: var(--nf-status-warning); }
+.model-connection-capabilities i.is-success { background: var(--nf-status-success); }
+.model-connection-capabilities i.is-failed { background: var(--nf-status-danger); }
+.model-connection-reveal { justify-self: start; min-height: 34px; padding: 0 12px; border: 1px solid color-mix(in srgb, var(--nf-border-default) 32%, transparent); border-radius: 9px; color: var(--nf-text-secondary); background: color-mix(in srgb, var(--nf-bg-surface) 74%, transparent); font-size: var(--nf-font-ui); font-weight: 700; }
+
+@keyframes model-connection-settle { 50% { opacity: .4; transform: translateY(-1px); } }
+
+@media (max-width: 1080px) { .model-connection-grid { grid-template-columns: repeat(2, minmax(220px, 1fr)); } }
+@media (max-width: 700px) { .model-connection-status > header { align-items: start; flex-direction: column; }.model-connection-grid { grid-template-columns: 1fr; } }
+
+/* Honor reduced motion (design-tokens has global guard, this is explicit
+ * for local animations that should not run when the user prefers reduced
+ * motion). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

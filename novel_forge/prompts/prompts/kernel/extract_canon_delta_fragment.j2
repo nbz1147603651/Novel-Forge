@@ -1,0 +1,70 @@
+{#
+================================================================================
+【备注】
+================================================================================
+提示词：extract_canon_delta_fragment.j2
+服务步骤：EXTRACT_CANON_DELTA（Canon 分片：正典增量）
+作用简述：只提取 canon_delta，使用 summary/exit 作为共同事实锚点避免分片割裂。
+上游输入：chapter_number/chapter_text/summary_exit/known_characters
+下游输出：JSON：{"canon_delta": {...}}
+下游消费者：EXTRACT_CANON 本地合并器 / CanonStore
+消费链优先级：P0 = 只提取正文事实；P1 = 不重复其他分片字段；P2 = 事件和世界事实精简
+================================================================================
+#}
+{#- 指导层 -#}
+请只提取本章 canon_delta。不要输出 creative_report、chapter_exit_state 或 delta 数组。
+
+## 事实来源边界（P0）
+- 只从 FinalArtifact 对应的最终正文 / `chapter_text` 写 canon_delta。
+- summary_exit、共享证据锚点、已确定分片只用于一致性对齐，不是新增事实来源。
+- 没有最终正文证据的事件、世界规则、伏笔更新或角色变化不得写入 canon。
+
+{% if shared_evidence_anchor %}
+## 共享证据锚点
+{{ shared_evidence_anchor | tojson(indent=2) }}
+请以此作为本次分片的共同依据；维度特需信息只能补充，不得覆盖锚点事实。
+{% endif %}
+
+## 章节锚点
+- 第 {{ chapter_number }} 章
+{% if summary_exit %}{{ summary_exit | tojson(indent=2) }}{% endif %}
+
+{% if existing_thread_ids %}
+## 已有情节线 ID（此分片只供参考）
+{% for tid in existing_thread_ids %}- {{ tid }}{% endfor %}
+{% endif %}
+
+## 当前已知角色
+{% for name in known_characters %}- {{ name }}{% endfor %}
+
+{% if character_state_deltas %}
+## 已确定角色状态变化（character_updates 必须与此一致）
+{{ character_state_deltas | tojson(indent=2) }}
+{% endif %}
+
+{% if relationship_deltas %}
+## 已确定关系变化（new_events 可引用，但不要重复输出关系 delta）
+{{ relationship_deltas | tojson(indent=2) }}
+{% endif %}
+
+## 正文
+{{ chapter_text }}
+
+## 要求
+- `character_updates` 只写本章确证的角色状态。
+- `new_events` 只写会进入 canon 的事实事件。
+- `foreshadowing_updates` 和 `new_world_facts` 宁缺毋滥。
+
+## 质量校准
+- 工作身份：你是一位证据优先的叙事事实抽取员，擅长从正文和上游锚点中提取可追溯、可合并的状态信息。
+- 抽取路径：先找正文中的明确事实，再对照共享锚点与已知状态，最后只保留能被后续合并器消费的信息。
+- 证据校准：同一事实已有上游分片确认时保持一致；证据不足时用保守字段值表达未知或待确认。
+- 可操作路径：每条信息都服务于 canon、memory、state 或审计链路，避免把语气、比喻、猜测当作事实。
+
+## 交付前核验
+- P0/P1/P2 优先级是否被保持，且没有让弱参考覆盖硬约束。
+- 是否能把关键判断回指到输入证据、上游契约或已批准计划。
+- 是否避免新增未授权的人物、地点、世界规则、未来 payoff 或格式协议。
+- 是否保留后续合并/检索需要的事实边界，且没有把推测写成既定事实。
+
+{#- 格式层 -#}

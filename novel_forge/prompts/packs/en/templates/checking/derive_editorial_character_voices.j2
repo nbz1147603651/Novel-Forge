@@ -1,0 +1,70 @@
+{# ================================================================================
+source_template_hash: bb29f6d943484588bfb7ceb8c8f88bf760665870ef1a5f6d0ec6e3364cae352b
+[NOTES]
+================================================================================
+Prompt: derive_editorial_character_voices.j2
+Service Step: DERIVE_EDITORIAL_CHARACTER_VOICES (Editorial Contract: Character Voice Profile)
+Purpose Summary: Generate only EditorialContract.character_voices to avoid overloading a single full-contract generation.
+Upstream Inputs:
+  - project_brief / story_bible / character_bible / blueprint / style_profile
+Downstream Output:
+  - JSON: character_voices
+Consumption Chain Priority: P1 (Publishing-Level Editorial Constraint)
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer: Task Definition + Context Consumption
+    --------------------------------------------------------------------------- -#}
+You are a long-form novel editorial director. This round is responsible only for generating the **character voice contract**—do not output structure, themes, symbolic elements, or narrative directive instructions.
+
+## Project Information
+{{ project_brief | tojson(indent=2) }}
+
+## Character Profiles (Compressed)
+{{ character_bible | tojson(indent=2) }}
+
+## Character Name Whitelist (Runtime JSON Schema Enum)
+{{ voice_character_whitelist | default([]) | tojson(indent=2) }}
+{% if voice_batch_count | default(1) > 1 %}
+- Current voice batch: {{ voice_batch_index | default(1) }} / {{ voice_batch_count }}
+{% endif %}
+
+## Style Specifications (Compressed)
+{{ style_profile | tojson(indent=2) }}
+
+## Blueprint Summary (Compressed)
+{{ blueprint | tojson(indent=2) }}
+
+## Character Name Whitelist (Enforced Constraint — P0)
+The `character` field in `character_voices[]` **must** strictly use the original value from the `name` field in the "Character Profiles" below.
+**Prohibited**: Rewriting (Xuan Yu → Xuan Yan), using alternate names/ancient characters/variant forms, using decomposed forms of surname + given name, or adding characters that do not exist in the book.
+At runtime, the "Character Name Whitelist" above is used as a JSON Schema enum validation; any `character` not in the whitelist will trigger format retry.
+
+- Every character in the current whitelist must receive exactly one voice profile with an exact name
+- The system will perform fuzzy fallback matching, but entries that fail matching will be silently discarded, which may trigger retry of the entire step
+- Do not assign "codenames" or "aliases" to the main character themselves as the character field
+
+## Generation Requirements
+1. `character_voices` must cover the entire current whitelist. Large rosters are already batched, so no character in this batch may be omitted.
+2. Each `character` field must appear in the `name` field of the "Character Profiles" above, **exactly as written**.
+3. Each character must provide executable sentence rhythm, explanatory tendency, emotional syntax, signature actions, and prohibited speech patterns.
+4. Do not write character biographies; only write voice rules that downstream drafting and editing can directly verify.
+5. `signature_moves`, `taboo_patterns`, `sample_lines` each maximum 5 items, each as a short phrase.
+6. Sample lines are only for calibrating voice profiles and must not induce text reuse of the same line.
+
+## Field Content Constraints
+- Each item in `character_voices[]` must contain character, sentence_profile, explanation_bias, emotion_syntax, signature_moves, taboo_patterns, sample_lines.
+- signature_moves, taboo_patterns, sample_lines must be short string arrays.
+
+## Quality Calibration
+- Work Identity: You are a project-specific writing consultant, skilled at deriving executable style/structure contracts from summaries, characters, world rules, and selected narrative elements.
+- Derivation Path: First identify the project's core selling points, conflict mechanisms, and expression risks, then map conclusions to field-level parameters or editorial contracts.
+- Field-Level Quality Examples (not output format): Weak = "cold style"; High-Quality = "explain what scene pressure, evidentiary details, dialogue proportion, or information density produces the coldness".
+- Actionable Path: Each rule must be reusable for body text generation, editing checks, or subsequent audits—avoid generalizing into empty advice applicable to all projects.
+
+## Pre-Delivery Verification
+- Are P0/P1/P2 priorities maintained, and have weak references not overridden hard constraints?
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans?
+- Have unauthorized characters, locations, world rules, future payoffs, or format agreements been avoided?
+- Has project-specific evidence been mapped to specific fields/rules, rather than reusing generic writing maxims?

@@ -1,0 +1,109 @@
+/* Toast notification stack — aligned with PySide6 ToastManager.
+   Slide-in from right, auto-dismiss, variant accent borders. */
+
+.toast-stack {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 9999;
+  display: grid;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 300px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--nf-border-default) 28%, transparent);
+  border-radius: 8px;
+  background: var(--nf-bg-surface, #fffaf3);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--nf-shadow) 14%, transparent);
+  pointer-events: auto;
+  animation: toast-slide-in 300ms cubic-bezier(.22, .61, .36, 1) both;
+}
+
+.toast.is-dismissing {
+  animation: toast-fade-out 200ms ease-out both;
+}
+
+.toast-icon {
+  display: grid;
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  border-radius: 50%;
+  font-size: var(--nf-font-ui);
+  font-weight: 700;
+}
+
+.toast.is-success .toast-icon {
+  color: var(--nf-status-success, #2e7d32);
+  background: var(--nf-status-success-bg, #e8f5e9);
+}
+
+.toast.is-error .toast-icon {
+  color: var(--nf-status-danger, #c0392b);
+  background: color-mix(in srgb, var(--nf-status-danger) 12%, var(--nf-bg-surface));
+}
+
+.toast.is-warning .toast-icon {
+  color: var(--nf-accent-primary, #b65634);
+  background: color-mix(in srgb, var(--nf-accent-primary) 12%, var(--nf-bg-surface));
+}
+
+.toast.is-info .toast-icon {
+  color: var(--nf-text-secondary, #66574b);
+  background: var(--nf-bg-control, #f1e7d8);
+}
+
+.toast.is-success { border-left: 3px solid var(--nf-status-success, #2e7d32); }
+.toast.is-error { border-left: 3px solid var(--nf-status-danger, #c0392b); }
+.toast.is-warning { border-left: 3px solid var(--nf-accent-primary, #b65634); }
+.toast.is-info { border-left: 3px solid var(--nf-text-secondary, #66574b); }
+
+.toast p {
+  flex: 1;
+  margin: 0;
+  color: var(--nf-text-body, #4f4337);
+  font-size: var(--nf-font-body);
+  line-height: 1.5;
+}
+
+.toast-close {
+  flex: 0 0 auto;
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  border: 0;
+  border-radius: 4px;
+  color: var(--nf-text-muted, #8b7460);
+  background: transparent;
+  font-size: var(--nf-font-subsection);
+  line-height: 1;
+  transition: color 120ms ease, background 120ms ease;
+}
+
+.toast-close:hover {
+  color: var(--nf-text-primary, #2c241e);
+  background: var(--nf-bg-control, #f1e7d8);
+}
+
+@keyframes toast-slide-in {
+  from { opacity: 0; transform: translateX(40px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes toast-fade-out {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(12px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast { animation: none; }
+  .toast.is-dismissing { animation: none; opacity: 0; }
+}

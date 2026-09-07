@@ -1,0 +1,55 @@
+{# source_template_hash: 12a4984a82547a0183e9c7853745b0cc98894596c2786307c770e38373e54292 #}
+{#
+================================================================================
+【Notes】
+================================================================================
+Template: episode_outline.j2
+Serves step: EPISODE_OUTLINE (short drama pipeline: per-episode outlines)
+Purpose: Expand the series plan into episode outlines for a range: 3-5 scenes
+         per episode, tagged waveform stage and paywall marker. Outputs only a
+         complete object (FULL_OBJECT) with top-level episodes array.
+Upstream inputs:
+  - series_plan: full series plan (beats/thrills/waveform; only structural source)
+  - episode_range: episode range [start, end] expanded in this batch
+  - prior_summary: recap for continuity (not a source of new facts)
+Downstream outputs:
+  - JSON (FULL_OBJECT): {"episodes":[<EpisodeOutline>]}
+  - Consumers:
+    * EPISODE_SCREENPLAY: expands scenes into full episode screenplays
+    * run_plan: paywall markers become TimelineMarkers
+Priority chain:
+  P0 = Structural consistency: every plan beat/thrill inside the range must land
+  P1 = Scene quota: 3-5 scenes per episode, each summary states conflict and reversal
+  P2 = Continuity: relationships and events stay consistent with the recap
+Brief example:
+  Input: episode_range=[8,8], series_plan carries an identity_reveal beat on episode 8
+  Output: episodes=[{"episode_number":8,"title":"Identity","summary":"...","waveform_stage":"Mid Reversal","paywall_marker":"identity_reveal@end","scenes":[{"scene_number":1,"summary":"...","location":"Banquet Hall","emotional_beat":"suppressed"}]}]
+================================================================================
+#}
+{#- ---------------------------------------------------------------------------
+    Guidance layer: task and inputs
+    --------------------------------------------------------------------------- -#}
+
+You are a commercial short-drama episodic writer. Expand the series plan into episode outlines for the given range.
+
+## Series plan (only structural source of truth)
+{{ series_plan | tojson(ensure_ascii=False) }}
+
+## Range expanded in this batch
+{{ episode_range | tojson(ensure_ascii=False) }}
+
+## Prior recap
+{{ prior_summary | default("(first batch, no recap)") }}
+
+{#- ---------------------------------------------------------------------------
+    Constraint layer: quality and boundaries
+    --------------------------------------------------------------------------- -#}
+
+## Outline rules
+- **Episode coverage**: `episodes` must cover every episode in `episode_range`, with consecutive `episode_number` values and no gaps.
+- **Scene quota**: each episode has exactly 3-5 items in `scenes`, with `scene_number` numbered consecutively from 1; each scene `summary` states conflict and reversal, and `location` and `emotional_beat` are required.
+- **Beat landing**: plan `paywall_beats` falling inside this batch must land in the matching episode; write `paywall_marker` as `<strategy>@<position>` (e.g. `identity_reveal@end`).
+- **Waveform tag**: each episode's `waveform_stage` takes the plan stage that covers that episode.
+- **Continuity**: do not contradict the prior recap; do not introduce new lead characters outside the plan.
+- **JSON stability**: output only a complete object conforming to the schema; no Markdown, comments or ellipses.
+- The top level must contain the single key `episodes`.

@@ -1,0 +1,185 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  public-content:
+    name: Public source hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python scripts/check_public_release.py
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: 'pip'
+      - run: pip install -e ".[dev]"
+      - run: ruff check novel_forge tests
+      - run: python scripts/check_mypy_baseline.py
+      - run: python scripts/lint_prompt_layers.py
+      - run: python scripts/audit_prompt_format_layers.py --all
+      - run: python scripts/audit_prompt_packs.py
+      - run: python scripts/generate_prompt_index.py --check
+      - run: python scripts/verify_templates.py
+      - run: python scripts/verify_format_contracts.py
+      - run: python scripts/verify_control_plane_constraints.py --check
+      - run: python scripts/verify_design_tokens.py --check
+      - run: python scripts/check_agents_md_drift.py
+      - run: python scripts/check_architecture_ratchets.py --check
+      - run: python scripts/check_call_site_sync.py --baseline-sync-velocity --baseline-sync-threshold 3
+      - run: lint-imports
+
+  unit-tests:
+    needs: lint
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: 'pip'
+      - run: pip install -e ".[dev,desktop]"
+        if: matrix.os == 'ubuntu-latest'
+      - run: pip install -e ".[dev]"
+        if: matrix.os != 'ubuntu-latest'
+      - run: sudo apt-get install -y libegl1 libgles2 libgl1
+        if: matrix.os == 'ubuntu-latest'
+      - run: pytest tests/unit/ -n auto -q --timeout=60
+
+  nimo-ui:
+    name: NIMO Primary UI (React/Tauri frontend)
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm ui:check
+      - run: pnpm ui:test
+      - run: pnpm ui:build
+      - run: pnpm --filter @nimo/desktop check:interaction
+
+  desktop-tests:
+    name: PySide6 Fallback Compatibility (non-visual)
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install system deps (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get update && sudo apt-get install -y libegl1 libgles2 libgl1
+      - name: Install
+        run: pip install -e ".[dev,desktop]"
+      - name: Run desktop tests (non-visual, 3-runner baseline)
+        env:
+          QT_QPA_PLATFORM: offscreen
+          NOVEL_FORGE_MEMORY_USE_MOCK_EMBEDDINGS: "true"
+        run: |
+          pytest tests/desktop \
+            --ignore-glob='tests/desktop/*_visual.py' \
+            --ignore-glob='tests/desktop/test_visual_regression.py' \
+            -p no:xdist \
+            --timeout=300 -q
+
+  integration-tests:
+    needs: [lint, unit-tests, nimo-ui]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: 'pip'
+      - run: pip install -e ".[dev,desktop]"
+        if: matrix.os == 'ubuntu-latest'
+      - run: pip install -e ".[dev]"
+        if: matrix.os != 'ubuntu-latest'
+      - run: sudo apt-get install -y libegl1 libgles2 libgl1
+        if: matrix.os == 'ubuntu-latest'
+      - run: pytest tests/integration/ -n 2 -q --timeout=300
+
+  visual-tests:
+    name: PySide6 Fallback Visual Reference
+    needs: lint
+    runs-on: ubuntu-latest
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: 'pip'
+      - run: pip install -e ".[dev,desktop]"
+      - run: sudo apt-get install -y libegl1 libgles2 libgl1
+      - run: pytest tests/desktop/*_visual.py -q --timeout=180 -p no:xdist
+
+  contract-consumers:
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      # check_contract_consumers defaults to HEAD~1, so retain the parent commit.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: 'pip'
+      - run: pip install -e ".[dev]"
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - run: python scripts/check_contract_consumers.py
+
+  security:
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: 'pip'
+      - run: pip install -e ".[dev]"
+      - run: pip install pip-audit cyclonedx-bom
+      - run: pip-audit --strict --desc
+      - run: cyclonedx-py environment --output-format json --output-file sbom.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom-json
+          path: sbom.json

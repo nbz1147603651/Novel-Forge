@@ -1,0 +1,105 @@
+{# ================================================================================
+source_template_hash: 8aed79f79e3453e57e112f06465c13584f90e54137615b1e46617445f98e63ad
+[Notes]
+================================================================================
+Prompt: check_alignment.j2
+Service Step: CHECK_ALIGNMENT
+Role Summary: Check the alignment between chapter text and chapter outline, output alignment score and actionable revision suggestions.
+Upstream Input:
+  - chapter_outline: Chapter outline from PLAN_CHAPTER (including goal, main/subplot progression points, beats)
+  - chapter_plan.scene_intents: Scene intent sequence from PLAN_CHAPTER (only consume summary / required_outcome)
+  - chapter_text: Chapter text from DRAFT_CHAPTER / EDIT_CHAPTER
+Downstream Output:
+  - JSON: {"alignment_score", "risk_level", "summary", "missing_main_points",
+            "supportive_subplot_points", "weak_subplot_points", "repair_actions"}
+  - Downstream Consumer: RepairStep / EditStep (for alignment repair)
+Consumption Chain Priority: P0 (core event/result completely missing) > P1 (planned subplot overwhelming)
+                            > P2 (slight continuation or weak endpoint)
+Brief Example:
+  Input: chapter_outline={"chapter_number": 5, "goal": "Protagonist breaks through cultivation bottleneck",
+        "main_plot_points": ["Sudden enlightenment", "Conquering inner demon"]}
+  Output: {"alignment_score": 8.5, "risk_level": "low",
+         "missing_main_points": [], "repair_actions": []}
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer: Task Definition + Context Consumption
+    --------------------------------------------------------------------------- -#}
+Please check the following chapter text against the chapter outline for alignment and provide actionable revision suggestions.
+
+## Input Boundary
+- This task only evaluates whether the text covers the chapter's given chapter goal, main plot progression points, subplot progression points, outline beats, and "must achieve" items from the chapter plan.
+- Does not evaluate book-wide POV ratio, genre rules, macro phase, global character allocation, style quality, or rhetorical density; unless they directly cause the following chapter goals or planned outcomes to not occur.
+
+## Chapter Outline
+- Chapter {{ chapter_outline.chapter_number }}: {{ chapter_outline.title }}
+- Chapter Goal: {{ chapter_outline.goal }}
+{% if chapter_outline.main_plot_points %}
+- Main Plot Progression Points: {{ chapter_outline.main_plot_points | join("; ") }}
+{% endif %}
+{% if chapter_outline.subplot_points %}
+- Subplot Progression Points: {{ chapter_outline.subplot_points | join("; ") }}
+{% endif %}
+{% if chapter_outline.beats_summary %}
+- Outline Beats (must verify each against the text when scoring):
+{% for beat in chapter_outline.beats_summary %}
+  {{ loop.index }}. {{ beat }}
+{% endfor %}
+{% endif %}
+
+## Chapter Plan
+{% for scene in chapter_plan.scene_intents | default([]) %}
+{{ loop.index }}. {{ scene.summary }}{% if scene.required_outcome %} (Must Achieve: {{ scene.required_outcome }}){% endif %}
+{% if scene.owned_events | default([]) %}   - Atomic Must-Land Events (verify each individually; one array item represents one event): {% for item in scene.owned_events %}{{ loop.index }}.{{ item }}{% if not loop.last %}; {% endif %}{% endfor %}{% endif %}
+{% if scene.owned_revelations | default([]) %}   - Atomic Must-Land Revelations: {{ scene.owned_revelations | join('; ') }}{% endif %}
+{% if scene.owned_state_changes | default([]) %}   - Atomic Must-Land State Changes: {{ scene.owned_state_changes | join('; ') }}{% endif %}
+{% endfor %}
+
+{% set required_state_transitions = chapter_plan.required_state_transitions | default([]) %}
+{% set opening_contract = chapter_plan.opening_contract | default({}) %}
+{% set closing_contract = chapter_plan.closing_contract | default({}) %}
+{% if required_state_transitions or opening_contract or closing_contract %}
+## Chapter Contract Checkpoints
+{% if opening_contract %}- Opening Contract: {{ opening_contract }}{% endif %}
+{% if closing_contract %}- Closing Contract: {{ closing_contract }}{% endif %}
+{% if required_state_transitions %}- Required State Transitions: {{ required_state_transitions | join("; ") }}{% endif %}
+{% endif %}
+
+## Text
+{{ chapter_text }}
+
+## Judgment Principles
+1. **Semantic Coverage Counts as Coverage**: As long as the text completes the same core progression through different expressions, it is not considered missing.
+   - **Exception: Literal Requirements Must Be Literally Satisfied**: When the outline, chapter plan, or scene's required_outcome marks specific dialogue in quotes (such as "I'm telling you," "You listen—"), that dialogue must appear in the text with **exactly the same wording** at least once. Semantic equivalents (such as "the wind has shifted" instead of "I'm telling you") **do not count as coverage** and should be recorded in `missing_main_points`.
+2. `missing_main_points` only records main plot items where "core event/result is completely absent."
+3. `supportive_subplot_points` records subplots that "serve the main plot"; `weak_subplot_points` only records subplots that "overwhelm the main plot."
+4. `repair_actions` must be directly executable editing actions—empty rhetoric is not acceptable.
+5. When the text has reasonable creative expansions that do not undermine the main plot, they should be acknowledged; do not mechanically judge them as deviations.
+6. Do not deduct from `alignment_score` due to character perspectives, perspective ratios, background stages, or genre expectations outside the outline/plan.
+7. Do not review expression quality, trait density, or local rhetorical repetition; unless they cause the core events/results in the plan to not occur, do not write them into `missing_main_points`.
+8. If `summary` or `risk_level` points out missing main plot/must-achieve results, then `missing_main_points` must list the corresponding items; do not claim absence in summary while keeping the array empty.
+9. When opening_contract, closing_contract, required_state_transitions, scene.required_outcome, or any atomic must-land item is completely missing, it should enter `missing_main_points` or `weak_subplot_points`, with specific `repair_actions` provided. One atomic item is one missing point only; do not repeat a deduction for its evidence, impact, or repair advice.
+
+## Revision Suggestion Style (Preserving Creative Autonomy)
+1. Prioritize "minimal fixes" over "overhaul rewrites": supplement main plot anchors while retaining quality creative details.
+2. `repair_actions` should point to executable actions: add a line for goal anchoring, add a causal connection, compress an overwhelming subplot's length, etc.
+3. Prohibit rigid suggestions like "delete all subplots" or "completely return to outline literalism"; maintain the text's creative space.
+
+## Quality Calibration
+- Working Identity: You are a rigorous novel quality editor, skilled at using short evidence, clear boundaries, and downstream-executable suggestions to locate problems.
+- Editing Path: First confirm input evidence, then judge problem type, impact range, and repair boundaries, finally provide downstream-executable location information.
+- Field-Level Quality Examples (not output format): Weak = "This is incoherent"; High Quality = "Point out where two pieces of evidence conflict, risk level, verifiable problem."
+- Actionable Path: Each judgment must support verification or repair; low-confidence content should be downgraded to pending verification problems.
+
+## Pre-Delivery Verification
+- Are P0/P1/P2 priorities maintained, and do they not let weak references override hard constraints?
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans?
+- Are unauthorized characters, locations, world rules, future payoffs, or format agreements avoided?
+- Are short evidence, risk level, location information, and downstream-verifiable problems provided?
+
+{#- ---------------------------------------------------------------------------
+    Format Layer: Output Format and Schema
+    --------------------------------------------------------------------------- -#}
+
+`alignment_score` ranges from 0-10; `risk_level` can only be `low` / `medium` / `high`.

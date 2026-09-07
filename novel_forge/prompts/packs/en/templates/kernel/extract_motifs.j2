@@ -1,0 +1,131 @@
+{# source_template_hash: c78ebbe7269c80b86f0b19978875a230dc7d8498ade29b7d20ead1e3a40a7e5a #}
+{#
+================================================================================
+[Notes]
+================================================================================
+Prompt: extract_motifs.j2
+Service Step: EXTRACT_MOTIFS (Motif Extraction)
+Function Summary: Extract traceable motifs from chapter text (imagery/actions/sensory/colors/sounds/themes/symbols)
+Upstream Input:
+  - chapter_number: Chapter number
+  - text: Chapter text (truncated by caller per budget)
+  - existing_motifs: Existing motif list (for motif_id reuse)
+Downstream Output:
+  - JSON: Motifs list (containing motif_id, name, category, description, thematic_meaning, occurrences)
+  - Downstream Consumer: Memory MotifTracker / Writing Reference
+Consumption Chain Priority:
+  P0 = category enum value correctness (imagery/actions/sensory/colors/sounds/themes/symbols)
+  P1 = reuse existing motif_id / occurrence completeness
+  P2 = thematic_meaning depth
+Brief Example:
+  Input: chapter_number=5, text="Lin Yuan sees the rain outside the window..."
+  Output: {"motifs":[{"motif_id":"motif_001","name":"rain","category":"imagery",...}]}
+================================================================================
+#}
+
+{#- ---------------------------------------------------------------------------
+    Guidance Layer: Task Definition and Input Consumption
+    --------------------------------------------------------------------------- -#}
+
+Extract "traceable motifs" from this chapter.
+
+## Chapter
+- Chapter {{ chapter_number }}
+
+## Factual Source Boundary (P0)
+- Only extract motif occurrences from the final text corresponding to FinalArtifact / `text`.
+- Chapter goals, POV, narrative elements, and supplementary context are only used for hierarchical judgment, not as occurrence evidence.
+- Imagery, actions, sensory details, colors, sounds, themes, or symbols that do not actually appear in the final text must not be written to memory motifs.
+
+{% if chapter_goal or pov_character or element_focus %}
+## Chapter Context
+{% if chapter_goal %}- Chapter Goal: {{ chapter_goal }}{% endif %}
+{% if pov_character %}- POV Character: {{ pov_character }}{% endif %}
+{% if element_focus %}- Narrative Element: {{ element_focus | join(", ") }}{% endif %}
+{% endif %}
+
+{% if motif_extraction_context %}
+## Chapter Supplementary Context (For judging motif hierarchy, cannot replace text evidence)
+{% for key, value in motif_extraction_context.items() %}
+- {{ key }}: {{ value }}
+{% endfor %}
+{% endif %}
+
+{% if motif_category_distribution %}
+## Existing Motif Category Distribution
+{% for category, stats in motif_category_distribution.items() %}
+- {{ category }}: {{ stats.count }} ({{ stats.percentage }}%)
+{% endfor %}
+{% endif %}
+
+## Text
+{{ text }}
+
+{% if existing_motifs %}
+## Existing Motifs (Prioritize reusing motif_id)
+{% for m in existing_motifs %}
+- {{ m.motif_id }} | {{ m.category }} | {{ m.name }}
+  - Recent expression-function evidence: {{ m.recent_functions | default([]) }}
+  - Description: {{ m.description or "(none)" }}
+  - Thematic Meaning: {{ m.thematic_meaning or "(not explicitly stated)" }}
+  - Role/Importance: {{ m.motif_role or "unknown" }} / {{ m.importance_score if m.importance_score is not none else "unknown" }}
+  - Category Confidence: {{ m.category_confidence if m.category_confidence is not none else "unknown" }}{% if m.category_reason %}; Reason: {{ m.category_reason }}{% endif %}
+  - Secondary Categories: {{ m.secondary_categories | join(", ") if m.secondary_categories else "none" }}
+  - Usage History: {{ m.occurrence_count }} occurrences; Chapters {{ m.first_appearance_chapter }}-{{ m.last_appearance_chapter }}; Associated Characters: {{ m.associated_characters | join(", ") if m.associated_characters else "none" }}
+{% endfor %}
+{% endif %}
+
+## Rules
+1. Only extract motifs with narrative significance; avoid common object words.
+2. Reuse existing motif IDs where possible; only create new IDs for genuinely new motifs (`motif_NNN`).
+3. Each motif must have at least 1 occurrence; if it appears multiple times in this chapter, provide multiple entries.
+4. `category` can only be: imagery / action / sensory / color / sound / theme / symbol.
+5. Determine `motif_role` and `importance_score` for each motif; avoid elevating one-off rhetoric to long-term motifs.
+6. Only extract motifs that naturally appear in this chapter's text; do not force additions. If this chapter has no new motifs, return an empty list. Do notforcefully extract motifs without narrative significance just to avoid "motif set stagnation."
+7. Observe the category distribution of existing motifs: if one category is over-represented and another underrepresented, prioritize covering the deficient category.
+
+## Classification Criteria
+- `theme`: Abstract propositions, value conflicts, character arc directions, such as "redemption," "betrayal," "freedom vs. order." Use only when text explicitly carries thematic propositions.
+- `symbol`: Specific objects/locations/titles/rituals that carry stable symbolism or plot anchors throughout the book, such as "golden bracelet," "old clock tower," "emblem." Do not extract ordinary props that only serve a single plot point.
+- `imagery`: Concrete images that can be repeatedly used for atmosphere, metaphor, and visual association, such as "moonlight," "rain curtain," "paper ash."
+- `sensory`: Non-purely-visual, non-purely-auditory sensory anchors such as touch, smell, taste, and bodily sensations, such as "iron rust smell," "damp chill."
+- `color`: Colors themselves that carry recurring emotional/symbolic function, such as "cold white," "crimson." If merelymodifying object colors, prioritize categorizing under the object's corresponding imagery/symbol.
+- `sound`: Sounds as recognizable recurring channels, such as "bell toll," "rain sound," "metal scraping."
+- `action`: Recurring action patterns with psychological or relational meanings, such as "fastening the cuff," "turning back to check the latch."
+
+## Classification Priority
+1. If it is an abstract proposition, prioritize `theme`.
+2. If it is a key object/location/title and carries plot anchors or symbolism, prioritize `symbol`.
+3. If the same element has visual, color, sound, and other attributes, prioritize the category with the most stable narrative function, and put other attributes into `secondary_categories`.
+4. Do not use names, kinship terms, official titles, or ordinary place names as rhetorical motifs unless the text explicitly endows them with stable symbolic function.
+5. When uncertain, lower `category_confidence`; do not use `imagery` as a catch-all trash bin.
+
+## Importance and Forgetting Criteria
+- `motif_role` can only be: theme_anchor / core_symbol / character_motif / recurring_image / atmospheric_detail / one_off_rhetoric / unknown.
+- `importance_score` range 0-1: 0.8+ indicates book-core; 0.55-0.79 indicates worth tracking; 0.35-0.54 indicates local atmosphere; below 0.35 indicates forgettable non-important rhetoric.
+- Use `theme_anchor` for thematic propositions; `core_symbol` for key symbolic objects/locations/rituals; `character_motif` for actions/psychological patterns bound to specific characters; `recurring_image` for imagery with clear reproduction potential.
+- Use `atmospheric_detail` for sounds, colors, and sensory details that only serve this chapter's atmosphere; use `one_off_rhetoric` for beautiful but one-time metaphors/objects, and assign low importance.
+- If an existing motif's `motif_role` or `importance_score` conflicts with this chapter's evidence, updates are permitted, but must be explained in `category_reason`.
+
+IMPORTANT: Only extract motifs that actually appear in this chapter's text; do not speculate about what should appear.
+Determine whether motif usage intentionally echoes chapter goals or is unconscious repetition: if the motif narratively resonates with the chapter goal, mark is_intentional=True.
+Provide specific narrative function explanations for each motif (thematic_meaning), such as "moonlight -> metaphor for protagonist's inner transformation" rather than vague "moonlight is a kind of imagery."
+
+## Quality Calibration
+- Working Identity: You are an evidence-first narrative fact extractor, skilled at extracting traceable, mergeable state information from text and upstream anchors.
+- Extraction Path: First identify explicit facts in the text, then cross-reference with shared anchors and known state, finally retain only information consumable by downstream mergers.
+- Evidence Calibration: Maintain consistency when upstream fragments have confirmed the same fact; use conservative field values to express unknown or pending when evidence is insufficient.
+- Actionable Path: Each piece of information serves canon, memory, state, or audit chains; avoid treating tone, metaphor, or speculation as fact.
+
+## Pre-Delivery Verification
+- Are P0/P1/P2 priorities maintained, and do weak references not override hard constraints?
+- Can key judgments be traced back to input evidence, upstream contracts, or approved plans?
+- Have unauthorized characters, locations, world rules, future payoffs, or format agreements been avoided?
+- Are factual boundaries needed for downstream merging/retrieval preserved, and has speculation not been written as established fact?
+
+{#- ---------------------------------------------------------------------------
+    Format Layer: Output Format and Schema
+    --------------------------------------------------------------------------- -#}
+
+## Expression function
+For each occurrence, describe narrative_function and compare recent_functions. Mark function_relation new_function / redundant / unknown; function_evidence must quote current prose showing changed information, action, relationship or interpretation. If unproven, use unknown. Synonyms can still repeat the same function. Counts, dormancy and is_intentional do not prove author intent or new function.
