@@ -60,6 +60,8 @@ jobs:
         with:
           python-version: "3.12"
           cache: 'pip'
+      - name: Install Qt runtime libraries
+        run: sudo apt-get update && sudo apt-get install -y libegl1 libgles2 libgl1 libpulse0
       - run: pip install -e ".[dev,desktop]"
       - run: pytest tests/unit/test_api_engine_routes.py tests/unit/test_app_service_jobs.py -q --timeout=300 -p no:xdist
 
@@ -79,6 +81,9 @@ jobs:
         with:
           python-version: "3.12"
           cache: 'pip'
+      - name: Install Qt runtime libraries (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get update && sudo apt-get install -y libegl1 libgles2 libgl1 libpulse0
       - run: pip install -e ".[dev,desktop]"
       - name: Run portable storage and fallback checks
         run: pytest tests/desktop/test_window_imports.py tests/desktop/test_windows_event_loop_policy.py tests/desktop/test_strings.py tests/desktop/test_sleep_inhibitor_atexit.py tests/unit/test_humanize_library_store.py -q --timeout=300 -p no:xdist
