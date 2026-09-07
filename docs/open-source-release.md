@@ -68,3 +68,5 @@ Topics：`creative-writing`、`novel-writing`、`llm`、`python`、`fastapi`、`
 第二轮公开 CI 进一步确认三项基线差异：lint 环境没有安装完整的可选类型依赖，Windows 无 `fcntl`，首次会话恢复可能覆盖启动后已发生的 PySide 导航。此前被忽略的 `uv.lock` 现纳入公开版本控制，lint 从该锁文件安装全部 extras，避免 SDK 或 PySide 版本随 runner 漂移。由于 PySide 的平台 wheel 暴露不同类型表面，历史 mypy 债务清单固定在其生成平台 macOS；Linux/Windows 继续运行实际单元与后备端兼容测试。拟人化词库以 POSIX `flock` / Windows 字节区间锁维持同一排他锁合同；会话恢复尊重较新的用户导航。公开源码卫生继续独立运行，不因兼容修正降低检查。完整三平台 CI 通过后，以对应公开提交作为首个可维护基线。
 
 锁定环境还让完整导入契约稳定检出一条既有 persistence → StoryKernel schema 分层违例。章节清理现通过最小结构协议消费已由允许的 store 边界加载并校验的对象，不新增例外规则，也不改变 Canon 回滚内容。
+
+依赖安全作业保留 `pip-audit --strict`，并显式跳过尚未发布到 PyPI 的 editable 本地包；其全部已安装第三方依赖仍严格审计。首次失败仅为审计器无法在 PyPI 解析 `novel-forge 0.1.0`，日志没有报告第三方漏洞。
